@@ -1,0 +1,11 @@
+antares
+build
+*~
+#*#
+*.o
+*.d
+tmp
+*.bak
+*.old
+include/config
+Makefile.local-settings
