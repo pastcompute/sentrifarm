@@ -1,2 +1,2 @@
-objects-y+=main.o stdio.o helpers.o
-
+objects-y+=main.o helpers.o uart.o
+subdirs-y+=lwip

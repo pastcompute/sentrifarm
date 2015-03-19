@@ -39,6 +39,16 @@ endif
 # They will can be later hooked as default make target
 # in menuconfig 
 
+# Hook ensure_config so make works when I deleted .config
+ifeq ($(strip $(CONFIG_MAKE_DEFTARGET)),)
+.PHONY: my_ensure_config
+.DEFAULT_GOAL := my_ensure_config
+my_ensure_config: .config
+	$(MAKE)
+
+.config:
+	cp my_defconfig .config
+endif
 
 #GP0 - Loader GPIO
 #GP1 - reset

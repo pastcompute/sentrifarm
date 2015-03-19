@@ -1,14 +1,4 @@
-#include "ets_sys.h"
-#include "os_type.h"
-#include "mem.h"
-#include "osapi.h"
 #include "user_interface.h"
-
-#include "espconn.h"
-#include "gpio.h"
-#include "driver/uart.h" 
-#include "microrl.h"
-#include "console.h"
 #include <generic/macros.h>
 
 static const char *modes[] = {
