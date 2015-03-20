@@ -39,6 +39,9 @@ endif
 # They will can be later hooked as default make target
 # in menuconfig 
 
+ifeq ($(ANTARES_INSTALL_DIR2),)
+
+else
 # Hook ensure_config so make works when I deleted .config
 ifeq ($(strip $(CONFIG_MAKE_DEFTARGET)),)
 .PHONY: my_ensure_config
@@ -48,6 +51,7 @@ my_ensure_config: .config
 
 .config:
 	cp my_defconfig .config
+endif
 endif
 
 #GP0 - Loader GPIO

@@ -5,12 +5,6 @@
 #include "user_interface.h"
 #include "helpers.h"
 
-int log_level = 2; // required by lwip
-
-const char* fr_request_hostname(void) { // required by lwip
-  return "esp8266";
-}
-
 static os_timer_t scan_completed_timer;
 
 static volatile int scan_finished = 0;
