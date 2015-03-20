@@ -81,6 +81,7 @@
 #include "lwip/autoip.h"
 #include "lwip/dns.h"
 #include "netif/etharp.h"
+#include "user_hostname.h" // fr_request_hostname
 
 #include <string.h>
 

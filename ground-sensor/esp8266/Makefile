@@ -92,3 +92,22 @@ flashidata:
 	-esptool.py --port $(PORT) write_flash 0x7c000 esp_iot_sdk_v0.9.2/bin/esp_init_data_default.bin
 	$(reset)
 	$(minicom)
+
+# ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~`
+# Notes
+#
+# make CONFIG_BUILD_VERBOSE=y will build verbose, although you can also put this into .config
+# THis will show the compiler command lines
+#
+#
+# Config option ESP8266_BLOB_LWIP will use proprietary lwip instead of our open source version
+# This seems to make the bare image 6kb smaller 191356 -> 185616
+#
+# Config option CONFIG_ESP8266_BLOB_SSL can be turned off in the minimum, not sure when it gets used
+#
+# CONFIG_CC_OPT2 instead of CONFIG_CC_OPTSZ doesnt make a difference?! (Adds 7kb in frankenstein, so obviously code dependent)
+#
+# CONFIG_GCC_PARANOID_WRN --> Wall
+# CONFIG_GCC_STRIP --> doesnt work (breaks link)
+# CONFIG_GCC_LM=y  use -lm - seems to be safely removable
+

@@ -1,6 +1,5 @@
-
-#ifndef _MAIN_H
-#define _MAIN_H
+#ifndef MAIN_H__
+#define MAIN_H__
 
 /*
    !!
@@ -11,9 +10,5 @@
    which are defined in lwip/mem.h and defined as PvPort*...
    or os_*alloc()...
 */
-
-
-/* This is required by lwip/opt.h which has been patched to search for this function */
-const char* fr_request_hostname(void);
 
 #endif // _MAIN_H
