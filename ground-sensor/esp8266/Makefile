@@ -17,8 +17,7 @@ CFLAGS+=-D__ets__ \
 
 PORT?=/dev/ttyUSB0
 
-HAVE_PL2303?=y
-
+HAVE_PL2303?=n
 
 ifeq ($(ANTARES_INSTALL_DIR2),)
 antares:
