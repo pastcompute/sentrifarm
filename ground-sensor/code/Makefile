@@ -5,6 +5,7 @@ FRANK=frankenstein
 FRANK_CONFIG=config-esp8266
 SDK=esp-open-sdk
 COLOURDIFF=$(shell which colordiff || echo diff 2> /dev/null)
+PORT?=/dev/ttyUSB0
 
 # Set this in your environment as needed
 KCONFIG_FRONTEND?=/opt/kconfig-frontends/bin
@@ -31,7 +32,9 @@ clean:
 	$(FRANK_PATH) $(MAKE) -C $(FRANK) clean
 
 menuconfig:
+ifeq ($(FORCE),)
 	@diff -q $(FRANK)/.config $(FRANK_CONFIG) || { echo "[WARNING] Config in $(FRANK) is different from $(FRANK_CONFIG). Fix that first." ; $(MAKE) diffconfig ; false ; }
+endif
 	$(FRANK_PATH) $(MAKE) -C $(FRANK) menuconfig
 	@diff -q $(FRANK)/.config $(FRANK_CONFIG) || cp -v $(FRANK)/.config $(FRANK_CONFIG)
 
@@ -79,7 +82,7 @@ $(SDK):
 
 # Shortcut flash instead of using antares deploy which forces a whole build
 flash:
-	-esptool.py --port $(PORT) write_flash 0x00000 $(FRANK)/images/antares.rom
+	-$(FRANK_PATH) esptool.py --port $(PORT) write_flash 0x00000 $(FRANK)/images/antares.rom
 
 .PHONY: all build prereq forceconfig menuconfig distclean clean flash
 
