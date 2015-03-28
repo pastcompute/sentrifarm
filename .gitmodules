@@ -1,0 +1,3 @@
+[submodule "ground-sensor/code/frankenstein"]
+	path = ground-sensor/code/frankenstein
+	url = git@github.com:pastcompute/esp8266-frankenstein.git
