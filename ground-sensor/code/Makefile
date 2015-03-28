@@ -4,19 +4,44 @@
 FRANK=frankenstein
 FRANK_CONFIG=config-esp8266
 SDK=esp-open-sdk
+COLOURDIFF=$(shell which colordiff || echo diff 2> /dev/null)
 
-all: prereq $(FRANK_CONFIG)
-	$(MAKE) -C $(FRANK)
+# Set this in your environment as needed
+KCONFIG_FRONTEND?=/opt/kconfig-frontends/bin
+
+ifeq ($(V),1)
+define FRANK_VERBOSE
+CONFIG_BUILD_VERBOSE=y
+endef
+endif
+
+define FRANK_PATH
+export PATH=$(PWD)/$(SDK)/xtensa-lx106-elf/bin:$(KCONFIG_FRONTEND):$$PATH ;
+endef
+
+all: build
+
+build: prereq $(FRANK_CONFIG)
+	$(FRANK_PATH) $(MAKE) -C $(FRANK) $(FRANK_VERBOSE)
+
+distclean:
+	$(FRANK_PATH) $(MAKE) -C $(FRANK) distclean
+
+clean:
+	$(FRANK_PATH) $(MAKE) -C $(FRANK) clean
 
 menuconfig:
-	@diff -q $(FRANK)/.config $(FRANK_CONFIG) || { echo "[WARNING] Config in $(FRANK) is different from $(FRANK_CONFIG). Fix that first." ; false ; }
-	$(MAKE) -C $(FRANK) menuconfig
+	@diff -q $(FRANK)/.config $(FRANK_CONFIG) || { echo "[WARNING] Config in $(FRANK) is different from $(FRANK_CONFIG). Fix that first." ; $(MAKE) diffconfig ; false ; }
+	$(FRANK_PATH) $(MAKE) -C $(FRANK) menuconfig
 	@diff -q $(FRANK)/.config $(FRANK_CONFIG) || cp -v $(FRANK)/.config $(FRANK_CONFIG)
 
 forceconfig:
 	@cp -v $(FRANK_CONFIG) $(FRANK)/.config
 
-prereq: | $(SDK) $(FRANK) $(FRANK)/.config $(FRANK)/antares .stamp.frank
+diffconfig:
+	@$(COLOURDIFF) $(FRANK)/.config $(FRANK_CONFIG)
+
+prereq: | $(KCONFIG_FRONTEND) $(SDK) $(FRANK) $(FRANK)/.config $(FRANK)/antares .stamp.frank
 
 # I would rather use a symlink, but make menuconfig keeps breaking it
 $(FRANK)/.config:
@@ -30,13 +55,18 @@ $(FRANK):
 
 # Similarly, antares...
 $(FRANK)/antares: $(FRANK)
-	$(MAKE) -C $(FRANK) antares
+	$(FRANK_PATH) $(MAKE) -C $(FRANK) antares GITURL=https://github.com/pastcompute/antares.git
+
+$(KCONFIG_FRONTEND):
+	@echo "oops - $@ is missing
+	@echo "Clone and build http://ymorin.is-a-geek.org/git/kconfig-frontends/"
+	@false
 
 # On my workstation I symlink this elsewhere so I dont have to keep building it
 # For a fresh build on a new PC we want to clone it from github
 # Dont bother using a submodule (although perhaps that might be useful, so it can be stuck at a particular version)
 $(SDK):
-	@echo "oops - $(SDK) is missing, either create a symlink, or clone it here!"
+	@echo "oops - $@ is missing, either create a symlink, or clone it here!"
 	@echo "Clone alternatives:"
 	@echo "1. https://github.com/pastcompute/esp-open-sdk"
 	@echo "2. https://github.com/pfalcon/esp-open-sdk"
@@ -47,4 +77,25 @@ $(SDK):
 	$(MAKE) -C $(FRANK) distclean
 	touch $@
 
-.PHONY: all prereq menuconfig
+# Shortcut flash instead of using antares deploy which forces a whole build
+flash:
+	-esptool.py --port $(PORT) write_flash 0x00000 $(FRANK)/images/antares.rom
+
+.PHONY: all build prereq forceconfig menuconfig distclean clean flash
+
+# ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~`
+# Notes
+#
+# make CONFIG_BUILD_VERBOSE=y will build verbose, although you can also put this into .config
+#
+# Config option ESP8266_BLOB_LWIP will use proprietary lwip instead of our open source version
+# This seems to make the bare image 6kb smaller 191356 -> 185616
+#
+# Config option CONFIG_ESP8266_BLOB_SSL can be turned off in the minimum, not sure when it gets used
+#
+# CONFIG_CC_OPT2 instead of CONFIG_CC_OPTSZ doesnt make a difference?! (Adds 7kb in frankenstein, so obviously code dependent)
+#
+# CONFIG_GCC_PARANOID_WRN --> Wall
+# CONFIG_GCC_STRIP --> doesnt work (breaks link)
+# CONFIG_GCC_LM=y  use -lm - seems to be safely removable
+
