@@ -23,6 +23,7 @@ endef
 all: build
 
 build: prereq $(FRANK_CONFIG)
+	@patch -p1 -N -r- -s -d frankenstein < frankenstein.patch  || true
 	$(FRANK_PATH) $(MAKE) -C $(FRANK) $(FRANK_VERBOSE)
 
 distclean:
