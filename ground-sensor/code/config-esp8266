@@ -123,7 +123,8 @@ CONFIG_ESP8266_NEED_ESPCONN_INIT=y
 # Services to build
 #
 # CONFIG_SERVICE_DHCPS is not set
-# CONFIG_SERVICE_TCP is not set
+CONFIG_SERVICE_TCP=y
+# CONFIG_SERVICE_TELNET is not set
 
 #
 # Modules to build
@@ -133,6 +134,8 @@ CONFIG_CMD_IW=y
 CONFIG_CMD_IF=y
 # CONFIG_CMD_GPIO is not set
 # CONFIG_CMD_FLASH is not set
+# CONFIG_CMD_LISTEN is not set
+CONFIG_CMD_SEND=y
 # CONFIG_CMD_NSLOOKUP is not set
 # CONFIG_CMD_TFTP is not set
 CONFIG_CMD_AT=y
