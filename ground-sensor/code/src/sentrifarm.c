@@ -27,7 +27,7 @@ static void sensor_poll_timer_cb(void*unused)
 	const char *s_port = env_get("sentri-dst-port");
   int port = s_port ? atoi(s_port) : DEMO_PORT;
 
-  console_printf("Poll sensors...\n");
+  /*console_printf("Poll sensors...\n");*/
 
   /* Having multiple DS18B20 on one GPIO saves a gpio but means we need to be able to identify the address after! */
   /* So I think in practice I'll probably have one per GPIO... */
@@ -43,7 +43,8 @@ static void sensor_poll_timer_cb(void*unused)
       r++;
     }
   } else {
-    execute_tcp_push(DEMO_IPADDRESS, port, "Sensor Error");
+    console_printf("Sensor Error\n", buf);
+    execute_tcp_push(DEMO_IPADDRESS, port, "{\"x\":\"error\"}");
   }
 }
 
