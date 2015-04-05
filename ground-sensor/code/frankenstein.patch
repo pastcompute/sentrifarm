@@ -15,8 +15,8 @@ index 55b3ee0..fa43757 100644
  	    }
  	  }
  	}
-+  extern void sentifarm_init();
-+  sentifarm_init();
++  extern void sentrifarm_init();
++  sentrifarm_init();
  }
  
  void user_init()
