@@ -13,6 +13,8 @@
 #include <stdlib.h>
 #include <generic/macros.h>
 
+#include "tcp_push.h"
+
 #define CONFIG_TCP_PUSH_DEBUG
 #ifdef CONFIG_TCP_PUSH_DEBUG
 #define dbg(fmt, ...) LOG(LOG_DEBUG, fmt, ##__VA_ARGS__)
@@ -26,6 +28,8 @@ struct pokerface {
   char databuf[128];
   int datalen;
   /*volatile*/ os_timer_t conn_checker;
+  tcp_push_error_fcn_t error_handler;
+  tcp_push_finish_fcn_t finish_handler;
 };
 
 static void conn_checker_handler(void *arg)
@@ -33,7 +37,7 @@ static void conn_checker_handler(void *arg)
   struct pokerface *p = arg;
   /* Lazy gc */
   os_free(p);
-  dbg("free\n");
+  dbg("lazy free\n");
 }
 
 static void  connected(void *arg)
@@ -44,18 +48,20 @@ static void  connected(void *arg)
 
 static void  disconnected(void *arg)
 {
-  dbg("OK\n");
+  dbg("OK(disconnected)\n");
   console_lock(0);
   struct pokerface *p = arg;
-  os_timer_arm(&p->conn_checker, 50, 0);
-  
+  os_timer_arm(&p->conn_checker, 50, 0);  
+  if (p->finish_handler) p->finish_handler(p);
 }
 
 static void reconnect(void *arg, sint8 err)
 {
-  console_printf("Error %d\n", err);
+  /* So far : 9 - seems to be no listening service ... */
+  console_printf("reconnect: Error %d\n", err);
   struct pokerface *p = arg;
   espconn_disconnect(&p->esp_conn);
+  if (p->error_handler) p->error_handler(p, err);
   console_lock(0);
 }
 
@@ -68,10 +74,14 @@ static void datasent(void *arg)
 }
 
 /* At most, 128 bytes! */
-int execute_tcp_push(const char *ipaddress, int port, const char *text)
+int execute_tcp_push_u(ip_addr_t target, int port, const char *text, tcp_push_finish_fcn_t finish_fcn, tcp_push_error_fcn_t error_fcn, void** handle)
 {
+  if (!target.addr || port < 0 || port > 65535) {
+    console_printf("Invalid IP address or port\n");
+    return -1;
+  }
   struct pokerface *p = os_zalloc(sizeof(struct pokerface));
-  if (!p || !text || port==0 || !ipaddress) {
+  if (!p || !text) {
     console_printf("Can't malloc enough to send\n");
     return -1;
   }
@@ -85,7 +95,8 @@ int execute_tcp_push(const char *ipaddress, int port, const char *text)
   p->esp_conn.proto.tcp = &p->esptcp;
   p->esp_conn.proto.tcp->local_port = espconn_port();
   p->esp_conn.proto.tcp->remote_port = port;
-  uint32_t target = ipaddr_addr(ipaddress);
+  p->error_handler = error_fcn;
+  p->finish_handler = finish_fcn;
   
   strcat(p->databuf, text);
   p->datalen = strlen(p->databuf);
@@ -98,7 +109,16 @@ int execute_tcp_push(const char *ipaddress, int port, const char *text)
   espconn_connect(&p->esp_conn);
   console_lock(1);
 
+  *handle = p;
+
   return 0;
+}
+
+int execute_tcp_push(const char *ipaddress, int port, const char *text, tcp_push_finish_fcn_t finish_fcn, tcp_push_error_fcn_t error_fcn, void** handle)
+{
+  ip_addr_t target;
+  ipaddr_aton(ipaddress, &target);
+  return execute_tcp_push_u(target, port, text, finish_fcn, error_fcn, handle);
 }
 
 /*
