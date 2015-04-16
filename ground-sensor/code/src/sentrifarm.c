@@ -16,6 +16,8 @@
  * Boot / wake from deep sleep --> sentrifarm_init()
  * --> If GPIOx (bypass switch) is connected to GND, then skip sentrifram processing and become a normal frankenstein
  * --> If GPIOx (debug mode switch) is connected to GND, then turn on debug LED
+ * --> If GPIOx : DIAG1 (debug mode switch) is connected to GND, then dont reboot / deep sleep after completing logic flow
+ *     This will be GPIO2 if testing limited system on ESP-01
  * --> Ensure wifi is off (should be boot disabled)
  * --> Enable sensor power
  * --> Sleep 2s (wait for things to settle)
@@ -53,6 +55,17 @@
 #include "ds18b20.h"
 #include "iwconnect.h"
 #include "gpio.h"
+#include "pin_map.h"
+
+/* avoid annoying warnings */
+extern void ets_intr_lock();
+extern void ets_intr_unlock();
+extern uint32_t readvdd33(void);
+
+#define SENTRI_GPIO_DS18B20_STRING1 0
+#define SENTRI_GPIO_DIAG1 2
+#define SENTRI_GPIO_LED1 2
+#define SENTRI_GPIO_BYPASS 2
 
 /* 1 for ESP-01, 0 for module with several GPIO exposed */
 #define TRAIT_SENSORS_ALWAYS_POWERED 1
@@ -60,24 +73,25 @@
 /* 0 for ESP-01, 1 for module with several GPIO exposed */
 #define TRAITS_ENABLE_LED 0
 
-#define SENTRI_GPIO_DS18B20_STRING1 0
-#define SENTRI_GPIO_DIAG1 2
-#define SENTRI_GPIO_LED1 2
+/* 0 for ESP-01, 1 for module with several GPIO exposed */
+#define TRAITS_ENABLE_BYPASS 0
+
+/* 1 for module with deep sleep GPIO16 connected to wake on reset */
+#define TRAITS_ENABLE_DEEP_SLEEP 0
+
+/* Number of DS18B20 expected to find on GPIO_DS18B20_STRING1 */
+#define TRAIT_EXPECTED_THERMALS1 1
 
 #define SENSOR_POLL_INTERVAL_SECONDS 30
-
 #define MAX_WIFIUP_RETRY_ATTEMPTS 20
-
 #define MAX_TELEMETRY_RETRY_ATTEMPTS 20
-
-#define MAX_THERMALS1 1
 
 #define DEMO_IPADDRESS "172.30.42.19"
 #define DEMO_PORT 7777
 
 #define MSG_BAR "~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~"
 
-#define MSG_SIMULATION(X) console_printf("\n" MSG_BAR "\n[SIMLN]" X "\n" MSG_BAR "\n\n")
+#define MSG_SIMULATION(X) console_printf("\n" MSG_BAR "\n[SIMLN]" X "\n" MSG_BAR "\n")
 
 #define MSG_TRACE(X ...) console_printf("\n[TRACE]" X )
 
@@ -99,6 +113,22 @@ struct sentrifarm_cfg_t {
   int upstream_port;       /* TCP/IP port for telemetry service */
   bool diag1;              /* True if diagnostic button #1 was held at boot */
   bool diag2;              /* True if diagnostic button #2 was held at boot */
+  unsigned long deepsleep_us; /* microseconds to stay in deep sleep */
+};
+
+/* ------------------------------------------------------------------------- */
+/* Configuration values, initialised from environment in init() */
+static struct sentrifarm_cfg_t my_config = {
+  .wait_settle_s = 5,           /* Allow 5 seconds for wifi to shutdown */
+  .wait_sensors_s = 2,          /* Allow 2 seconds for sensor power to settle */
+  .wait_wifiup_s = 1,           /* Allow 1 second between wifi polls */
+  .wait_transmit_s = 1,         /* Allow 1 second between TCP polls */
+  .wait_reboot_s = SENSOR_POLL_INTERVAL_SECONDS, /* For the moment, we set a timer then reboot, instead of deep sleep */
+  .upstream_host = { 0 },
+  .upstream_port = DEMO_PORT,
+  .diag1 = false,
+  .diag2 = false,
+  .deepsleep_us = 1000 * 1000 * SENSOR_POLL_INTERVAL_SECONDS,
 };
 
 /* ------------------------------------------------------------------------- */
@@ -110,6 +140,7 @@ enum {
   STATE_WIFI_PENDING,
   STATE_TELEMETRY,
   STATE_TELEMETRY_PENDING,
+  STATE_TELEMETRY_FAULT,
   STATE_DONE,
   STATE_REBOOT_REQUIRED,
   STATE_ERROR = -1
@@ -118,11 +149,13 @@ enum {
 /* ------------------------------------------------------------------------- */
 /* Various error codes, bit masked into 32-bits */
 enum {
-  ERR_OTHER              = 1 << 0,
-  ERR_THERMAL1_GPIO      = 1 << 1,
-  ERR_THERMAL2_GPIO      = 1 << 2,
-  ERR_WIFI_CONNECT       = 1 << 3,
-  ERR_WIFI_AP_NOT_FOUND  = 1 << 4,
+  ERR_OTHER                 = 1 << 0,
+  ERR_THERMAL1_GPIO         = 1 << 1,
+  ERR_THERMAL2_GPIO         = 1 << 2,
+  ERR_WIFI_CONNECT          = 1 << 3,
+  ERR_WIFI_AP_NOT_FOUND     = 1 << 4,
+  ERR_THERMAL1_NONE_FOUND   = 1 << 5,
+  ERR_THERMAL1_SOME_MISSING = 1 << 6,
 };
 
 /* ------------------------------------------------------------------------- */
@@ -130,27 +163,18 @@ enum {
 struct sentrifarm_state_t {
   int state;                 /* State in state machine at completion of timer callback */
   uint32_t error_flags;      /* Accumulated error data */
+
   int thermals1_found;       /* Number of valid DS18B20 on GPIO #2 */
-  struct ds18b20_t thermals1[MAX_THERMALS1];  /* Temperatures on DS18B20 on GPIO #2 (up to two sensors catered for at the moment) */
+  struct ds18b20_t thermals1[TRAIT_EXPECTED_THERMALS1];  /* Temperatures on DS18B20 on GPIO #0 */
+  uint32_t vdd;
+
   int wifi_pending;          /* Latch to 1 once attempt to connect to wifi has started */
   int wifi_retried;          /* Number of elapsed wait_wifiup_s intervals since connection attempt started */
-  int telemetry_retried;     /* Number of elapsed wait_transmit_s intervals since telemetry attempt started */
-  void* telemetry_handle[MAX_TELEMETRY]; /* Handles of TCP transmissions. FIXME - we need to refactor TCP push to have one connect and multiple send, but this will do for the moment */
-  bool telemetry_done[MAX_TELEMETRY];
-};
 
-/* ------------------------------------------------------------------------- */
-/* Configuration values, initialised from environment in init() */
-static struct sentrifarm_cfg_t my_config = {
-  .wait_settle_s = 5,           /* Allow 5 seconds for wifi to shutdown */
-  .wait_sensors_s = 2,          /* Allow 2 seconds for sensor power to settle */
-  .wait_wifiup_s = 1,           /* Allow 1 second between wifi polls */
-  .wait_transmit_s = 1,         /* Allow 1 second between TCP polls */
-  .wait_reboot_s = 10,
-  .upstream_host = { 0 },
-  .upstream_port = DEMO_PORT,
-  .diag1 = false,
-  .diag2 = false,
+  int telemetry_retried;     /* Number of elapsed wait_transmit_s intervals since telemetry attempt started */
+  void* telemetry_handle[MAX_TELEMETRY]; /* Handles of TCP transmissions. */
+                             /* FIXME - we need to refactor TCP push to have one connect and multiple send, but this will do for the moment */
+  bool telemetry_done[MAX_TELEMETRY]; /* true if specified message was sent or failed */
 };
 
 /* ------------------------------------------------------------------------- */
@@ -159,7 +183,10 @@ static struct sentrifarm_state_t my_state = {
   .state = STATE_BOOT,
   .error_flags = 0,
   .thermals1_found = 0,
-  .wifi_pending = 0
+  .vdd = 0,
+  .wifi_pending = 0,
+  .wifi_retried = 0,
+  .telemetry_retried = 0,
 };
 
 /* ------------------------------------------------------------------------- */
@@ -197,12 +224,24 @@ static void sentri_read_thermal()
     MSG_ERROR("Invalid DS18B20 GPIO!");
     return;
   }
+  if (my_state.thermals1_found == 0) {
+    MSG_ERROR("No thermals1 found");
+    my_state.error_flags |= ERR_THERMAL1_NONE_FOUND;
+  } else if (my_state.thermals1_found < TRAIT_EXPECTED_THERMALS1) {
+    MSG_ERROR("Not all thermals1 found");
+    my_state.error_flags |= ERR_THERMAL1_SOME_MISSING;
+  }
 }
 
 /* ------------------------------------------------------------------------- */
 /* Read all voltages and digital I/O */
 static void sentri_read_sensors()
 {
+  MSG_SIMULATION("Read VCC");
+	os_intr_lock();
+	my_state.vdd = readvdd33();
+	os_intr_unlock();
+
   MSG_SIMULATION("Read solar voltage");
   MSG_SIMULATION("Read supercap voltage");
   MSG_SIMULATION("Read regulator input voltage");
@@ -224,6 +263,7 @@ static void sentri_connect_wifi()
   }
 }
 
+/* ------------------------------------------------------------------------- */
 static void sentri_tcp_finish_handler(void* handle)
 {
   for (int i=0; i < ARRAY_LEN(my_state.telemetry_handle); i++) {
@@ -235,6 +275,7 @@ static void sentri_tcp_finish_handler(void* handle)
   }
 }
 
+/* ------------------------------------------------------------------------- */
 static void sentri_tcp_fault_handler(void* handle, int error)
 {
   for (int i=0; i < ARRAY_LEN(my_state.telemetry_handle); i++) {
@@ -250,26 +291,36 @@ static void sentri_tcp_fault_handler(void* handle, int error)
 static void sentri_do_telemetry()
 {
   /* For the moment just send a bunch of JSON to a dumb telnet-style logging service */
+  /* TODO: do this properly - open one TCP connection then send through data until done */
+  /* TODO: amongst other things, each message allocates a non-trivial struct on the heap... we probably want to avoid that */
   MSG_SIMULATION("Telemetry");
   for (int i=0; i < MAX_TELEMETRY; i++) { my_state.telemetry_handle[i] = NULL; my_state.telemetry_done[i] = true; }
   my_state.telemetry_retried = 0;
+  int nextHandle = 0;
   if (true) {
-    char buf[22];
-    snprintf(buf, sizeof(buf), "{\"error\":\"%.08x\"}", my_state.error_flags);
+    char buf[24];
+    snprintf(buf, sizeof(buf), "{\"vdd\":\"%u\"}", my_state.vdd);
     MSG_TRACE("%s", buf);
-    my_state.telemetry_done[0] = false;
-    execute_tcp_push_u(my_config.upstream_host, my_config.upstream_port, buf, &sentri_tcp_finish_handler, &sentri_tcp_fault_handler, &my_state.telemetry_handle[0]);
+    my_state.telemetry_done[nextHandle] = false;
+    execute_tcp_push_u(my_config.upstream_host, my_config.upstream_port, buf, &sentri_tcp_finish_handler, &sentri_tcp_fault_handler, &my_state.telemetry_handle[nextHandle++]);
   }
   for (int thermal=0; thermal < my_state.thermals1_found; thermal++) {
     const struct ds18b20_t* r = &my_state.thermals1[thermal];
-    char buf[6+2*8+7+1+7+2];
+    char buf[6+2*8+7+1+7+2+2];
     snprintf(buf, sizeof(buf), "{\"x\":\"%02x%02x%02x%02x%02x%02x%02x%02x\",\"t\":\"%c%d.%02d\"}",
         r->addr[0], r->addr[1], r->addr[2], r->addr[3], r->addr[4], r->addr[5], r->addr[6], r->addr[7], r->tSign, r->tVal, r->tFract);
     MSG_TRACE("%s", buf);
-    my_state.telemetry_done[thermal+1] = false;
-    execute_tcp_push_u(my_config.upstream_host, my_config.upstream_port, buf, &sentri_tcp_finish_handler, &sentri_tcp_fault_handler, &my_state.telemetry_handle[1]);
+    my_state.telemetry_done[nextHandle] = false;
+    execute_tcp_push_u(my_config.upstream_host, my_config.upstream_port, buf, &sentri_tcp_finish_handler, &sentri_tcp_fault_handler, &my_state.telemetry_handle[nextHandle++]);
   }
-  // We should somehow 'block' until confirming data sent
+  if (true) {
+    char buf[22];
+    snprintf(buf, sizeof(buf), "{\"error\":\"%.08x\"}\n", my_state.error_flags); /* Last one, so add a CR */
+    MSG_TRACE("%s", buf);
+    my_state.telemetry_done[nextHandle] = false;
+    execute_tcp_push_u(my_config.upstream_host, my_config.upstream_port, buf, &sentri_tcp_finish_handler, &sentri_tcp_fault_handler, &my_state.telemetry_handle[nextHandle++]);
+  }
+  /* On return, we poll the telemetry handles until all messages are sent */
 }
 
 /* ------------------------------------------------------------------------- */
@@ -388,8 +439,8 @@ static void sentri_state_handler()
     if (!sentri_check_telemetry()) {
       if (my_state.telemetry_retried ++ > MAX_TELEMETRY_RETRY_ATTEMPTS) { /* timeout ... */
         MSG_ERROR("Failed to transmit telemetry in time :-(");
-        next_state = STATE_REBOOT_REQUIRED;
-        next_delay = my_config.wait_reboot_s;
+        next_state = STATE_TELEMETRY_FAULT;
+        next_delay = my_config.wait_transmit_s;
       }
       break;
     }
@@ -398,10 +449,29 @@ static void sentri_state_handler()
     next_delay = 1;
     break;
 
-  case STATE_DONE:
-    MSG_TRACE("DONE");
+  case STATE_TELEMETRY_FAULT:
+    MSG_TRACE("STATE_TELEMETRY_FAULT");
+    /* Here we could perhaps do a 60 second try again before rebooting - dont want to waste all the power because of a network transient */
     next_state = STATE_REBOOT_REQUIRED;
     next_delay = my_config.wait_reboot_s;
+    break;   
+
+  case STATE_DONE:
+    MSG_TRACE("DONE");
+#if TRAITS_ENABLE_DEEP_SLEEP
+    if (my_config.diag2) {
+      MSG_TRACE("DEEP SLEEP aborted by diagnostic button #2");
+      os_timer_disarm(&sentri_state_timer);
+      return;
+    }
+    MSG_TRACE("Nap Time");
+    os_timer_disarm(&sentri_state_timer);
+    system_deep_sleep(my_config.deepsleep_us);
+    return;
+#else
+    next_state = STATE_REBOOT_REQUIRED;
+    next_delay = my_config.wait_reboot_s;
+#endif
     break;
 
   case STATE_REBOOT_REQUIRED:
@@ -444,6 +514,18 @@ static void sentri_state_timer_cb(void* unused)
 /* This function is called at the end of the init_done() function installed by user_init() */
 void sentrifarm_init()
 {
+#if TRAITS_ENABLE_BYPASS
+  GPIO_DIS_OUTPUT(SENTRI_GPIO_BYPASS);
+	PIN_FUNC_SELECT(pin_mux[SENTRI_GPIO_BYPASS], pin_func[SENTRI_GPIO_BYPASS]);
+	PIN_PULLUP_EN(pin_mux[SENTRI_GPIO_BYPASS]);
+  if (!GPIO_INPUT_GET(SENTRI_GPIO_BYPASS)) {
+    console_printf("~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~\n");
+    console_printf("~ SENTRIFARM DISABLED                     ~\n");
+    console_printf("~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~\n");
+    return;
+  }
+#endif
+
   console_printf("~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~\n");
   console_printf("~                                         ~\n");
   console_printf("~ HACKADAY                                ~\n");
@@ -482,8 +564,11 @@ void sentrifarm_init()
   MSG_SIMULATION("Read abort switch");       /* <-- set my_config.diag1 here */
   MSG_SIMULATION("Read diagnostic switch");  /* <-- set my_config.diag2 here */
 
+  /* Pull-up internally; need to short to enable DIAG1 mode */
   GPIO_DIS_OUTPUT(SENTRI_GPIO_DIAG1);
-  my_config.diag2 = GPIO_INPUT_GET(SENTRI_GPIO_DIAG1);
+	PIN_FUNC_SELECT(pin_mux[SENTRI_GPIO_DIAG1], pin_func[SENTRI_GPIO_DIAG1]);
+	PIN_PULLUP_EN(pin_mux[SENTRI_GPIO_DIAG1]);
+  my_config.diag2 = !GPIO_INPUT_GET(SENTRI_GPIO_DIAG1);
 
   console_printf("SentriFarm Configuration: delays=%d,%d,%d; upstream=%s:%d ssid=%s, diag2=%d\n",
         my_config.wait_settle_s, my_config.wait_sensors_s, my_config.wait_wifiup_s,
