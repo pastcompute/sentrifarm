@@ -167,6 +167,7 @@ struct sentrifarm_state_t {
   int thermals1_found;       /* Number of valid DS18B20 on GPIO #2 */
   struct ds18b20_t thermals1[TRAIT_EXPECTED_THERMALS1];  /* Temperatures on DS18B20 on GPIO #0 */
   uint32_t vdd;
+  uint32_t ticks;
 
   int wifi_pending;          /* Latch to 1 once attempt to connect to wifi has started */
   int wifi_retried;          /* Number of elapsed wait_wifiup_s intervals since connection attempt started */
@@ -184,6 +185,7 @@ static struct sentrifarm_state_t my_state = {
   .error_flags = 0,
   .thermals1_found = 0,
   .vdd = 0,
+  .ticks = 0,
   .wifi_pending = 0,
   .wifi_retried = 0,
   .telemetry_retried = 0,
@@ -237,16 +239,15 @@ static void sentri_read_thermal()
 /* Read all voltages and digital I/O */
 static void sentri_read_sensors()
 {
-  MSG_SIMULATION("Read VCC");
+  MSG_TRACE("Read VCC");
 	os_intr_lock();
 	my_state.vdd = readvdd33();
 	os_intr_unlock();
+  my_state.ticks = system_get_rtc_time();
 
-  MSG_SIMULATION("Read solar voltage");
-  MSG_SIMULATION("Read supercap voltage");
-  MSG_SIMULATION("Read regulator input voltage");
-  MSG_SIMULATION("Read regulator output voltage");
-  MSG_SIMULATION("Read diagnostic switch");
+  MSG_TRACE("Read solar voltage (TODO)");
+  MSG_TRACE("Read supercap voltage (TODO)");
+  MSG_TRACE("Read regulator input voltage (TODO)");
   sentri_read_thermal();
 }
 
@@ -298,8 +299,8 @@ static void sentri_do_telemetry()
   my_state.telemetry_retried = 0;
   int nextHandle = 0;
   if (true) {
-    char buf[24];
-    snprintf(buf, sizeof(buf), "{\"vdd\":\"%u\"}", my_state.vdd);
+    char buf[48];
+    snprintf(buf, sizeof(buf), "{\"vdd\":\"%u\",\"ticks\":\"%u\",\"diag\":\"%u\"}", my_state.vdd, my_state.ticks, my_config.diag2);
     MSG_TRACE("%s", buf);
     my_state.telemetry_done[nextHandle] = false;
     execute_tcp_push_u(my_config.upstream_host, my_config.upstream_port, buf, &sentri_tcp_finish_handler, &sentri_tcp_fault_handler, &my_state.telemetry_handle[nextHandle++]);
