@@ -82,7 +82,7 @@ extern uint32_t readvdd33(void);
 /* Number of DS18B20 expected to find on GPIO_DS18B20_STRING1 */
 #define TRAIT_EXPECTED_THERMALS1 1
 
-#define SENSOR_POLL_INTERVAL_SECONDS 30
+#define SENSOR_POLL_INTERVAL_SECONDS (60*30)
 #define MAX_WIFIUP_RETRY_ATTEMPTS 20
 #define MAX_TELEMETRY_RETRY_ATTEMPTS 20
 
@@ -446,6 +446,8 @@ static void sentri_state_handler()
       break;
     }
     MSG_TRACE("TELEMETRY DONE");
+    /* Disconnect wifi now in case shutting it down on the reboot is responsible for the random boot segfault */
+  	wifi_station_disconnect();
     next_state = STATE_DONE;
     next_delay = 1;
     break;
