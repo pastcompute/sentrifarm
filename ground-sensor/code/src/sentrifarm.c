@@ -32,6 +32,11 @@
  *     / or, sleep (configuragble 30s) then reset to simulate deep sleep wake
  *
  *
+ * ESP-01 Deep Sleep
+ * -----------------
+ *
+ * This requires soldering a wire between pin 8, XPD_DCDC and RESET (http://tim.jagenberg.info/2015/01/18/low-power-esp8266/)
+ *
  * Calibration
  * -----------
  * If multiple 1-wire devices are chained on same GPIO we need to 'learn' which is which.
@@ -47,21 +52,23 @@
 #include "mem.h"
 #include "osapi.h"
 #include "user_interface.h"
+
+#include "env.h"
 #include "ds18b20.h"
 #include "tcp_push.h"
-#include "env.h"
-#include <stdio.h>
-#include <stdlib.h>
-#include "ds18b20.h"
 #include "iwconnect.h"
 #include "gpio.h"
 #include "pin_map.h"
 
-/* avoid annoying warnings */
+#include <stdio.h>
+#include <stdlib.h>
+
+/* avoid annoying warnings - for some reason therse are not in the system include files */
 extern void ets_intr_lock();
 extern void ets_intr_unlock();
 extern uint32_t readvdd33(void);
 
+/* GPIO mappings. The following suit all modules but limited functionality to a DS18B20 and a switch and LED */
 #define SENTRI_GPIO_DS18B20_STRING1 0
 #define SENTRI_GPIO_DIAG1 2
 #define SENTRI_GPIO_LED1 2
@@ -77,43 +84,47 @@ extern uint32_t readvdd33(void);
 #define TRAITS_ENABLE_BYPASS 0
 
 /* 1 for module with deep sleep GPIO16 connected to wake on reset */
-#define TRAITS_ENABLE_DEEP_SLEEP 0
+#define TRAITS_ENABLE_DEEP_SLEEP 1
 
 /* Number of DS18B20 expected to find on GPIO_DS18B20_STRING1 */
 #define TRAIT_EXPECTED_THERMALS1 1
 
+/* How long to deep sleep / timer for between data collection and broadcast */
 #define SENSOR_POLL_INTERVAL_SECONDS (60*30)
+
+/* Timeout counters for various error conditions (eff. seconds) */
 #define MAX_WIFIUP_RETRY_ATTEMPTS 20
 #define MAX_TELEMETRY_RETRY_ATTEMPTS 20
 
+/* Default IP address and port to use if not configured in the environment */
 #define DEMO_IPADDRESS "172.30.42.19"
 #define DEMO_PORT 7777
 
-#define MSG_BAR "~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~"
+/* For the moment just debug to the console, TODO: integrate into the configurable debug level system */
+#define MSG_TRACE(X ...) console_printf("\n[DEBUG]" X )
 
-#define MSG_SIMULATION(X) console_printf("\n" MSG_BAR "\n[SIMLN]" X "\n" MSG_BAR "\n")
-
-#define MSG_TRACE(X ...) console_printf("\n[TRACE]" X )
-
+/* Always report errros to the console */
 #define MSG_ERROR(X ...) console_printf("\n[ERROR]" X )
 
+/* Helper to safely get array length */
 #define ARRAY_LEN(x) (sizeof(x)/sizeof(x[0]))
 
+/* Maximum number of telemetry messages. FIXME the way telemetry currently works is a HACK! */
 #define MAX_TELEMETRY 3
 
 /* ------------------------------------------------------------------------- */
 /* Configuration values, initialised from environment in init() */
 struct sentrifarm_cfg_t {
-  int wait_settle_s;       /* How long to wait after switching off wifi */
-  int wait_sensors_s;      /* How long to wait after powering up sensors */
-  int wait_wifiup_s;       /* How long to wait after reading sensors to start wifi, and between polling wifi status */
-  int wait_transmit_s;     /* Wait for TCP transmission (until we implement event driven) */
-  int wait_reboot_s;       /* Delay until reboot */
-  ip_addr_t upstream_host; /* IPv4 address of base station service to send telemetry to */
-  int upstream_port;       /* TCP/IP port for telemetry service */
-  bool diag1;              /* True if diagnostic button #1 was held at boot */
-  bool diag2;              /* True if diagnostic button #2 was held at boot */
-  unsigned long deepsleep_us; /* microseconds to stay in deep sleep */
+  int wait_settle_s;           /* How long to wait after switching off wifi */
+  int wait_sensors_s;          /* How long to wait after powering up sensors */
+  int wait_wifiup_s;           /* How long to wait after reading sensors to start wifi, and between polling wifi status */
+  int wait_transmit_s;         /* Wait for TCP transmission (until we implement event driven) */
+  int wait_reboot_s;           /* Delay until reboot */
+  ip_addr_t upstream_host;     /* IPv4 address of base station service to send telemetry to */
+  int upstream_port;           /* TCP/IP port for telemetry service */
+  bool diag1;                  /* True if diagnostic button #1 was held at boot */
+  bool diag2;                  /* True if diagnostic button #2 was held at boot */
+  unsigned long deepsleep_us;  /* microseconds to stay in deep sleep */
 };
 
 /* ------------------------------------------------------------------------- */
@@ -124,11 +135,11 @@ static struct sentrifarm_cfg_t my_config = {
   .wait_wifiup_s = 1,           /* Allow 1 second between wifi polls */
   .wait_transmit_s = 1,         /* Allow 1 second between TCP polls */
   .wait_reboot_s = SENSOR_POLL_INTERVAL_SECONDS, /* For the moment, we set a timer then reboot, instead of deep sleep */
-  .upstream_host = { 0 },
+  .upstream_host = { 0 },       /* This needs to be set using the relevant conversion function */
   .upstream_port = DEMO_PORT,
-  .diag1 = false,
-  .diag2 = false,
-  .deepsleep_us = 1000 * 1000 * SENSOR_POLL_INTERVAL_SECONDS,
+  .diag1 = false,               /* True if diagnostic 1 was on at reboot */
+  .diag2 = false,               /* True if diagnostic 1 was on at reboot */
+  .deepsleep_us = 1000 * 1000 * SENSOR_POLL_INTERVAL_SECONDS, /* Deep sleep time in microseconds */
 };
 
 /* ------------------------------------------------------------------------- */
@@ -161,20 +172,20 @@ enum {
 /* ------------------------------------------------------------------------- */
 /* System state and collected data */
 struct sentrifarm_state_t {
-  int state;                 /* State in state machine at completion of timer callback */
-  uint32_t error_flags;      /* Accumulated error data */
+  int state;                    /* State in state machine at completion of timer callback */
+  uint32_t error_flags;         /* Accumulated error data */
 
-  int thermals1_found;       /* Number of valid DS18B20 on GPIO #2 */
+  int thermals1_found;          /* Number of valid DS18B20 on GPIO #2 */
   struct ds18b20_t thermals1[TRAIT_EXPECTED_THERMALS1];  /* Temperatures on DS18B20 on GPIO #0 */
-  uint32_t vdd;
-  uint32_t ticks;
+  uint32_t vdd;                 /* Measured system voltage */
+  uint32_t ticks;               /* Current tick count */
 
-  int wifi_pending;          /* Latch to 1 once attempt to connect to wifi has started */
-  int wifi_retried;          /* Number of elapsed wait_wifiup_s intervals since connection attempt started */
+  int wifi_pending;             /* Latch to 1 once attempt to connect to wifi has started */
+  int wifi_retried;             /* Number of elapsed wait_wifiup_s intervals since connection attempt started */
 
-  int telemetry_retried;     /* Number of elapsed wait_transmit_s intervals since telemetry attempt started */
+  int telemetry_retried;        /* Number of elapsed wait_transmit_s intervals since telemetry attempt started */
   void* telemetry_handle[MAX_TELEMETRY]; /* Handles of TCP transmissions. */
-                             /* FIXME - we need to refactor TCP push to have one connect and multiple send, but this will do for the moment */
+                                /* FIXME - we need to refactor TCP push to have one connect and multiple send, but this will do for the moment */
   bool telemetry_done[MAX_TELEMETRY]; /* true if specified message was sent or failed */
 };
 
@@ -195,7 +206,7 @@ static struct sentrifarm_state_t my_state = {
 /* State machine timer */
 static os_timer_t sentri_state_timer;
 
-/* Forward decl. */
+/* Forward declaration for time callback */
 static void sentri_state_timer_cb(void* unused);
 
 /* ------------------------------------------------------------------------- */
@@ -203,7 +214,7 @@ static void sentri_state_timer_cb(void* unused);
 static void sentri_handle_state_error()
 {
   MSG_ERROR("Invalid state: %d", my_state.state);
-  // flash LED here
+  /* FIXME: flash a LED here */
 }
 
 /* ------------------------------------------------------------------------- */
@@ -219,7 +230,6 @@ static void sentri_read_thermal()
      ESP8266 determine for itself which is it
      For the moment both options are annoying, so we fake it.
    */
-  MSG_SIMULATION("Read thermal sensors");
   my_state.thermals1_found = 0;
   if (!exec_ds18b20(SENTRI_GPIO_DS18B20_STRING1, my_state.thermals1, ARRAY_LEN(my_state.thermals1), &my_state.thermals1_found)) {
     my_state.error_flags |= ERR_THERMAL1_GPIO;
@@ -294,7 +304,6 @@ static void sentri_do_telemetry()
   /* For the moment just send a bunch of JSON to a dumb telnet-style logging service */
   /* TODO: do this properly - open one TCP connection then send through data until done */
   /* TODO: amongst other things, each message allocates a non-trivial struct on the heap... we probably want to avoid that */
-  MSG_SIMULATION("Telemetry");
   for (int i=0; i < MAX_TELEMETRY; i++) { my_state.telemetry_handle[i] = NULL; my_state.telemetry_done[i] = true; }
   my_state.telemetry_retried = 0;
   int nextHandle = 0;
@@ -373,12 +382,13 @@ static void sentri_state_handler()
   /* Which means on input to this function we have the state at the point of read, so the functions can reference it as well */
   int next_state = STATE_ERROR;
   int next_delay = 0; /* 0 == no timer... */
+
+  MSG_TRACE("Handling state: %d", my_state.state);
+
   switch (my_state.state) {
 
   case STATE_BOOT:
     /* This is called directly from init... */
-    MSG_TRACE("STATE_BOOT");
-    MSG_SIMULATION("Shutdown Wifi");
   	wifi_station_disconnect();
     next_state = STATE_SETTLE;
     next_delay = my_config.wait_settle_s;
@@ -388,19 +398,17 @@ static void sentri_state_handler()
 #if TRAITS_ENABLE_LED
   	GPIO_OUTPUT_SET(SENTRI_GPIO_LED1, 0);
 #endif
-    MSG_TRACE("STATE_SETTLE");
 #if TRAIT_SENSORS_ALWAYS_POWERED
-    MSG_SIMULATION("Skipping sensor powerup (ESP-01)");
+    MSG_TRACE("Sensors always powered on");
     next_delay = 1;
 #else
-    MSG_SIMULATION("Powering up sensors");
+    MSG_TRACE("TODO: Power up sensors");
     next_delay = my_config.wait_sensors_s;
 #endif
     next_state = STATE_SENSORS;
     break;
 
   case STATE_SENSORS:
-    MSG_TRACE("STATE_SENSORS");
     sentri_read_sensors();
     sentri_connect_wifi();
     my_state.wifi_pending = 1;
@@ -427,14 +435,12 @@ static void sentri_state_handler()
     break;
 
   case STATE_TELEMETRY:
-    MSG_TRACE("STATE_TELEMETRY");
     sentri_do_telemetry();
     next_state = STATE_TELEMETRY_PENDING;
     next_delay = my_config.wait_transmit_s;
     break;
 
   case STATE_TELEMETRY_PENDING:
-    MSG_TRACE("STATE_TELEMETRY_PENDING");
     next_state = STATE_TELEMETRY_PENDING;
     next_delay = my_config.wait_transmit_s;
     if (!sentri_check_telemetry()) {
@@ -445,7 +451,6 @@ static void sentri_state_handler()
       }
       break;
     }
-    MSG_TRACE("TELEMETRY DONE");
     /* Disconnect wifi now in case shutting it down on the reboot is responsible for the random boot segfault */
   	wifi_station_disconnect();
     next_state = STATE_DONE;
@@ -460,7 +465,6 @@ static void sentri_state_handler()
     break;   
 
   case STATE_DONE:
-    MSG_TRACE("DONE");
 #if TRAITS_ENABLE_DEEP_SLEEP
     if (my_config.diag2) {
       MSG_TRACE("DEEP SLEEP aborted by diagnostic button #2");
@@ -481,7 +485,7 @@ static void sentri_state_handler()
     if (my_config.diag2) {
       MSG_TRACE("REBOOT aborted by diagnostic button #2");
     } else {
-      MSG_SIMULATION("REBOOTING");
+      MSG_TRACE("REBOOTING");
       system_restart();
     }
     break;
@@ -499,7 +503,7 @@ static void sentri_state_handler()
     os_timer_setfn(&sentri_state_timer, (os_timer_func_t *)sentri_state_timer_cb, NULL);
     os_timer_arm(&sentri_state_timer, next_delay*1000, 0);
   } else {
-    MSG_TRACE("Timer: none");
+    MSG_TRACE("Leaving state machine");
     /* For the moment we become a stock frankenstein. We get here if diag button was held */
   }
 }
@@ -560,12 +564,10 @@ void sentrifarm_init()
   char buf[128]; ipaddr_ntoa_r(&my_config.upstream_host, buf, sizeof(buf));
   const char *ssid = env_get("sta-auto-ssid");
 
-  MSG_SIMULATION("Flash LED");
 #if TRAITS_ENABLE_LED
  	GPIO_OUTPUT_SET(SENTRI_GPIO_LED1, 1);
 #endif
-  MSG_SIMULATION("Read abort switch");       /* <-- set my_config.diag1 here */
-  MSG_SIMULATION("Read diagnostic switch");  /* <-- set my_config.diag2 here */
+  MSG_TRACE("TODO: Read abort switch");       /* <-- set my_config.diag1 here */
 
   /* Pull-up internally; need to short to enable DIAG1 mode */
   GPIO_DIS_OUTPUT(SENTRI_GPIO_DIAG1);
@@ -576,8 +578,6 @@ void sentrifarm_init()
   console_printf("SentriFarm Configuration: delays=%d,%d,%d; upstream=%s:%d ssid=%s, diag2=%d\n",
         my_config.wait_settle_s, my_config.wait_sensors_s, my_config.wait_wifiup_s,
         buf, my_config.upstream_port, ssid, my_config.diag2);
-
-  MSG_TRACE("Configure Done");
 
   sentri_state_handler();
 }
