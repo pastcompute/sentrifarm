@@ -125,13 +125,15 @@ struct sentrifarm_cfg_t {
   bool diag1;                  /* True if diagnostic button #1 was held at boot */
   bool diag2;                  /* True if diagnostic button #2 was held at boot */
   unsigned long deepsleep_us;  /* microseconds to stay in deep sleep */
+  const char *ssid;
+  const char *password;
 };
 
 /* ------------------------------------------------------------------------- */
 /* Configuration values, initialised from environment in init() */
 static struct sentrifarm_cfg_t my_config = {
-  .wait_settle_s = 5,           /* Allow 5 seconds for wifi to shutdown */
-  .wait_sensors_s = 2,          /* Allow 2 seconds for sensor power to settle */
+  .wait_settle_s = 3,           /* Allow time for wifi to shutdown */
+  .wait_sensors_s = 2,          /* Allow time for sensor power to settle */
   .wait_wifiup_s = 1,           /* Allow 1 second between wifi polls */
   .wait_transmit_s = 1,         /* Allow 1 second between TCP polls */
   .wait_reboot_s = SENSOR_POLL_INTERVAL_SECONDS, /* For the moment, we set a timer then reboot, instead of deep sleep */
@@ -140,6 +142,8 @@ static struct sentrifarm_cfg_t my_config = {
   .diag1 = false,               /* True if diagnostic 1 was on at reboot */
   .diag2 = false,               /* True if diagnostic 1 was on at reboot */
   .deepsleep_us = 1000 * 1000 * SENSOR_POLL_INTERVAL_SECONDS, /* Deep sleep time in microseconds */
+  .ssid = "sentri",
+  .password = ""
 };
 
 /* ------------------------------------------------------------------------- */
@@ -265,13 +269,8 @@ static void sentri_read_sensors()
 /* Read all voltages and digital I/O */
 static void sentri_connect_wifi()
 {
-  /* This next code is copied from main.c */
-  const char *ssid = env_get("sta-auto-ssid");
-  const char *pass = env_get("sta-auto-password");
-  if (ssid) {
-    MSG_TRACE("STA mode: attempting connection to %s\n", ssid);
-    exec_iwconnect(ssid, pass);
-  }
+  MSG_TRACE("STA mode: attempting connection to %s\n", my_config.ssid);
+  exec_iwconnect(my_config.ssid, my_config.password);
 }
 
 /* ------------------------------------------------------------------------- */
@@ -389,7 +388,6 @@ static void sentri_state_handler()
 
   case STATE_BOOT:
     /* This is called directly from init... */
-    wifi_station_disconnect();
     next_state = STATE_SETTLE;
     next_delay = my_config.wait_settle_s;
     break;
@@ -425,7 +423,7 @@ static void sentri_state_handler()
       if (my_state.wifi_retried ++ > MAX_WIFIUP_RETRY_ATTEMPTS) { /* timeout ... */
         MSG_ERROR("Failed to connect to wifi in time :-(");
         next_state = STATE_REBOOT_REQUIRED;
-        next_delay = my_config.wait_reboot_s;
+        next_delay = my_config.wait_wifiup_s;
         break;
       }
     } else {
@@ -532,6 +530,8 @@ void sentrifarm_init()
     return;
   }
 #endif
+  /* Ideally, the environment should be configured such that we dont attempt immediate connect at boot... */
+  wifi_station_disconnect();
 
   console_printf("~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~\n");
   console_printf("~                                         ~\n");
@@ -561,8 +561,11 @@ void sentrifarm_init()
   s_env = env_get("sentri-upstream-port"); if (s_env && (v=atoi(s_env))>0) { my_config.upstream_port = v; }
   s_env = env_get("sentri-upstream-host"); if (s_env && strlen(s_env) > 0) { ipaddr_aton(s_env, &my_config.upstream_host); }
 
+  /* This next code is copied from main.c */
+  s_env = env_get("sentri-ssid");          if (s_env && strlen(s_env) > 0) { my_config.ssid = s_env; }
+  s_env = env_get("sentri-password");      if (s_env && strlen(s_env) > 0) { my_config.password = s_env; }
+
   char buf[128]; ipaddr_ntoa_r(&my_config.upstream_host, buf, sizeof(buf));
-  const char *ssid = env_get("sta-auto-ssid");
 
 #if TRAITS_ENABLE_LED
    GPIO_OUTPUT_SET(SENTRI_GPIO_LED1, 1);
@@ -577,7 +580,7 @@ void sentrifarm_init()
 
   console_printf("SentriFarm Configuration: delays=%d,%d,%d; upstream=%s:%d ssid=%s, diag2=%d\n",
         my_config.wait_settle_s, my_config.wait_sensors_s, my_config.wait_wifiup_s,
-        buf, my_config.upstream_port, ssid, my_config.diag2);
+        buf, my_config.upstream_port, my_config.ssid, my_config.diag2);
 
   sentri_state_handler();
 }
