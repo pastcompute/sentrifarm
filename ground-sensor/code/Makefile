@@ -22,9 +22,13 @@ endef
 
 all: build
 
+# 1. Apply patch that enables the diagnostic firmware:
+#    Add hook to user_main in src/main.c
+# 2. Build by changing project_sources=../src and have it link back to frankenstein
+#    Note this puts our .o files in frankenstein/build/app and doesnt pollute the source tree
 build: prereq $(FRANK_CONFIG)
 	@patch -p1 -N -r- -s -d frankenstein < frankenstein.patch  || true
-	$(FRANK_PATH) $(MAKE) -C $(FRANK) $(FRANK_VERBOSE)
+	$(FRANK_PATH) $(MAKE) -C $(FRANK) $(FRANK_VERBOSE) project_sources="../src"
 
 distclean:
 	$(FRANK_PATH) $(MAKE) -C $(FRANK) distclean

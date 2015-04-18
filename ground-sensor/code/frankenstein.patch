@@ -1,12 +1,3 @@
-diff --git a/src/Makefile b/src/Makefile
-index f02d40e..f9641e7 100644
---- a/src/Makefile
-+++ b/src/Makefile
-@@ -44,3 +44,4 @@ ifneq ($(CONFIG_ESP8266_BLOB_LWIP),y)
- subdirs-y+=netapps/
- subdirs-y+=lwip
- endif
-+subdirs-y+=../../src
 diff --git a/src/main.c b/src/main.c
 index 55b3ee0..fa43757 100644
 --- a/src/main.c
