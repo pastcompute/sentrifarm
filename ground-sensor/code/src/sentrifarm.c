@@ -250,9 +250,9 @@ static void sentri_read_thermal()
 static void sentri_read_sensors()
 {
   MSG_TRACE("Read VCC");
-	os_intr_lock();
-	my_state.vdd = readvdd33();
-	os_intr_unlock();
+  os_intr_lock();
+  my_state.vdd = readvdd33();
+  os_intr_unlock();
   my_state.ticks = system_get_rtc_time();
 
   MSG_TRACE("Read solar voltage (TODO)");
@@ -346,7 +346,7 @@ static bool sentri_check_telemetry()
 /* ------------------------------------------------------------------------- */
 static void sentri_check_wifi()
 {
-	int state = wifi_station_get_connect_status();
+  int state = wifi_station_get_connect_status();
   bool finished = 0;
   switch (state) {
 
@@ -389,14 +389,14 @@ static void sentri_state_handler()
 
   case STATE_BOOT:
     /* This is called directly from init... */
-  	wifi_station_disconnect();
+    wifi_station_disconnect();
     next_state = STATE_SETTLE;
     next_delay = my_config.wait_settle_s;
     break;
 
   case STATE_SETTLE:
 #if TRAITS_ENABLE_LED
-  	GPIO_OUTPUT_SET(SENTRI_GPIO_LED1, 0);
+    GPIO_OUTPUT_SET(SENTRI_GPIO_LED1, 0);
 #endif
 #if TRAIT_SENSORS_ALWAYS_POWERED
     MSG_TRACE("Sensors always powered on");
@@ -452,7 +452,7 @@ static void sentri_state_handler()
       break;
     }
     /* Disconnect wifi now in case shutting it down on the reboot is responsible for the random boot segfault */
-  	wifi_station_disconnect();
+    wifi_station_disconnect();
     next_state = STATE_DONE;
     next_delay = 1;
     break;
@@ -523,8 +523,8 @@ void sentrifarm_init()
 {
 #if TRAITS_ENABLE_BYPASS
   GPIO_DIS_OUTPUT(SENTRI_GPIO_BYPASS);
-	PIN_FUNC_SELECT(pin_mux[SENTRI_GPIO_BYPASS], pin_func[SENTRI_GPIO_BYPASS]);
-	PIN_PULLUP_EN(pin_mux[SENTRI_GPIO_BYPASS]);
+  PIN_FUNC_SELECT(pin_mux[SENTRI_GPIO_BYPASS], pin_func[SENTRI_GPIO_BYPASS]);
+  PIN_PULLUP_EN(pin_mux[SENTRI_GPIO_BYPASS]);
   if (!GPIO_INPUT_GET(SENTRI_GPIO_BYPASS)) {
     console_printf("~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~\n");
     console_printf("~ SENTRIFARM DISABLED                     ~\n");
@@ -555,24 +555,24 @@ void sentrifarm_init()
   
   const char* s_env = NULL;
   int v = 0;
-	s_env = env_get("sentri-settle-t");      if (s_env && (v=atoi(s_env))>0) { my_config.wait_settle_s = v; }
-	s_env = env_get("sentri-sensors-t");     if (s_env && (v=atoi(s_env))>0) { my_config.wait_sensors_s = v; }
-	s_env = env_get("sentri-wifiup-t");      if (s_env && (v=atoi(s_env))>0) { my_config.wait_wifiup_s = v; }
-	s_env = env_get("sentri-upstream-port"); if (s_env && (v=atoi(s_env))>0) { my_config.upstream_port = v; }
+  s_env = env_get("sentri-settle-t");      if (s_env && (v=atoi(s_env))>0) { my_config.wait_settle_s = v; }
+  s_env = env_get("sentri-sensors-t");     if (s_env && (v=atoi(s_env))>0) { my_config.wait_sensors_s = v; }
+  s_env = env_get("sentri-wifiup-t");      if (s_env && (v=atoi(s_env))>0) { my_config.wait_wifiup_s = v; }
+  s_env = env_get("sentri-upstream-port"); if (s_env && (v=atoi(s_env))>0) { my_config.upstream_port = v; }
   s_env = env_get("sentri-upstream-host"); if (s_env && strlen(s_env) > 0) { ipaddr_aton(s_env, &my_config.upstream_host); }
 
   char buf[128]; ipaddr_ntoa_r(&my_config.upstream_host, buf, sizeof(buf));
   const char *ssid = env_get("sta-auto-ssid");
 
 #if TRAITS_ENABLE_LED
- 	GPIO_OUTPUT_SET(SENTRI_GPIO_LED1, 1);
+   GPIO_OUTPUT_SET(SENTRI_GPIO_LED1, 1);
 #endif
   MSG_TRACE("TODO: Read abort switch");       /* <-- set my_config.diag1 here */
 
   /* Pull-up internally; need to short to enable DIAG1 mode */
   GPIO_DIS_OUTPUT(SENTRI_GPIO_DIAG1);
-	PIN_FUNC_SELECT(pin_mux[SENTRI_GPIO_DIAG1], pin_func[SENTRI_GPIO_DIAG1]);
-	PIN_PULLUP_EN(pin_mux[SENTRI_GPIO_DIAG1]);
+  PIN_FUNC_SELECT(pin_mux[SENTRI_GPIO_DIAG1], pin_func[SENTRI_GPIO_DIAG1]);
+  PIN_PULLUP_EN(pin_mux[SENTRI_GPIO_DIAG1]);
   my_config.diag2 = !GPIO_INPUT_GET(SENTRI_GPIO_DIAG1);
 
   console_printf("SentriFarm Configuration: delays=%d,%d,%d; upstream=%s:%d ssid=%s, diag2=%d\n",
