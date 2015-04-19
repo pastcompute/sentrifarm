@@ -182,7 +182,7 @@ struct sentrifarm_state_t {
   int thermals1_found;          /* Number of valid DS18B20 on GPIO #2 */
   struct ds18b20_t thermals1[TRAIT_EXPECTED_THERMALS1];  /* Temperatures on DS18B20 on GPIO #0 */
   uint32_t vdd;                 /* Measured system voltage */
-  uint32_t ticks;               /* Current tick count */
+  uint32_t ticks;               /* Current RTC count. In theory this persists through deep sleep, but I dont see it... */
 
   int wifi_pending;             /* Latch to 1 once attempt to connect to wifi has started */
   int wifi_retried;             /* Number of elapsed wait_wifiup_s intervals since connection attempt started */
@@ -471,6 +471,7 @@ static void sentri_state_handler()
     }
     MSG_TRACE("Nap Time");
     os_timer_disarm(&sentri_state_timer);
+    /* Note: we can use system_rtc_mem_write() to retain data through deep sleep */
     system_deep_sleep(my_config.deepsleep_us);
     return;
 #else
@@ -532,6 +533,12 @@ void sentrifarm_init()
 #endif
   /* Ideally, the environment should be configured such that we dont attempt immediate connect at boot... */
   wifi_station_disconnect();
+
+  /* Ensure RF is off until we turn it on after next wake up */
+  system_deep_sleep_set_option(4);
+
+  /* Underclock (use 80MHz instead of 160) */
+  system_update_cpu_freq(80); //SYS_CPU_80MHz) ; // 80
 
   console_printf("~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~\n");
   console_printf("~                                         ~\n");
@@ -602,4 +609,11 @@ sta-auto-ssid=...
 sta-auto-password=...
 
 */
+/* How to replace tx/rx with GPIO:
+PIN_FUNC_SELECT(PERIPHS_IO_MUX_U0RXD_U, FUNC_GPIO3);
+PIN_FUNC_SELECT(PERIPHS_IO_MUX_U0TXD_U, FUNC_GPIO1);
+gpio_output_set(BIT3, 0, BIT3, 0);
+gpio_output_set(0, BIT3, 0, BIT3);
 
+*/
+// Gyro/reed switches for buffeting instead of wind
