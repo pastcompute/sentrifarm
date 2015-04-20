@@ -4,9 +4,29 @@ PORT=${PORT:-7777}
 
 mkdir -p /var/datalog
 
-grep -q /var/datalog /proc/mounts || mount /dev/sda1 /var/datalog
+count=0
+while not test -e /dev/sda1 ; do
+  sleep 1
+  count=$(($count + 1))
+  if [ $count -gt 120 ] ; then
+    echo "Unable to mount data log USB"
+    exit 1
+  fi
+done
 
+grep -q /dev/sda1 /proc/mounts || mount /dev/sda1 /var/datalog
+
+# TODO: trap if the USB goes away
+
+# Hacky stuff to sync, but not continuously
+# FIXME we should really play with /proc/sys/vm
+# Actually it will probably be OK to do it every time once the ESP is fixed to only use one connect per report
+count=0
 while true ; do
-date >> /tmp/datalog.txt
-nc -l -p $PORT >> /tmp/datalog.txt
+  date >> /tmp/datalog.txt
+  nc -l -p $PORT >> /tmp/datalog.txt
+  count=$(($count + 1))
+  if [ $count -gt 2 ] ; then
+    sync
+  fi
 done
