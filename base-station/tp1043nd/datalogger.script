@@ -1,0 +1,12 @@
+#!/bin/sh
+
+PORT=${PORT:-7777}
+
+mkdir -p /var/datalog
+
+grep -q /var/datalog /proc/mounts || mount /dev/sda1 /var/datalog
+
+while true ; do
+date >> /tmp/datalog.txt
+nc -l -p $PORT >> /tmp/datalog.txt
+done
