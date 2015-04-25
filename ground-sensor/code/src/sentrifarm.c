@@ -59,6 +59,7 @@
 #include "iwconnect.h"
 #include "gpio.h"
 #include "pin_map.h"
+#include "helpers.h"
 
 #include <stdio.h>
 #include <stdlib.h>
@@ -70,7 +71,7 @@ extern uint32_t readvdd33(void);
 
 /* GPIO mappings. The following suit all modules but limited functionality to a DS18B20 and a switch and LED */
 #define SENTRI_GPIO_DS18B20_STRING1 0
-#define SENTRI_GPIO_DIAG1 2
+#define SENTRI_GPIO_DIAG2 2
 #define SENTRI_GPIO_LED1 2
 #define SENTRI_GPIO_BYPASS 2
 
@@ -78,7 +79,7 @@ extern uint32_t readvdd33(void);
 #define TRAIT_SENSORS_ALWAYS_POWERED 1
 
 /* 0 for ESP-01, 1 for module with several GPIO exposed */
-#define TRAITS_ENABLE_LED 0
+#define TRAITS_ENABLE_LED 1
 
 /* 0 for ESP-01, 1 for module with several GPIO exposed */
 #define TRAITS_ENABLE_BYPASS 0
@@ -93,11 +94,11 @@ extern uint32_t readvdd33(void);
 #define SENSOR_POLL_INTERVAL_SECONDS (60*30)
 
 /* Timeout counters for various error conditions (eff. seconds) */
-#define MAX_WIFIUP_RETRY_ATTEMPTS 20
+#define MAX_WIFIUP_RETRY_ATTEMPTS 22
 #define MAX_TELEMETRY_RETRY_ATTEMPTS 20
 
 /* Default IP address and port to use if not configured in the environment */
-#define DEMO_IPADDRESS "172.30.42.19"
+#define DEMO_IPADDRESS "192.168.1.1"
 #define DEMO_PORT 7777
 
 /* For the moment just debug to the console, TODO: integrate into the configurable debug level system */
@@ -254,9 +255,10 @@ static void sentri_read_thermal()
 static void sentri_read_sensors()
 {
   MSG_TRACE("Read VCC");
-  os_intr_lock();
+  os_intr_lock(); // Crapping out when wifi not disconnected?
   my_state.vdd = readvdd33();
   os_intr_unlock();
+  MSG_TRACE("Read RTC");
   my_state.ticks = system_get_rtc_time();
 
   MSG_TRACE("Read solar voltage (TODO)");
@@ -270,6 +272,10 @@ static void sentri_read_sensors()
 static void sentri_connect_wifi()
 {
   MSG_TRACE("STA mode: attempting connection to %s\n", my_config.ssid);
+  wifi_set_phy_mode(PHY_MODE_11B);
+  wifi_set_opmode(STATION_MODE);
+  wifi_station_dhcpc_start();
+  os_delay_us(250*1000);
   exec_iwconnect(my_config.ssid, my_config.password);
 }
 
@@ -291,7 +297,7 @@ static void sentri_tcp_fault_handler(void* handle, int error)
   for (int i=0; i < ARRAY_LEN(my_state.telemetry_handle); i++) {
     if (handle == my_state.telemetry_handle[i]) {
       my_state.telemetry_done[i] = true;
-      MSG_ERROR("TCP Fault on msg %d :-(", i);
+      MSG_ERROR("TCP Fault on msg %d :-(\n", i);
       break;
     }
   }
@@ -307,29 +313,20 @@ static void sentri_do_telemetry()
   my_state.telemetry_retried = 0;
   int nextHandle = 0;
   if (true) {
-    char buf[48];
+    char buf[48 + (6+2*8+7+1+7+2+2) * my_state.thermals1_found + 22];
     snprintf(buf, sizeof(buf), "{\"vdd\":\"%u\",\"ticks\":\"%u\",\"diag\":\"%u\"}", my_state.vdd, my_state.ticks, my_config.diag2);
-    MSG_TRACE("%s", buf);
-    my_state.telemetry_done[nextHandle] = false;
-    execute_tcp_push_u(my_config.upstream_host, my_config.upstream_port, buf, &sentri_tcp_finish_handler, &sentri_tcp_fault_handler, &my_state.telemetry_handle[nextHandle++]);
-  }
-  for (int thermal=0; thermal < my_state.thermals1_found; thermal++) {
-    const struct ds18b20_t* r = &my_state.thermals1[thermal];
-    char buf[6+2*8+7+1+7+2+2];
-    snprintf(buf, sizeof(buf), "{\"x\":\"%02x%02x%02x%02x%02x%02x%02x%02x\",\"t\":\"%c%d.%02d\"}",
+    for (int thermal=0; thermal < my_state.thermals1_found; thermal++) {
+      const struct ds18b20_t* r = &my_state.thermals1[thermal];
+      snprintf(buf+strlen(buf), sizeof(buf), "{\"x\":\"%02x%02x%02x%02x%02x%02x%02x%02x\",\"t\":\"%c%d.%02d\"}",
         r->addr[0], r->addr[1], r->addr[2], r->addr[3], r->addr[4], r->addr[5], r->addr[6], r->addr[7], r->tSign, r->tVal, r->tFract);
+    }
+    snprintf(buf+strlen(buf), sizeof(buf), "{\"error\":\"%.08x\"}\n", my_state.error_flags); /* Last one, so add a CR */
+
     MSG_TRACE("%s", buf);
     my_state.telemetry_done[nextHandle] = false;
     execute_tcp_push_u(my_config.upstream_host, my_config.upstream_port, buf, &sentri_tcp_finish_handler, &sentri_tcp_fault_handler, &my_state.telemetry_handle[nextHandle++]);
   }
-  if (true) {
-    char buf[22];
-    snprintf(buf, sizeof(buf), "{\"error\":\"%.08x\"}\n", my_state.error_flags); /* Last one, so add a CR */
-    MSG_TRACE("%s", buf);
-    my_state.telemetry_done[nextHandle] = false;
-    execute_tcp_push_u(my_config.upstream_host, my_config.upstream_port, buf, &sentri_tcp_finish_handler, &sentri_tcp_fault_handler, &my_state.telemetry_handle[nextHandle++]);
-  }
-  /* On return, we poll the telemetry handles until all messages are sent */
+  /* On return, we poll the telemetry handles until all messages are sent. We had more than one but that didnt work so well if sending took a bit of time */
 }
 
 /* ------------------------------------------------------------------------- */
@@ -350,24 +347,51 @@ static void sentri_check_wifi()
   switch (state) {
 
   case STATION_CONNECT_FAIL:
-    MSG_ERROR("Failed to connect to wifi - connect fail error :-(");
+    MSG_ERROR("Failed to connect to wifi - connect fail error :-(\n");
     my_state.error_flags |= ERR_WIFI_CONNECT;
     finished = true;
     break;
 
   case STATION_NO_AP_FOUND:
-    MSG_ERROR("Failed to connect to wifi - AP not found :-(");
+    MSG_ERROR("Failed to connect to wifi - AP not found :-(\n");
     my_state.error_flags |= ERR_WIFI_AP_NOT_FOUND;
     finished = true;
     break;
 
   case STATION_GOT_IP:
-    MSG_TRACE("Wifi connected");
+    MSG_TRACE("Wifi connected.");
     finished = true;
     break;
   };
   if (finished) {
     my_state.wifi_pending = 0;
+  }
+}
+
+/* ------------------------------------------------------------------------- */
+static void dump_state()
+{
+  uint8 f = system_get_cpu_freq();
+  console_printf("CPU frequency=%dMHz\n", (int)f);
+
+  unsigned char macaddr[6];
+  unsigned char macaddr2[6];
+  wifi_get_macaddr(SOFTAP_IF, macaddr);
+  wifi_get_macaddr(STATION_IF, macaddr);
+  console_printf("sdk=%s chipid=0x%x ap.mac=" MACSTR " sta.mac=" MACSTR " heap=%d tick=%u rtc.tick=%u\n",
+    system_get_sdk_version(), system_get_chip_id(), MAC2STR(macaddr), MAC2STR(macaddr2),
+    system_get_free_heap_size(), system_get_time(), system_get_rtc_time());
+
+  console_printf("WIFI opmode=%s sleep=%s auto=%s status=%s phy=%s dhcp=%s\n",
+      id_to_wireless_mode(wifi_get_opmode()), id_to_wifi_sleep_type(wifi_get_sleep_type()),
+      wifi_station_get_auto_connect()?"yes":"no", id_to_sta_state(wifi_station_get_connect_status()),
+      id_to_phy_mode(wifi_get_phy_mode()), wifi_station_dhcpc_status()==DHCP_STARTED?"started":"stopped"); 
+  console_printf("vdd=%u ticks=%u diag=%u\n", my_state.vdd, my_state.ticks, my_config.diag2);
+  for (int thermal=0; thermal < my_state.thermals1_found; thermal++) {
+    const struct ds18b20_t* r = &my_state.thermals1[thermal];
+    console_printf("%02x%02x%02x%02x%02x%02x%02x%02x : %c%d.%02d\n",
+      r->addr[0], r->addr[1], r->addr[2], r->addr[3], r->addr[4],
+      r->addr[5], r->addr[6], r->addr[7], r->tSign, r->tVal, r->tFract);
   }
 }
 
@@ -420,15 +444,32 @@ static void sentri_state_handler()
     next_state = STATE_WIFI_PENDING;
     next_delay = my_config.wait_wifiup_s;
     if (my_state.wifi_pending) {
+#if TRAITS_ENABLE_LED
+      GPIO_OUTPUT_SET(SENTRI_GPIO_LED1, 1);
+      os_delay_us(75*1000);
+      GPIO_OUTPUT_SET(SENTRI_GPIO_LED1, 0);
+#endif
       if (my_state.wifi_retried ++ > MAX_WIFIUP_RETRY_ATTEMPTS) { /* timeout ... */
+        dump_state();
         MSG_ERROR("Failed to connect to wifi in time :-(");
-        next_state = STATE_REBOOT_REQUIRED;
-        next_delay = my_config.wait_wifiup_s;
+        MSG_ERROR("Fallback to frankenstein console");
+      	console_lock(0);
+        next_state = -1;
+        next_delay = 0;
         break;
       }
     } else {
-      next_state = STATE_TELEMETRY;
-      next_delay = my_config.wait_wifiup_s;
+      if (my_state.error_flags & ERR_WIFI_AP_NOT_FOUND) {
+        dump_state();
+        MSG_ERROR("Failed to connect to wifi AP :-(");
+        MSG_ERROR("Fallback to frankenstein console");
+      	console_lock(0);
+        next_state = -1;
+        next_delay = 0;
+      } else {
+        next_state = STATE_TELEMETRY;
+        next_delay = my_config.wait_wifiup_s;
+      }
     }
     break;
 
@@ -450,6 +491,7 @@ static void sentri_state_handler()
       break;
     }
     /* Disconnect wifi now in case shutting it down on the reboot is responsible for the random boot segfault */
+    /* http://www.esp8266.com/viewtopic.php?p=9559#p9559 */
     wifi_station_disconnect();
     next_state = STATE_DONE;
     next_delay = 1;
@@ -460,7 +502,7 @@ static void sentri_state_handler()
     /* Here we could perhaps do a 60 second try again before rebooting - dont want to waste all the power because of a network transient */
     next_state = STATE_REBOOT_REQUIRED;
     next_delay = my_config.wait_reboot_s;
-    break;   
+    break;
 
   case STATE_DONE:
 #if TRAITS_ENABLE_DEEP_SLEEP
@@ -498,7 +540,7 @@ static void sentri_state_handler()
   my_state.state = next_state;
   os_timer_disarm(&sentri_state_timer);
   if (next_delay > 0) {
-    MSG_TRACE("Timer: %d", next_delay);
+    // MSG_TRACE("Timer: %d", next_delay);
     os_timer_setfn(&sentri_state_timer, (os_timer_func_t *)sentri_state_timer_cb, NULL);
     os_timer_arm(&sentri_state_timer, next_delay*1000, 0);
   } else {
@@ -532,13 +574,14 @@ void sentrifarm_init()
   }
 #endif
   /* Ideally, the environment should be configured such that we dont attempt immediate connect at boot... */
-  wifi_station_disconnect();
+  // FOR THE MOMENT THIS IS NOT WORKING WITH 'sentri' it was working on my other router WTF?
+  // if (boot mode not from deep sleep)
+  wifi_station_set_auto_connect(0);  // we do it manually...
+  wifi_set_opmode(STATION_MODE);
+  wifi_station_disconnect(); // if not already (but should be)
 
   /* Ensure RF is off until we turn it on after next wake up */
-  system_deep_sleep_set_option(4);
-
-  /* Underclock (use 80MHz instead of 160) */
-  system_update_cpu_freq(80); //SYS_CPU_80MHz) ; // 80
+  system_deep_sleep_set_option(4);  // 4 - disable RF after wake-up. but how do we turn it back on 2 - no RF cal 1 - RF Cal (large current) 0 depends on byte 108 (?)
 
   console_printf("~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~\n");
   console_printf("~                                         ~\n");
@@ -565,6 +608,7 @@ void sentrifarm_init()
   s_env = env_get("sentri-settle-t");      if (s_env && (v=atoi(s_env))>0) { my_config.wait_settle_s = v; }
   s_env = env_get("sentri-sensors-t");     if (s_env && (v=atoi(s_env))>0) { my_config.wait_sensors_s = v; }
   s_env = env_get("sentri-wifiup-t");      if (s_env && (v=atoi(s_env))>0) { my_config.wait_wifiup_s = v; }
+  s_env = env_get("sentri-sleep-t") ;      if (s_env && (v=atoi(s_env))>0) { my_config.deepsleep_us = v * 1000 * 1000; }
   s_env = env_get("sentri-upstream-port"); if (s_env && (v=atoi(s_env))>0) { my_config.upstream_port = v; }
   s_env = env_get("sentri-upstream-host"); if (s_env && strlen(s_env) > 0) { ipaddr_aton(s_env, &my_config.upstream_host); }
 
@@ -574,16 +618,23 @@ void sentrifarm_init()
 
   char buf[128]; ipaddr_ntoa_r(&my_config.upstream_host, buf, sizeof(buf));
 
-#if TRAITS_ENABLE_LED
-   GPIO_OUTPUT_SET(SENTRI_GPIO_LED1, 1);
-#endif
-  MSG_TRACE("TODO: Read abort switch");       /* <-- set my_config.diag1 here */
+  /* Pull-up internally; need to short to enable DIAG1 mode. Currently GPIO2 (same as bypass!) */
+  console_printf("Short GPIO2 now to bypass deep sleep on completion...\n");
+  os_delay_us(500*1000);
+  GPIO_DIS_OUTPUT(SENTRI_GPIO_DIAG2);
+  PIN_FUNC_SELECT(pin_mux[SENTRI_GPIO_DIAG2], pin_func[SENTRI_GPIO_DIAG2]);
+  PIN_PULLUP_EN(pin_mux[SENTRI_GPIO_DIAG2]);
+  my_config.diag2 = !GPIO_INPUT_GET(SENTRI_GPIO_DIAG2);
+  if (my_config.diag2) {
+    console_printf("Bypass deep sleep on completion!\n");
+  }
 
-  /* Pull-up internally; need to short to enable DIAG1 mode */
-  GPIO_DIS_OUTPUT(SENTRI_GPIO_DIAG1);
-  PIN_FUNC_SELECT(pin_mux[SENTRI_GPIO_DIAG1], pin_func[SENTRI_GPIO_DIAG1]);
-  PIN_PULLUP_EN(pin_mux[SENTRI_GPIO_DIAG1]);
-  my_config.diag2 = !GPIO_INPUT_GET(SENTRI_GPIO_DIAG1);
+#if TRAITS_ENABLE_LED
+  /* Switch GPIO2 to output now, for controlling LED. Turn it on, then off again in a bit (~ 3 seconds) */
+  PIN_PULLUP_DIS(pin_mux[SENTRI_GPIO_LED1]);
+  PIN_PULLDWN_EN(pin_mux[SENTRI_GPIO_LED1]);
+  GPIO_OUTPUT_SET(SENTRI_GPIO_LED1, 1);
+#endif
 
   console_printf("SentriFarm Configuration: delays=%d,%d,%d; upstream=%s:%d ssid=%s, diag2=%d\n",
         my_config.wait_settle_s, my_config.wait_sensors_s, my_config.wait_wifiup_s,

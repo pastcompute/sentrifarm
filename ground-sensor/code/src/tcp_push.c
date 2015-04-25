@@ -25,7 +25,7 @@
 struct pokerface {
   struct espconn esp_conn;
   esp_tcp esptcp;
-  char databuf[128];
+  char databuf[256];
   int datalen;
   /*volatile*/ os_timer_t conn_checker;
   tcp_push_error_fcn_t error_handler;
@@ -44,6 +44,7 @@ static void  connected(void *arg)
 {
   struct pokerface *p = arg;
   espconn_sent(&p->esp_conn, (uint8*)p->databuf, p->datalen);
+  dbg("(connected)\n");
 }
 
 static void  disconnected(void *arg)
@@ -68,6 +69,7 @@ static void reconnect(void *arg, sint8 err)
 static void datasent(void *arg)
 {
   struct pokerface *p = arg;
+  dbg("(sent)\n");
   os_timer_disarm(&p->conn_checker);
   os_timer_setfn(&p->conn_checker, (os_timer_func_t *)conn_checker_handler, p);
   espconn_disconnect(&p->esp_conn);
