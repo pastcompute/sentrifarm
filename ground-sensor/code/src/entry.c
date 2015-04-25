@@ -61,6 +61,9 @@ static void scan_done_cb(void *arg, STATUS status)
     }
   } else {
     console_printf("ERROR: Scan invalid pbss. STATUS=%d opmode=%d\n", status, (int)wifi_get_opmode());
+
+    // We are probably in the dead bug, so do a restart
+    system_restart();
   }
 
   unsigned char macaddr[6] = { 0,0,0,0,0,0};
