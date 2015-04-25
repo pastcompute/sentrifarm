@@ -63,6 +63,9 @@ static void reconnect(void *arg, sint8 err)
   struct pokerface *p = arg;
   espconn_disconnect(&p->esp_conn);
   if (p->error_handler) p->error_handler(p, err);
+  os_timer_disarm(&p->conn_checker);
+  os_timer_setfn(&p->conn_checker, (os_timer_func_t *)conn_checker_handler, p);
+  os_timer_arm(&p->conn_checker, 50, 0);  
   console_lock(0);
 }
 

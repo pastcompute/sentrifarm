@@ -60,8 +60,17 @@ static void scan_done_cb(void *arg, STATUS status)
       inf = (struct bss_info *) &inf->next;
     }
   } else {
-    console_printf("ERROR: Scan invalid pbss\n");
+    console_printf("ERROR: Scan invalid pbss. STATUS=%d opmode=%d\n", status, (int)wifi_get_opmode());
   }
+
+  unsigned char macaddr[6] = { 0,0,0,0,0,0};
+  unsigned char macaddr2[6] = { 0,0,0,0,0,0};
+  wifi_get_macaddr(SOFTAP_IF, macaddr);
+  wifi_get_macaddr(STATION_IF, macaddr);
+  console_printf("sdk=%s chipid=0x%x ap.mac=" MACSTR " sta.mac=" MACSTR " heap=%d tick=%u rtc.tick=%u\n",
+    system_get_sdk_version(), system_get_chip_id(), MAC2STR(macaddr), MAC2STR(macaddr2),
+    system_get_free_heap_size(), system_get_time(), system_get_rtc_time());
+
   console_lock(0);
   extern void sentrifarm_init();
   sentrifarm_init();
@@ -73,18 +82,28 @@ static void main_init_done(void)
   if (wifi_get_opmode() == SOFTAP_MODE)
   {
     console_printf("ERROR: Can't scan, while in softap mode\n");
-    extern void sentrifarm_init();
-    sentrifarm_init();
   } else {
-    wifi_station_scan(NULL, &scan_done_cb);
-    console_lock(1);
+    if (wifi_station_scan(NULL, &scan_done_cb)) {
+      console_lock(1);
+      return;
+    }
+    console_printf("ERROR: Call to wifi_station_scan() failed\n");
   }
+  extern void sentrifarm_init();
+  sentrifarm_init();
 }
 
+/* ------------------------------------------------------------------------- */
 void user_init()
 {
   uart_init(0, 115200);
   uart_init_io();
+
+  PIN_FUNC_SELECT(PERIPHS_IO_MUX_GPIO2_U, FUNC_GPIO2);
+  PIN_FUNC_SELECT(PERIPHS_IO_MUX_GPIO0_U, FUNC_GPIO0);
+  gpio_output_set(0, BIT2, BIT2, 0);
+  gpio_output_set(0, BIT0, BIT0, 0);
+
   env_init(CONFIG_ENV_OFFSET, CONFIG_ENV_LEN);
   system_print_meminfo();
   console_printf("\nFlash layout:\n"
@@ -96,8 +115,8 @@ void user_init()
   uint8 f = system_get_cpu_freq();
   console_printf("CPU frequency=%dMHz\n", (int)f);
 
-  unsigned char macaddr[6];
-  unsigned char macaddr2[6];
+  unsigned char macaddr[6] = { 0,0,0,0,0,0};
+  unsigned char macaddr2[6] = { 0,0,0,0,0,0};
   wifi_get_macaddr(SOFTAP_IF, macaddr);
   wifi_get_macaddr(STATION_IF, macaddr);
   console_printf("sdk=%s chipid=0x%x ap.mac=" MACSTR " sta.mac=" MACSTR " heap=%d tick=%u rtc.tick=%u\n",
@@ -131,15 +150,11 @@ void user_init()
 
   console_init(32);
 
-  system_set_os_print(0);
+  // system_set_os_print(0);  // seems to turn off dbg() even when log-level = 3
+
   const char* loglevel = env_get("log-level");
   if (loglevel) { set_log_level(atoi(loglevel)); }
   
-  PIN_FUNC_SELECT(PERIPHS_IO_MUX_GPIO2_U, FUNC_GPIO2);
-  PIN_FUNC_SELECT(PERIPHS_IO_MUX_GPIO0_U, FUNC_GPIO0);
-  gpio_output_set(0, BIT2, BIT2, 0);
-  gpio_output_set(0, BIT0, BIT0, 0);
-
   system_init_done_cb(main_init_done);
 }
 

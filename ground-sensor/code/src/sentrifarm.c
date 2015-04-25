@@ -374,8 +374,8 @@ static void dump_state()
   uint8 f = system_get_cpu_freq();
   console_printf("CPU frequency=%dMHz\n", (int)f);
 
-  unsigned char macaddr[6];
-  unsigned char macaddr2[6];
+  unsigned char macaddr[6] = { 0,0,0,0,0,0 };
+  unsigned char macaddr2[6] = { 0,0,0,0,0,0 };
   wifi_get_macaddr(SOFTAP_IF, macaddr);
   wifi_get_macaddr(STATION_IF, macaddr);
   console_printf("sdk=%s chipid=0x%x ap.mac=" MACSTR " sta.mac=" MACSTR " heap=%d tick=%u rtc.tick=%u\n",
@@ -462,10 +462,10 @@ static void sentri_state_handler()
       if (my_state.error_flags & ERR_WIFI_AP_NOT_FOUND) {
         dump_state();
         MSG_ERROR("Failed to connect to wifi AP :-(");
-        MSG_ERROR("Fallback to frankenstein console");
+        MSG_ERROR("You have 30 seconds at the console before reset...\n");
       	console_lock(0);
-        next_state = -1;
-        next_delay = 0;
+        next_state = STATE_REBOOT_REQUIRED;
+        next_delay = 30;
       } else {
         next_state = STATE_TELEMETRY;
         next_delay = my_config.wait_wifiup_s;
@@ -484,21 +484,23 @@ static void sentri_state_handler()
     next_delay = my_config.wait_transmit_s;
     if (!sentri_check_telemetry()) {
       if (my_state.telemetry_retried ++ > MAX_TELEMETRY_RETRY_ATTEMPTS) { /* timeout ... */
-        MSG_ERROR("Failed to transmit telemetry in time :-(");
+        MSG_ERROR("Failed to transmit telemetry in time :-(\n");
         next_state = STATE_TELEMETRY_FAULT;
         next_delay = my_config.wait_transmit_s;
       }
       break;
     }
+    /* Note: we are not handling TCP error 11 properly, it bypasses TELEMETRY_FAULT in that case */
+
     /* Disconnect wifi now in case shutting it down on the reboot is responsible for the random boot segfault */
     /* http://www.esp8266.com/viewtopic.php?p=9559#p9559 */
     wifi_station_disconnect();
     next_state = STATE_DONE;
-    next_delay = 1;
+    next_delay = 3; // allow everything to disconnect...
     break;
 
   case STATE_TELEMETRY_FAULT:
-    MSG_TRACE("STATE_TELEMETRY_FAULT");
+    MSG_TRACE("STATE_TELEMETRY_FAULT\n");
     /* Here we could perhaps do a 60 second try again before rebooting - dont want to waste all the power because of a network transient */
     next_state = STATE_REBOOT_REQUIRED;
     next_delay = my_config.wait_reboot_s;
@@ -507,7 +509,7 @@ static void sentri_state_handler()
   case STATE_DONE:
 #if TRAITS_ENABLE_DEEP_SLEEP
     if (my_config.diag2) {
-      MSG_TRACE("DEEP SLEEP aborted by diagnostic button #2");
+      MSG_TRACE("DEEP SLEEP aborted by diagnostic button #2\n");
       os_timer_disarm(&sentri_state_timer);
       return;
     }
@@ -544,7 +546,7 @@ static void sentri_state_handler()
     os_timer_setfn(&sentri_state_timer, (os_timer_func_t *)sentri_state_timer_cb, NULL);
     os_timer_arm(&sentri_state_timer, next_delay*1000, 0);
   } else {
-    MSG_TRACE("Leaving state machine");
+    MSG_TRACE("Leaving state machine\n");
     /* For the moment we become a stock frankenstein. We get here if diag button was held */
   }
 }
