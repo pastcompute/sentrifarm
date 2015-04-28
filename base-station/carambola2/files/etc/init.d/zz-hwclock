@@ -1,0 +1,33 @@
+#!/bin/sh /etc/rc.common
+
+logger "Setup i2c RTC"
+echo ds1307 0x68 > '/sys/class/i2c-dev/i2c-0/device/new_device'
+
+logger "Setup i2c EEPROM"
+echo 24c32  0x50 > '/sys/class/i2c-dev/i2c-0/device/new_device'
+
+logger "Setup i2c Barometer"
+echo bmp085 0x77 > '/sys/class/i2c-dev/i2c-0/device/new_device'
+
+# 1-wire
+
+# This sets the time if the network is missing.
+# We let NTP take over later anyway
+
+# (Alternative: check NVRAM is not aaaaaa)
+
+# If the battery was replaced, we cant do much until after the user or NTP cron sets it
+if hwclock | grep 'Jan' | grep -q 2000 ; then
+  logger "RTC appears to have a flat battery..."
+  echo timer > /sys/class/leds/carambola2\:green\:wlan/trigger
+  echo 50 > /sys/class/leds/carambola2\:green\:wlan/delay_on
+  echo 2450 > /sys/class/leds/carambola2\:green\:wlan/delay_off
+else
+  logger "RTC set hwclock"
+  # hwclock -s <== set systime from hwtime (not after NTP starts though)
+  # hwclock -w <== set RTC from systime
+  hwclock -s
+  echo heartbeat > /sys/class/leds/carambola2\:green\:wlan/trigger
+fi
+
+exit 0

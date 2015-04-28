@@ -1,0 +1,87 @@
+diff --git a/package/kernel/linux/modules/other.mk b/package/kernel/linux/modules/other.mk
+index 082c74a..2304fe2 100644
+--- a/package/kernel/linux/modules/other.mk
++++ b/package/kernel/linux/modules/other.mk
+@@ -522,6 +522,47 @@ endef
+ $(eval $(call KernelPackage,rtc-ds1307))
+ 
+ 
++define KernelPackage/bmp085-i2c
++  SUBMENU:=$(OTHER_MENU)
++  TITLE:=Bosch BMP085 and compatible I2C pressure sensor
++  DEPENDS:= +kmod-i2c-core +kmod-lib-lzo +kmod-regmap
++  KCONFIG:=CONFIG_BMP085_I2C \
++          CONFIG_REGMAP=y \
++          CONFIG_REGMAP_I2C=y
++  FILES:=$(LINUX_DIR)/drivers/misc/bmp085-i2c.ko
++  AUTOLOAD:=$(call AutoProbe,bmp085-i2c)
++endef
++
++define KernelPackage/bmp085-i2c/description
++ Kernel module for Bosch BMP085/BMP180 (and compatible) pressure sensor module
++ chips connected via I2C.
++endef
++
++$(eval $(call KernelPackage,bmp085-i2c))
++
++
++define KernelPackage/bmp085-spi
++  SUBMENU:=$(OTHER_MENU)
++  TITLE:=Bosch BMP085 and compatible SPI pressure sensor
++  DEPENDS:= +kmod-i2c-core +kmod-lib-lzo +kmod-regmap
++  KCONFIG:=CONFIG_BMP085_SPI \
++          CONFIG_REGMAP=y \
++          CONFIG_REGMAP_SPI=y \
++          CONFIG_SPI=y \
++          CONFIG_SPI_MASTER=y
++  KCONFIG:=CONFIG_BMP085_SPI
++  FILES:=$(LINUX_DIR)/drivers/misc/bmp085-spi.ko
++  AUTOLOAD:=$(call AutoProbe,bmp085-spi)
++endef
++
++define KernelPackage/bmp085-spi/description
++ Kernel module for Bosch BMP085/BMP180 (and compatible) pressure sensor module
++ chips connected via SPI.
++endef
++
++$(eval $(call KernelPackage,bmp085-spi))
++
++
+ define KernelPackage/rtc-ds1672
+   SUBMENU:=$(OTHER_MENU)
+   TITLE:=Dallas/Maxim DS1672 RTC support
+diff --git a/package/kernel/w1-gpio-custom/src/w1-gpio-custom.c b/package/kernel/w1-gpio-custom/src/w1-gpio-custom.c
+index fc2f842..737474e 100644
+--- a/package/kernel/w1-gpio-custom/src/w1-gpio-custom.c
++++ b/package/kernel/w1-gpio-custom/src/w1-gpio-custom.c
+@@ -113,6 +113,7 @@ static int __init w1_gpio_custom_add_one(unsigned int id, unsigned int *params)
+ 	pdata.pin = params[BUS_PARAM_PIN];
+ 	pdata.is_open_drain = params[BUS_PARAM_OD] ? 1 : 0;
+ 	pdata.enable_external_pullup = NULL;
++	pdata.ext_pullup_enable_pin = -1;
+ 
+ 	err = platform_device_add_data(pdev, &pdata, sizeof(pdata));
+ 	if (err)
+diff --git a/target/linux/ar71xx/config-3.18 b/target/linux/ar71xx/config-3.18
+index 36b8bb6..2ef0e20 100644
+--- a/target/linux/ar71xx/config-3.18
++++ b/target/linux/ar71xx/config-3.18
+@@ -284,6 +284,7 @@ CONFIG_PERF_USE_VMALLOC=y
+ CONFIG_PHYLIB=y
+ # CONFIG_PREEMPT_RCU is not set
+ # CONFIG_RCU_STALL_COMMON is not set
++CONFIG_RTC_CLASS=y
+ CONFIG_RTL8306_PHY=y
+ CONFIG_RTL8366RB_PHY=y
+ CONFIG_RTL8366S_PHY=y
+diff --git a/target/linux/ar71xx/generic/target.mk b/target/linux/ar71xx/generic/target.mk
+index 64eb205..46611bc 100644
+--- a/target/linux/ar71xx/generic/target.mk
++++ b/target/linux/ar71xx/generic/target.mk
+@@ -1,5 +1,5 @@
+ BOARDNAME:=Generic
+-FEATURES += squashfs
++FEATURES += squashfs +rtc
+ 
+ define Target/Description
+ 	Build firmware images for generic Atheros AR71xx/AR913x/AR934x based boards.
