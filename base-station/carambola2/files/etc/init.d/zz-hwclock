@@ -9,6 +9,12 @@ echo 24c32  0x50 > '/sys/class/i2c-dev/i2c-0/device/new_device'
 logger "Setup i2c Barometer"
 echo bmp085 0x77 > '/sys/class/i2c-dev/i2c-0/device/new_device'
 
+# Extra LED on LED6 / dev phys pin 2 / gpio 16
+# Reversed: 1 = off, 0 = on
+echo 16 > /sys/class/gpio/export
+echo out > /sys/class/gpio/gpio16/direction
+echo 0 > /sys/class/gpio/gpio16/value
+
 # 1-wire
 
 # This sets the time if the network is missing.
@@ -29,5 +35,11 @@ else
   hwclock -s
   echo heartbeat > /sys/class/leds/carambola2\:green\:wlan/trigger
 fi
+
+logger "Air Pressure: `cat /sys/bus/i2c/drivers/bmp085/0-0077/pressure0_input`"
+logger "Air Temp: `cat /sys/bus/i2c/drivers/bmp085/0-0077/temp0_input`"
+logger "DS18B20: `cat /sys/bus/w1/devices/28-0314630d0eff/w1_slave`"
+logger "RTC: `hwclock -r`"
+logger "Date: `date`"
 
 exit 0
