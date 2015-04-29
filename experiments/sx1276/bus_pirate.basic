@@ -1,0 +1,38 @@
+#
+# A - Aux High (sx1276 reset off)
+# a - Aux Low (sx1276 reset asserted) - delay 5ms after
+# [ - Chip select active (low)
+# { - Chip select active (low), show SPI read byte after write
+# ] - CS disable
+# r - read byte after sending dummy 0xff
+# 0x - write hex , comma separate multiple
+# & - delay 1uS  %  - ms
+#
+#
+# 0x42 - version default 0x12  (v2.1)
+# 0x40 0x41 - DIO Mapping default 0 0
+# 0x3c - temperature
+# 0x01 - OpMode default 0x9 (OOK, FSK, LF registers, standby mode)
+# 0x02 - Bitrate MSB default 0x1a
+# 0x03 - Bitrate LSB default 0x0b
+# 0x06 - Carrier MSB default 0x6c
+# 0x07 - Carrier LSB default 0x80
+#
+# SINGLE mode WRITE : send addr byte, data byte    NSS low during frame
+# SINGLE mode READ  : send addr, read result
+# Address byte: bit 7 = 1 for write, 0 for read
+# Address MSB first
+#
+# m 5 - Setup mode 5 (SPI)
+#   1 - 30kHz, 1 - idle low (Default), 2 - active to idle (default),
+#   1 - middle (default), 2 - CS/ default, 2 - normal (3v3 not open drain)
+# W - Enable power supplies
+# v - Show status 
+# Read operating mode ...
+#
+picocom -b 115200 /dev/ttyUSB0
+
+im5 1 1 2 1 2 2
+Wva%:6A
+[0x42 r:1][0x40 r:1][0x41 r:1][0x01 r:1][0x02 r:1][0x03 r:1][0x06 r:1][0x07 r:1][0x3c r:1]
+
