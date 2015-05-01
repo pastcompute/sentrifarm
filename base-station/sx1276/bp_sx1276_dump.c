@@ -92,7 +92,7 @@ bool bp_bitbang_spi_read_one(int fd, byte reg, byte *result)
   write(fd, &cmd, 6);
 
   // 32 kHz?
-  usleep(250); // 1000
+  usleep(1000); // 1000
   n=serial_readto(fd, &cmd, 2);
   if (n!=2 || cmd[0] != 0x1 ) { return false; }
 
@@ -242,12 +242,17 @@ int main(int argc, char *argv[])
   g_fd = fd;
   signal(SIGINT, handler);
 
+  printf("Entering BusPirate BitBang SPI mode...\n");
+
   if (!(ok = bp_setup_serial(fd, B115200))) { perror("Serial init");  }
   if (ok && !(ok = bp_enable_binary_spi_mode(fd))) { }
   if (ok) {
-    printf("BusPirate BitBang SPI mode OK.\n");
+    printf("OK.\n");
 
     sx1276_spi_config(fd);
+
+		// Without this the first register read sometimes misses
+		usleep(1000);
 
     byte version = 0;
     if (!bp_bitbang_spi_read_one(fd, 0x42, &version)) { perror("Failed to read SX1276 version"); }    else printf("SX1276: Version=%.02x\n", (int)version);
