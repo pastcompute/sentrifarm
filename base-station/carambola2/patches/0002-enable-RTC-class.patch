@@ -1,0 +1,36 @@
+From a05eafab12e1dc50ca68d368ed22de4b7b5878e5 Mon Sep 17 00:00:00 2001
+From: Andrew McDonnell <bugs@andrewmcdonnell.net>
+Date: Fri, 1 May 2015 19:49:54 +0930
+Subject: [PATCH] Enable RTC class
+
+---
+ target/linux/ar71xx/config-3.18       | 1 +
+ target/linux/ar71xx/generic/target.mk | 2 +-
+ 2 files changed, 2 insertions(+), 1 deletion(-)
+
+diff --git a/target/linux/ar71xx/config-3.18 b/target/linux/ar71xx/config-3.18
+index 36b8bb6..dc0e43f 100644
+--- a/target/linux/ar71xx/config-3.18
++++ b/target/linux/ar71xx/config-3.18
+@@ -284,6 +284,7 @@ CONFIG_PERF_USE_VMALLOC=y
+ CONFIG_PHYLIB=y
+ # CONFIG_PREEMPT_RCU is not set
+ # CONFIG_RCU_STALL_COMMON is not set
++CONFIG_RTC_CLASS=y
+ CONFIG_RTL8306_PHY=y
+ CONFIG_RTL8366RB_PHY=y
+ CONFIG_RTL8366S_PHY=y
+diff --git a/target/linux/ar71xx/generic/target.mk b/target/linux/ar71xx/generic/target.mk
+index 64eb205..46611bc 100644
+--- a/target/linux/ar71xx/generic/target.mk
++++ b/target/linux/ar71xx/generic/target.mk
+@@ -1,5 +1,5 @@
+ BOARDNAME:=Generic
+-FEATURES += squashfs
++FEATURES += squashfs +rtc
+ 
+ define Target/Description
+ 	Build firmware images for generic Atheros AR71xx/AR913x/AR934x based boards.
+-- 
+1.9.1
+

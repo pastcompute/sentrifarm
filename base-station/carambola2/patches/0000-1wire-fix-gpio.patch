@@ -1,0 +1,27 @@
+From 1b087fd5c08895314192d3bc65ed14d6915a8134 Mon Sep 17 00:00:00 2001
+From: Andrew McDonnell <bugs@andrewmcdonnell.net>
+Date: Wed, 29 Apr 2015 21:25:01 +0930
+Subject: [PATCH] kernel: fix uninitialised variable causing 1-wire to not bind to GPIO
+
+This patch fixes a bug where 1-wire fails with an error instead of binding
+to the requested GPIO pin: "gpio_request_one (ext_pullup_enable_pin) failed"
+
+---
+ package/kernel/w1-gpio-custom/src/w1-gpio-custom.c | 1 +
+ 1 file changed, 1 insertion(+)
+
+diff --git a/package/kernel/w1-gpio-custom/src/w1-gpio-custom.c b/package/kernel/w1-gpio-custom/src/w1-gpio-custom.c
+index fc2f842..2018f58 100644
+--- a/package/kernel/w1-gpio-custom/src/w1-gpio-custom.c
++++ b/package/kernel/w1-gpio-custom/src/w1-gpio-custom.c
+@@ -113,6 +113,7 @@ static int __init w1_gpio_custom_add_one(unsigned int id, unsigned int *params)
+ 	pdata.pin = params[BUS_PARAM_PIN];
+ 	pdata.is_open_drain = params[BUS_PARAM_OD] ? 1 : 0;
+ 	pdata.enable_external_pullup = NULL;
++	pdata.ext_pullup_enable_pin = -1;
+ 
+ 	err = platform_device_add_data(pdev, &pdata, sizeof(pdata));
+ 	if (err)
+-- 
+1.9.1
+
