@@ -1,0 +1,106 @@
+From 212e8692a06906717dfd3593b5e5d6b03fb30dfd Mon Sep 17 00:00:00 2001
+From: Andrew McDonnell <bugs@andrewmcdonnell.net>
+Date: Sun, 3 May 2015 23:58:25 +0930
+Subject: [PATCH] SPI0.1 and 0.2 with GPIO CS
+
+---
+ .../ar71xx/files/arch/mips/ath79/dev-m25p80.c      | 48 ++++++++++++++++++++++
+ .../ar71xx/files/arch/mips/ath79/mach-carambola2.c |  5 ++-
+ 2 files changed, 52 insertions(+), 1 deletion(-)
+
+diff --git a/target/linux/ar71xx/files/arch/mips/ath79/dev-m25p80.c b/target/linux/ar71xx/files/arch/mips/ath79/dev-m25p80.c
+index 9323b31..64403e9 100644
+--- a/target/linux/ar71xx/files/arch/mips/ath79/dev-m25p80.c
++++ b/target/linux/ar71xx/files/arch/mips/ath79/dev-m25p80.c
+@@ -28,6 +28,20 @@ static struct ath79_spi_controller_data ath79_spi1_cdata =
+ 	.cs_line = 1,
+ };
+ 
++static struct ath79_spi_controller_data ath79_spi21_cdata =
++{
++	.cs_type = ATH79_SPI_CS_TYPE_GPIO,
++	.cs_line = 17,
++	.is_flash = false
++};
++
++static struct ath79_spi_controller_data ath79_spi22_cdata =
++{
++	.cs_type = ATH79_SPI_CS_TYPE_GPIO,
++	.cs_line = 21,
++	.is_flash = false
++};
++
+ static struct spi_board_info ath79_spi_info[] = {
+ 	{
+ 		.bus_num	= 0,
+@@ -45,6 +59,30 @@ static struct spi_board_info ath79_spi_info[] = {
+ 	}
+ };
+ 
++static struct spi_board_info ath79_spiG_info[] = {
++	{
++		.bus_num	= 0,
++		.chip_select	= 0,
++		.max_speed_hz	= 25000000,
++		.modalias	= "m25p80",
++		.controller_data = &ath79_spi0_cdata,
++	},
++	{
++		.bus_num	= 0,
++		.chip_select	= 1,
++		.max_speed_hz   = 25000000,
++		.modalias	= "spidev",
++		.controller_data = &ath79_spi21_cdata,
++	},
++	{
++		.bus_num	= 0,
++		.chip_select	= 2,
++		.max_speed_hz   = 25000000,
++		.modalias	= "spidev",
++		.controller_data = &ath79_spi22_cdata,
++	}
++};
++
+ static struct ath79_spi_platform_data ath79_spi_data;
+ 
+ void __init ath79_register_m25p80(struct flash_platform_data *pdata)
+@@ -56,6 +94,16 @@ void __init ath79_register_m25p80(struct flash_platform_data *pdata)
+ 	ath79_register_spi(&ath79_spi_data, ath79_spi_info, 1);
+ }
+ 
++void __init ath79_register_m25p80_and_spidev(struct flash_platform_data *pdata)
++{
++	pr_info("M25P80 and SPIDEV mod...\n");
++	ath79_spi_data.bus_num = 0;
++	ath79_spi_data.num_chipselect = 3;
++	ath79_spi0_cdata.is_flash = true;
++	ath79_spi_info[0].platform_data = pdata;
++	ath79_register_spi(&ath79_spi_data, ath79_spiG_info, 3);
++}
++
+ static struct flash_platform_data *multi_pdata;
+ 
+ static struct mtd_info *concat_devs[2] = { NULL, NULL };
+diff --git a/target/linux/ar71xx/files/arch/mips/ath79/mach-carambola2.c b/target/linux/ar71xx/files/arch/mips/ath79/mach-carambola2.c
+index babe101..199ba9e 100644
+--- a/target/linux/ar71xx/files/arch/mips/ath79/mach-carambola2.c
++++ b/target/linux/ar71xx/files/arch/mips/ath79/mach-carambola2.c
+@@ -61,11 +61,14 @@ static struct gpio_keys_button carambola2_gpio_keys[] __initdata = {
+ 	},
+ };
+ 
++extern void ath79_register_m25p80_and_spidev(struct flash_platform_data *pdata);
++
++
+ static void __init carambola2_common_setup(void)
+ {
+ 	u8 *art = (u8 *) KSEG1ADDR(0x1fff0000);
+ 
+-	ath79_register_m25p80(NULL);
++	ath79_register_m25p80_and_spidev(NULL);
+ 	ath79_register_wmac(art + CARAMBOLA2_CALDATA_OFFSET,
+ 			    art + CARAMBOLA2_WMAC_MAC_OFFSET);
+ 
+-- 
+1.9.1
+

@@ -9,6 +9,37 @@ echo 24c32  0x50 > '/sys/class/i2c-dev/i2c-0/device/new_device'
 logger "Setup i2c Barometer"
 echo bmp085 0x77 > '/sys/class/i2c-dev/i2c-0/device/new_device'
 
+# atm:
+# GPIO16 : phys J12 pin 2  : (LED6) -- note needs to be LOW at boot
+# GPIO17 : phys J12 pin 1  : spi0.1 (SX1276) CS 
+#   -- note needs to be HI at boot, which is OK because we need to pull this high anyway via 10k resistor to boot!
+
+# GPIO11 : phys J12 pin 8  : {UART RTS, default: WPS input button}
+# GPIO12 : phys J12 pin 9  : {UART CTS, LOW at boot}
+
+# GPIO15 : phys J12 pin 3  : (LED4) - needs to be LOW at boot
+# GPIO14 : phys J12 pin 4  : (LED3) - ETH1 LED
+# GPIO13 : phys J12 pin 5  : (LED2) - ETH0 LED
+# GPIO1  : phys J12 pin 6  : (LED1) - WLAN LED2 ?
+# GPIO0  : phys J12 pin 7  : (LED0) - WLAN LED1
+
+# GPIO18 : phys J12 pin 10 : i2c SDA  
+# GPIO19 : phys J12 pin 11 : i2c SCL
+# GPIO20 : phys J12 pin 12 : 1-Wire
+# GPIO21 : phys J12 pin 13 :  spi0.2 CS
+
+# 2,3,4,5 : used for SPI FLASH
+# 9,10 : used for USB serial from PC
+
+# spare (was: GPIO21 : SCK)
+# spare (was: GPIO22 : MOSI)
+# spare (was: GPIO23 : MISO)
+
+# MISO   : phys J13 pin 14 :  spi0 MISO
+# MOSI   : phys J13 pin 13 :  spi0 MOSI - note, C2 datasheet says needs to be pulled to ?
+# SCK    : phys J13 pin 12 :  spi0 CLK  - pulled down via 10k resistor
+# 
+
 # Extra LED on LED6 / dev phys pin 2 / gpio 16
 # Reversed: 1 = off, 0 = on
 echo 16 > /sys/class/gpio/export

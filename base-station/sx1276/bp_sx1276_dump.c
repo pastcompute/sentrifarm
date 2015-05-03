@@ -207,7 +207,7 @@ bool sx1276_dump(int fd)
   }
   if (ok) {
     FILE *f = popen("od -Ax -tx1z -v -w8", "w");
-    if (f) { fwrite(regval, 0x71, 1, f); fclose(f); }
+    if (f) { fwrite(regval, 0x71, 1, f); pclose(f); }
   }
   return ok;
 

@@ -1,4 +1,4 @@
 i2c-gpio-custom bus0=0,18,19
 w1-gpio-custom bus0=0,20,1
-spi-gpio-custom bus1=1,21,22,23,0,32768,17
+# spi-gpio-custom bus1=1,21,22,23,0,32768,17
 

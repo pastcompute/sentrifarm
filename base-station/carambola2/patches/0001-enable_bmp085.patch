@@ -1,20 +1,22 @@
-From ff7ab63a6d86977db2ddf12200c16827503f19c5 Mon Sep 17 00:00:00 2001
+From f9b5a5d85dfabdee590362b8c8f55e2fd1ad787d Mon Sep 17 00:00:00 2001
 From: Andrew McDonnell <bugs@andrewmcdonnell.net>
-Date: Wed, 29 Apr 2015 22:14:14 +0930
-Subject: [PATCH] kernel: add package for bmp085 family of i2c barometric sensor
+Date: Sun, 3 May 2015 19:43:05 +0930
+Subject: [PATCH] bmp085 at end of other.mk
 
 ---
- package/kernel/linux/modules/other.mk | 41 +++++++++++++++++++++++++++++++++++
- 1 file changed, 41 insertions(+)
+ package/kernel/linux/modules/other.mk | 20 ++++++++++++++++++++
+ 1 file changed, 20 insertions(+)
 
 diff --git a/package/kernel/linux/modules/other.mk b/package/kernel/linux/modules/other.mk
-index 082c74a..2304fe2 100644
+index 082c74a..1dfaf16 100644
 --- a/package/kernel/linux/modules/other.mk
 +++ b/package/kernel/linux/modules/other.mk
-@@ -522,6 +522,47 @@ endef
- $(eval $(call KernelPackage,rtc-ds1307))
+@@ -989,3 +989,23 @@ define KernelPackage/echo/description
+ endef
  
- 
+ $(eval $(call KernelPackage,echo))
++
++
 +define KernelPackage/bmp085-i2c
 +  SUBMENU:=$(OTHER_MENU)
 +  TITLE:=Bosch BMP085 and compatible I2C pressure sensor
@@ -33,32 +35,6 @@ index 082c74a..2304fe2 100644
 +
 +$(eval $(call KernelPackage,bmp085-i2c))
 +
-+
-+define KernelPackage/bmp085-spi
-+  SUBMENU:=$(OTHER_MENU)
-+  TITLE:=Bosch BMP085 and compatible SPI pressure sensor
-+  DEPENDS:= +kmod-i2c-core +kmod-lib-lzo +kmod-regmap
-+  KCONFIG:=CONFIG_BMP085_SPI \
-+          CONFIG_REGMAP=y \
-+          CONFIG_REGMAP_SPI=y \
-+          CONFIG_SPI=y \
-+          CONFIG_SPI_MASTER=y
-+  KCONFIG:=CONFIG_BMP085_SPI
-+  FILES:=$(LINUX_DIR)/drivers/misc/bmp085-spi.ko
-+  AUTOLOAD:=$(call AutoProbe,bmp085-spi)
-+endef
-+
-+define KernelPackage/bmp085-spi/description
-+ Kernel module for Bosch BMP085/BMP180 (and compatible) pressure sensor module
-+ chips connected via SPI.
-+endef
-+
-+$(eval $(call KernelPackage,bmp085-spi))
-+
-+
- define KernelPackage/rtc-ds1672
-   SUBMENU:=$(OTHER_MENU)
-   TITLE:=Dallas/Maxim DS1672 RTC support
 -- 
 1.9.1
 
