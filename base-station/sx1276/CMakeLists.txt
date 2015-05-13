@@ -20,3 +20,5 @@ add_executable(bp_sx1276_dump bp_sx1276_dump.c)
 
 # target_link_libraries(example ${CMAKE_THREAD_LIBS_INIT})
 
+add_executable(bp_sx1276_test1 bp_sx1276_test1.cpp buspirate_binary.c buspirate_spi.cpp spidev_spi.cpp sx1276.cpp spi.hpp)
+
