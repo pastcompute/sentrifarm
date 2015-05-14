@@ -4,6 +4,11 @@
 #include "spi.hpp"
 #include <string>
 
+/// @note
+/// To enter Bus Pirate binary mode takes up to 10 seconds.
+/// However if we dont reset the busPirate on exit subsequent calls are much faster.
+/// We should have an option to make this an explicit user choice.
+/// Presently we by chance leave the system unreset... 
 class BusPirateSPI : public SPI
 {
 public:

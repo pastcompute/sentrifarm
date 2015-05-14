@@ -15,7 +15,9 @@ BusPirateSPI::BusPirateSPI()
 
 BusPirateSPI::~BusPirateSPI()
 {
-  close(fd_);
+  if (fd_ > -1) {
+    close(fd_);
+  }
 }
 
 bool BusPirateSPI::Open(const char *ttydev)
@@ -25,12 +27,13 @@ bool BusPirateSPI::Open(const char *ttydev)
   int fd = open(ttydev, O_RDWR | O_NOCTTY);
   if (fd == -1) { perror("Unable to open device"); return false; }
 
+  fd_ = fd;
   if (ConfigSerial() && EnableBinaryMode() && ConfigSPI()) {
-    fd_ = fd;
     ttydev_ = ttydev;
     return true;
   }
   close(fd);
+  fd_ = -1;
   return false;
 }
 
