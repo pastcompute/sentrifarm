@@ -3,6 +3,10 @@
 #include <unistd.h>
 #include <stdio.h>
 #include <string.h>
+#include <fcntl.h>
+#include <unistd.h>
+#include <termios.h>
+#include <string.h>
 
 int bp_serial_readto(int fd, void* buf, unsigned bytes)
 {
@@ -67,4 +71,71 @@ bool bp_enable_binary_spi_mode(int fd)
   if (strncmp(buf, "SPI1", 4) == 0) { return true; }
   fprintf(stderr, " Unable to enter BusPirate bitbang mode SPI, invalid response: '%s'\n", buf);
   return false;
+}
+
+bool bp_setup_serial(int fd, speed_t speed)
+{
+  struct termios t_opt;
+
+  if (-1 == fcntl(fd, F_SETFL, 0)) { return false; }
+  if (-1 == tcgetattr(fd, &t_opt)) { return false; }
+  cfsetispeed(&t_opt, speed);
+  cfsetospeed(&t_opt, speed);
+  t_opt.c_cflag |= (CLOCAL | CREAD);
+  t_opt.c_cflag &= ~PARENB;
+  t_opt.c_cflag &= ~CSTOPB;
+  t_opt.c_cflag &= ~CSIZE;
+  t_opt.c_cflag |= CS8;
+  t_opt.c_lflag &= ~(ICANON | ECHO | ECHOE | ISIG);
+  t_opt.c_iflag &= ~(IXON | IXOFF | IXANY);
+  t_opt.c_oflag &= ~OPOST;
+  t_opt.c_cc[VMIN] = 0;
+  t_opt.c_cc[VTIME] = 1;
+  if (-1 == tcflush(fd, TCIFLUSH)) { return false; }
+  if (-1 == tcsetattr(fd, TCSANOW, &t_opt)) { return false; }
+  return true;
+}
+
+bool bp_spi_config(int fd)
+{
+  bool ok;
+
+  printf("POWER ON, AUX:RESET ACTIVE(LOW), CS HIGH\n");
+
+  // Pullups on seems to just get echo of itself
+  // Power on, pullups, aux=0, cs=1
+  // 0100wxyz - Configure peripherals w=power, x=pull-ups, y=AUX, z=CS
+  ok=bp_bitbang_cmd(fd, 0x49);             // 0x4d == 0x40 | (power==0x8) | (pullup=0x4) | (cs)
+  if (!ok) { perror("Unable to issue SPI PERIPH"); return false; }
+
+  usleep(6 * 1000);
+
+  // We have aux --> reset...
+  printf("POWER ON, AUS:RESET DORMANT(HI), CS HI\n");
+  ok=bp_bitbang_cmd(fd, 0x4b);             // 0x4d == 0x40 | (power==0x8) | (pullup=0x4) | aux=2 (cs)
+  if (!ok) { perror("Unable to release /RESET (AUX=0)"); return false; }
+
+  usleep(6 * 1000);
+
+  printf("SPI CONFIG\n");
+
+  // SPI config
+  // 1000wxyz - SPI config, w=HiZ/3.3v, x=CKP idle, y=CKE edge, z=SMP sample
+  ok=bp_bitbang_cmd(fd, 0x8a);             // 0x80 == 0x8a | (3v3==0x8) | x==idle low(0) | (CKE=a2i==0x2) | middle
+  if (!ok) { perror("Unable to issue SPI CONFIG"); return false; }
+
+  printf("SPI SPEED\n");
+
+  // SPI speed = 30 kHz
+  // 000=30kHz, 001=125kHz, 010=250kHz, 011=1MHz, 100=2MHz, 101=2.6MHz, 110=4MHz, 111=8MHz
+  // struggles to dump at 1M
+  ok=bp_bitbang_cmd(fd, 0x63);             // 0x60 == 0x60 | (30k = 000)
+  if (!ok) { perror("Unable to issue SPI SPEED"); return false; }
+
+  // Enable CS
+  // 0000001x - CS high (1) or low (0)
+  //ok = bp_bitbang_cmd(fd, 0x2);           // 0x3 == 0x2 | (ChipSelect)
+  // if (!ok) { perror("Unable to activate /CS"); return; }
+
+  return true;
 }
