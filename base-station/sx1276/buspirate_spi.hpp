@@ -23,7 +23,7 @@ public:
   bool Powerup();
 
   virtual bool ReadRegister(uint8_t reg, uint8_t& result);
-  virtual uint8_t WriteRegister(uint8_t reg, uint8_t value);
+  virtual bool WriteRegister(uint8_t reg, uint8_t value);
 
 private:
   bool ConfigSerial();

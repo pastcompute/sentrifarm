@@ -20,7 +20,7 @@ public:
   /// Write byte value to single register
   /// @param reg Register E 0..0x7f
   /// @return Data returned by SPI bus transaction
-  virtual uint8_t WriteRegister(uint8_t reg, uint8_t value) = 0;
+  virtual bool WriteRegister(uint8_t reg, uint8_t value) = 0;
 };
 
 #endif // SPI_HPP__

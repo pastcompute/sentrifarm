@@ -29,6 +29,21 @@ bool bp_bitbang_cmd(int fd, uint8_t cmd_byte)
   return (n==1 && cmd_byte == 0x1);
 }
 
+bool bp_bitbang_spi_write_one(int fd, uint8_t reg, uint8_t value, uint8_t *result)
+{
+  int8_t reg_mask = reg | 0x80;
+  uint8_t cmd[7] = { 0x04, 0, 2, 0, 1, reg_mask, value };
+  write(fd, &cmd, 7);
+
+  // 32 kHz?
+  usleep(1000); // 1000
+  int n=bp_serial_readto(fd, &cmd, 2);
+  if (n!=2 || cmd[0] != 0x1 ) { return false; }
+
+  *result = cmd[1];
+  return true;
+}
+
 bool bp_bitbang_spi_read_one(int fd, uint8_t reg, uint8_t *result)
 {
   uint8_t reg_mask = reg & 0x7f;

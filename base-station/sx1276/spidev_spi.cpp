@@ -86,6 +86,6 @@ bool SpidevSPI::ReadRegister(uint8_t reg, uint8_t& result)
   return true;
 }
 
-uint8_t SpidevSPI::WriteRegister(uint8_t reg, uint8_t value)
+bool SpidevSPI::WriteRegister(uint8_t reg, uint8_t value)
 {
 }

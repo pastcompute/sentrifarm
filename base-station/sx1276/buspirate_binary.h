@@ -12,6 +12,7 @@ extern "C" {
 extern int bp_serial_readto(int fd, void* buf, unsigned bytes);
 extern bool bp_bitbang_cmd(int fd, uint8_t cmd_byte);
 extern bool bp_bitbang_spi_read_one(int fd, uint8_t reg, uint8_t *result);
+extern bool bp_bitbang_spi_write_one(int fd, uint8_t reg, uint8_t value, uint8_t *result);
 extern bool bp_enable_binary_spi_mode(int fd);
 extern bool bp_setup_serial(int fd, speed_t speed);
 extern bool bp_spi_config(int fd);

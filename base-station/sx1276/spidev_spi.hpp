@@ -16,7 +16,7 @@ public:
   const char *device() const { return spidev_.c_str(); }
 
   virtual bool ReadRegister(uint8_t reg, uint8_t& result);
-  virtual uint8_t WriteRegister(uint8_t reg, uint8_t value);
+  virtual bool WriteRegister(uint8_t reg, uint8_t value);
 
 private:
   bool ConfigureSPI();
