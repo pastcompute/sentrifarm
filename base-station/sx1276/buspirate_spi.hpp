@@ -20,6 +20,8 @@ public:
 
   const char *device() const { return ttydev_.c_str(); }
 
+  bool Powerup();
+
   virtual bool ReadRegister(uint8_t reg, uint8_t& result);
   virtual uint8_t WriteRegister(uint8_t reg, uint8_t value);
 

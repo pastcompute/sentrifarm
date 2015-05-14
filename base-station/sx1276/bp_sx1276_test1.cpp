@@ -14,6 +14,11 @@ int main(int argc, char* argv[])
 
   shared_ptr<BusPirateSPI> spi(new BusPirateSPI);
   if (!spi->Open(argv[1])) { return 1; }
+  if (!spi->Powerup()) { return 1; }
+
+  // TODO work out how to run without powering off / resetting the module
+
+  usleep(100);
 
   SX1276Radio radio(spi);
 

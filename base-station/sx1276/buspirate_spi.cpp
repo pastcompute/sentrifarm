@@ -53,6 +53,11 @@ bool BusPirateSPI::ConfigSPI()
   return bp_spi_config(fd_);
 }
 
+bool BusPirateSPI::Powerup()
+{
+  return bp_power_on(fd_);
+}
+
 bool BusPirateSPI::ReadRegister(uint8_t reg, uint8_t& result)
 {
   return bp_bitbang_spi_read_one(fd_, reg, &result);

@@ -97,6 +97,7 @@ int main(int argc, char *argv[])
   if (ok) {
     printf("OK.\n");
 
+    bp_power_on(fd);
     bp_spi_config(fd);
 
 		// Without this the first register read sometimes misses

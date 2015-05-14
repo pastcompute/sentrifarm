@@ -96,7 +96,7 @@ bool bp_setup_serial(int fd, speed_t speed)
   return true;
 }
 
-bool bp_spi_config(int fd)
+bool bp_power_on(int fd)
 {
   bool ok;
 
@@ -117,6 +117,12 @@ bool bp_spi_config(int fd)
 
   usleep(6 * 1000);
 
+  return true;
+}
+
+bool bp_spi_config(int fd)
+{
+  bool ok;
   printf("SPI CONFIG\n");
 
   // SPI config
