@@ -24,4 +24,5 @@ int main(int argc, char* argv[])
 
   cout << format("Version: %.2x\n") % radio.QueryVersion();
 
+  radio.ApplyDefaultLoraConfiguration();
 }

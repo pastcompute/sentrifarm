@@ -21,14 +21,19 @@ public:
   SX1276Radio(boost::shared_ptr<SPI> spi);
   ~SX1276Radio();
 
+  bool fault() const;
+
   int QueryVersion();
 
   /// Reset the module to our specific configuration.
   /// This should always be called immediately after performing a hardware reset
-  void Reset();
+  void ApplyDefaultLoraConfiguration();
 
 private:
+  uint8_t StandbyMode();
+
   boost::shared_ptr<SPI> spi_;   ///< Reference to SPI communication instance
+  bool fault_;
 };
 
 #endif // SX1276_HPP__
