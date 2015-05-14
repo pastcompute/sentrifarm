@@ -19,6 +19,8 @@ public:
   virtual uint8_t WriteRegister(uint8_t reg, uint8_t value);
 
 private:
+  bool ConfigureSPI();
+
   std::string spidev_;
   int fd_;
 };
