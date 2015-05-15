@@ -147,7 +147,8 @@ void SX1276Radio::ApplyDefaultLoraConfiguration()
   // AU ISM Band >= 915 MHz
   // Frequency latches when Lsb is written
   // Lets start with 921 MHz...
-  uint32_t Frf = 921000000 / 32000000 * (1 << 19);
+  uint64_t Frf = 921000000ULL * (1 << 19) / 32000000ULL;
+  // printf("Frf=%.8x\n", (uint32_t)Frf);
   v = Frf >> 16;
   spi_->WriteRegister(SX1276REG_FrfMsb, v);
   usleep(100);
@@ -160,11 +161,14 @@ void SX1276Radio::ApplyDefaultLoraConfiguration()
 
   spi_->ReadRegister(SX1276REG_FrfMsb, v);
   Frf = uint32_t(v) << 16;
+  usleep(100);
   spi_->ReadRegister(SX1276REG_FrfMid, v);
+  usleep(100);
   Frf = Frf | (uint32_t(v) << 8);
+  usleep(100);
   spi_->ReadRegister(SX1276REG_FrfLsb, v);
   Frf = Frf | (uint32_t(v));
 
-  int64_t fcheck = (32000000 * Frf) >> 19;
-  printf("Check read Carrier Frequency: %uHz", (unsigned)fcheck);
+  int64_t fcheck = (32000000ULL * Frf) >> 19;
+  printf("Check read Carrier Frequency: %uHz\n", (unsigned)fcheck);
 }
