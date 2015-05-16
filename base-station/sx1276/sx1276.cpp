@@ -1,15 +1,22 @@
 #include "sx1276.hpp"
 #include "spi.hpp"
+#include <string.h>
 
 // The following register naming convention follows SX1276 Datasheet chapter 6
+#define SX1276REG_Fifo              0x00
 #define SX1276REG_OpMode            0x01
 #define SX1276REG_FrfMsb            0x06
 #define SX1276REG_FrfMid            0x07
 #define SX1276REG_FrfLsb            0x08
+#define SX1276REG_PaConfig          0x09
 #define SX1276REG_Ocp               0x0B
+#define SX1276REG_FifoAddrPtr       0x0D
+#define SX1276REG_FifoTxBaseAddr    0x0E
+#define SX1276REG_IrqFlags          0x12
 #define SX1276REG_ModemConfig1      0x1D
 #define SX1276REG_ModemConfig2      0x1E
 #define SX1276REG_SymbTimeoutLsb    0x1F
+#define SX1276REG_PayloadLength     0x22
 #define SX1276REG_MaxPayloadLength  0x23
 
 // Bandwidth settings, for bits 4-7 of ModemConfig1
@@ -94,7 +101,7 @@ uint8_t SX1276Radio::StandbyMode()
 }
 
 // Set everything to a known default state for LoRa communication
-void SX1276Radio::ApplyDefaultLoraConfiguration()
+bool SX1276Radio::ApplyDefaultLoraConfiguration()
 {
   uint8_t v;
   // To switch to LoRa mode if we ere in OOK for some reason need to go to sleep mode first : zero 3 lower bits
@@ -110,7 +117,7 @@ void SX1276Radio::ApplyDefaultLoraConfiguration()
   spi_->WriteRegister(SX1276REG_OpMode, 0x81);
   usleep(100);
 
-  spi_->WriteRegister(SX1276REG_MaxPayloadLength, 0x16);
+  spi_->WriteRegister(SX1276REG_MaxPayloadLength, 0x80);
   usleep(100);
 
   // Switch to maximum current mode (0x1B == 240mA), and enable overcurrent protection
@@ -121,20 +128,28 @@ void SX1276Radio::ApplyDefaultLoraConfiguration()
   spi_->ReadRegister(SX1276REG_OpMode, v);
   if (v != 0x81) {
     fprintf(stderr, "Unable to enter LoRa standby mode or configure the chip!\n");
-    return;
+    return false;
   }
+
+  // Increasing the spreading factor increases sensitivty at expense of effective data throughput
+  // Increasing the bandwidth increases data throughput at expense of sensitivity for same SF
 
   // spreading factor is E { 2^6 .. 2^ 12 } i.e. 64 .. 4096 chips/symbol
   // with SF6, header MUST be off
   // with BW >= 125 kHZ header should be set on
-  // Lets turn the header on, and use 31.25kHz and 4/5 coding and SF9 (512)
-  // Symbol timeout BLAH, and CRC
-  v = (SX1276_LORA_BW_31250 << 4) | (SX1276_LORA_CODING_RATE_4_5) | 0x1;
+
+  // Example: header on, 125kHz BW and 4/6 coding and SF9 (512)
+  // We can send 64 byte payload in approx 0.4s + preamble (>= 6+4 symbols, @ 2^9/125000
+  // say approx 0.45 seconds for a 8+4 preamble
+
+  // 125kHz, 4/6, explicit header
+  v = (SX1276_LORA_BW_125000 << 4) | (SX1276_LORA_CODING_RATE_4_6) | 0x0;
   spi_->WriteRegister(SX1276REG_ModemConfig1, v);
   usleep(100);
 
-  // SF9, normal (not continuous) mode, CRC, and upper 2 bits of symbol timeout maximum (1023)
-  v = (0x9 << 4) | (0 << 3)| (1 << 2) | 0x3;
+  // SF9, normal (not continuous) mode, CRC, and upper 2 bits of symbol timeout (maximum i.e. 1023)
+  // We use 255, or 255 x (2^9)/125000 or ~1 second
+  v = (0x9 << 4) | (0 << 3)| (1 << 2) | 0x0;
   spi_->WriteRegister(SX1276REG_ModemConfig2, v);
   usleep(100);
   v = 0xff;
@@ -146,7 +161,7 @@ void SX1276Radio::ApplyDefaultLoraConfiguration()
   // Resolution is 61.035 Hz | Xosc=32MHz, default F=0x6c8000 --> 434 MHz
   // AU ISM Band >= 915 MHz
   // Frequency latches when Lsb is written
-  // Lets start with 921 MHz...
+  // Lets start with 921 MHz... (or, 920.9375 - 921.625 MHz wide)
   uint64_t Frf = 921000000ULL * (1 << 19) / 32000000ULL;
   // printf("Frf=%.8x\n", (uint32_t)Frf);
   v = Frf >> 16;
@@ -171,4 +186,68 @@ void SX1276Radio::ApplyDefaultLoraConfiguration()
 
   int64_t fcheck = (32000000ULL * Frf) >> 19;
   printf("Check read Carrier Frequency: %uHz\n", (unsigned)fcheck);
+
+  // Power (PA)
+  // Bit 7 == 0 -- 14dBm max (our inAir9 version)
+  // Bit 4..6 --> max power : 10.8 + 0.6 * K  dBm i.e. 10.8, 11.4, 12, 12.6, 13.2, 13.8, 14.4
+  // Bit 0..3 --> out power : Pout = pmax - 15 + pout : 0..15 --> -4.2..10.8 ; ... ; -0.6 .. 14
+
+  // Lets start at 12 max, 0dBm out (3) while in the lab
+
+  v = 0 | (0x2 << 4) | 3;
+  spi_->WriteRegister(SX1276REG_PaConfig, v);
+  usleep(100);
+
+  // TODO: Report node address
+
+  //FIXME: error handling - re-check read after write for everything...
+  return true;
+}
+
+/// Just send raw unframed data i.e. ASCII, zero terminated
+/// Only useful as a beacon but enough to get us started
+bool SX1276Radio::SendSimpleMessage(const char *payload)
+{
+  uint8_t v;
+  unsigned n = strlen(payload);
+  if (n > 126) { fprintf(stderr, "Message too long; truncated!\n"); }
+
+  // LoRa Standby
+  spi_->WriteRegister(SX1276REG_OpMode, 0x81);
+  usleep(100);
+
+  spi_->WriteRegister(SX1276REG_IrqFlags, 0xff);
+  usleep(100);
+
+  spi_->WriteRegister(SX1276REG_PayloadLength, n+1);
+  usleep(100);
+
+  // Reset TX FIFO
+  spi_->WriteRegister(SX1276REG_FifoTxBaseAddr, 0x80);
+  usleep(100);
+  spi_->WriteRegister(SX1276REG_FifoAddrPtr, 0x80);
+  usleep(100);
+
+  // TODO: readback and check
+
+  for (int b=0; b <= n; b++) {
+    spi_->WriteRegister(SX1276REG_Fifo, payload[b]);
+    usleep(25);
+  }
+
+  // Read ptr register and compare
+  usleep(100);
+  spi_->ReadRegister(SX1276REG_FifoAddrPtr, v);
+  if (v != 0x80 + n) { fprintf(stderr, "FIFO ptr mismatch, got %.2x expected %.2x\n", (int)v, (int)(0x80+n)); return false; }
+
+  // TX mode
+  spi_->WriteRegister(SX1276REG_OpMode, 0x83);
+  usleep(100);
+  spi_->ReadRegister(SX1276REG_OpMode, v);
+  if (v != 0x83) { fprintf(stderr, "Unable to enter TX mode\n"); return false; }
+
+  // Wait until TX DONE, or timeout
+  // We should calculate it; for the moment just wait 1 second
+
+
 }

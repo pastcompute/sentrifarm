@@ -27,7 +27,9 @@ public:
 
   /// Reset the module to our specific configuration.
   /// This should always be called immediately after performing a hardware reset
-  void ApplyDefaultLoraConfiguration();
+  bool ApplyDefaultLoraConfiguration();
+
+  bool SendSimpleMessage(const char *payload);
 
 private:
   uint8_t StandbyMode();
