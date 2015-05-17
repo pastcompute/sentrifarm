@@ -2,6 +2,11 @@
 #include "spi.hpp"
 #include <string.h>
 
+#include <boost/chrono/time_point.hpp>
+#include <boost/chrono/system_clocks.hpp>
+
+using boost::chrono::steady_clock;
+
 // The following register naming convention follows SX1276 Datasheet chapter 6
 #define SX1276REG_Fifo              0x00
 #define SX1276REG_OpMode            0x01
@@ -12,6 +17,7 @@
 #define SX1276REG_Ocp               0x0B
 #define SX1276REG_FifoAddrPtr       0x0D
 #define SX1276REG_FifoTxBaseAddr    0x0E
+#define SX1276REG_IrqFlagsMask      0x11
 #define SX1276REG_IrqFlags          0x12
 #define SX1276REG_ModemConfig1      0x1D
 #define SX1276REG_ModemConfig2      0x1E
@@ -107,22 +113,18 @@ bool SX1276Radio::ApplyDefaultLoraConfiguration()
   // To switch to LoRa mode if we ere in OOK for some reason need to go to sleep mode first : zero 3 lower bits
   spi_->ReadRegister(SX1276REG_OpMode, v);
   spi_->WriteRegister(SX1276REG_OpMode, v & 0xf8);
+  // usleep seems to be empriically needed for bus pirate. TBD for spidev...
   usleep(10000);
 
-  // usleeps seem to be empriically needed for bus pirate. TBD for spidev...
 
   // Switch to LoRa mode in sleep mode, then turn on standby mode
   spi_->WriteRegister(SX1276REG_OpMode, 0x80);
-  usleep(100);
   spi_->WriteRegister(SX1276REG_OpMode, 0x81);
-  usleep(100);
 
   spi_->WriteRegister(SX1276REG_MaxPayloadLength, 0x80);
-  usleep(100);
 
   // Switch to maximum current mode (0x1B == 240mA), and enable overcurrent protection
   spi_->WriteRegister(SX1276REG_Ocp, 0x20 | 0x1B);
-  usleep(100);
 
   // Re-read mode and check we set it as expected
   spi_->ReadRegister(SX1276REG_OpMode, v);
@@ -145,42 +147,33 @@ bool SX1276Radio::ApplyDefaultLoraConfiguration()
   // 125kHz, 4/6, explicit header
   v = (SX1276_LORA_BW_125000 << 4) | (SX1276_LORA_CODING_RATE_4_6) | 0x0;
   spi_->WriteRegister(SX1276REG_ModemConfig1, v);
-  usleep(100);
 
   // SF9, normal (not continuous) mode, CRC, and upper 2 bits of symbol timeout (maximum i.e. 1023)
   // We use 255, or 255 x (2^9)/125000 or ~1 second
   v = (0x9 << 4) | (0 << 3)| (1 << 2) | 0x0;
   spi_->WriteRegister(SX1276REG_ModemConfig2, v);
-  usleep(100);
   v = 0xff;
   spi_->WriteRegister(SX1276REG_SymbTimeoutLsb, v);
-  usleep(100);
 
   // Carrier frequency
   // { F(Xosc) x F } / 2^19
   // Resolution is 61.035 Hz | Xosc=32MHz, default F=0x6c8000 --> 434 MHz
   // AU ISM Band >= 915 MHz
   // Frequency latches when Lsb is written
-  // Lets start with 921 MHz... (or, 920.9375 - 921.625 MHz wide)
-  uint64_t Frf = 921000000ULL * (1 << 19) / 32000000ULL;
+  // Lets start with 9185 MHz...
+  uint64_t Frf = 918000000ULL * (1 << 19) / 32000000ULL;
   // printf("Frf=%.8x\n", (uint32_t)Frf);
   v = Frf >> 16;
   spi_->WriteRegister(SX1276REG_FrfMsb, v);
-  usleep(100);
   v = Frf >> 8;
   spi_->WriteRegister(SX1276REG_FrfMid, v);
-  usleep(100);
   v = Frf & 0xff;
   spi_->WriteRegister(SX1276REG_FrfLsb, v);
-  usleep(100);
 
   spi_->ReadRegister(SX1276REG_FrfMsb, v);
   Frf = uint32_t(v) << 16;
-  usleep(100);
   spi_->ReadRegister(SX1276REG_FrfMid, v);
-  usleep(100);
   Frf = Frf | (uint32_t(v) << 8);
-  usleep(100);
   spi_->ReadRegister(SX1276REG_FrfLsb, v);
   Frf = Frf | (uint32_t(v));
 
@@ -192,11 +185,10 @@ bool SX1276Radio::ApplyDefaultLoraConfiguration()
   // Bit 4..6 --> max power : 10.8 + 0.6 * K  dBm i.e. 10.8, 11.4, 12, 12.6, 13.2, 13.8, 14.4
   // Bit 0..3 --> out power : Pout = pmax - 15 + pout : 0..15 --> -4.2..10.8 ; ... ; -0.6 .. 14
 
-  // Lets start at 12 max, 0dBm out (3) while in the lab
+  // Lets start at 12 max, 6dBm out (9) while in the lab
 
-  v = 0 | (0x2 << 4) | 3;
+  v = 0 | (0x2 << 4) | 9;
   spi_->WriteRegister(SX1276REG_PaConfig, v);
-  usleep(100);
 
   // TODO: Report node address
 
@@ -212,42 +204,64 @@ bool SX1276Radio::SendSimpleMessage(const char *payload)
   unsigned n = strlen(payload);
   if (n > 126) { fprintf(stderr, "Message too long; truncated!\n"); }
 
+  printf("%.126s", payload);
+
+  unsigned BW = 125000;
+  unsigned SF = 9;
+  float toa = (6.F+4.25F+8+ceil( (8*(n+1)-4*SF+28+16)/(4*SF))*6.F) * (1 << SF) / BW;
+  printf("Predicted time on air: %f\n", toa);
+
   // LoRa Standby
   spi_->WriteRegister(SX1276REG_OpMode, 0x81);
-  usleep(100);
-
-  spi_->WriteRegister(SX1276REG_IrqFlags, 0xff);
-  usleep(100);
-
-  spi_->WriteRegister(SX1276REG_PayloadLength, n+1);
-  usleep(100);
+  usleep(10000);
 
   // Reset TX FIFO
   spi_->WriteRegister(SX1276REG_FifoTxBaseAddr, 0x80);
-  usleep(100);
   spi_->WriteRegister(SX1276REG_FifoAddrPtr, 0x80);
-  usleep(100);
-
-  // TODO: readback and check
+  // Payload length includes zero terminator
+  spi_->WriteRegister(SX1276REG_PayloadLength, n+1);
 
   for (int b=0; b <= n; b++) {
+    spi_->ReadRegister(SX1276REG_FifoAddrPtr, v);
     spi_->WriteRegister(SX1276REG_Fifo, payload[b]);
-    usleep(25);
+    usleep(100);
   }
+  spi_->ReadRegister(SX1276REG_FifoAddrPtr, v);
 
   // Read ptr register and compare
-  usleep(100);
-  spi_->ReadRegister(SX1276REG_FifoAddrPtr, v);
-  if (v != 0x80 + n) { fprintf(stderr, "FIFO ptr mismatch, got %.2x expected %.2x\n", (int)v, (int)(0x80+n)); return false; }
+  if (v != 0x80 + n + 1) { fprintf(stderr, "FIFO ptr mismatch, got %.2x expected %.2x\n", (int)v, (int)(0x80+n+1)); return false; }
 
   // TX mode
-  spi_->WriteRegister(SX1276REG_OpMode, 0x83);
+  spi_->WriteRegister(SX1276REG_IrqFlagsMask, 0x08);
+  spi_->WriteRegister(SX1276REG_IrqFlags, 0xff);
   usleep(100);
+  spi_->ReadRegister(SX1276REG_IrqFlags, v);
+  usleep(100);
+  spi_->WriteRegister(SX1276REG_OpMode, 0x83);
+  usleep(100); // waiting too long here will fail intermittently!
   spi_->ReadRegister(SX1276REG_OpMode, v);
-  if (v != 0x83) { fprintf(stderr, "Unable to enter TX mode\n"); return false; }
+  if (v != 0x83) { fprintf(stderr, "Unable to enter TX mode\n"); spi_->ReadRegister(SX1276REG_IrqFlags, v); return false; }
 
   // Wait until TX DONE, or timeout
   // We should calculate it; for the moment just wait 1 second
 
-
+  steady_clock::time_point t0 = steady_clock::now();
+  steady_clock::time_point t1 = t0 + boost::chrono::milliseconds(1000); // 1 second is way overkill
+  bool done = false;
+  do {
+    spi_->ReadRegister(SX1276REG_IrqFlags, v);
+    if (v & 0x08) {
+      usleep(1000);
+    } else {
+      done = true;
+      break;
+    }
+  } while (steady_clock::now() < t1);
+  if (done) {
+    //spi_->WriteRegister(SX1276REG_OpMode, 0x81);
+    usleep(10000);
+    return true;
+  }    
+  fprintf(stderr, "TxDone timeout!\n");
+  return false;
 }

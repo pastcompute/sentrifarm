@@ -29,18 +29,17 @@ bool bp_bitbang_cmd(int fd, uint8_t cmd_byte)
   return (n==1 && cmd_byte == 0x1);
 }
 
-bool bp_bitbang_spi_write_one(int fd, uint8_t reg, uint8_t value, uint8_t *result)
+bool bp_bitbang_spi_write_one(int fd, uint8_t reg, uint8_t value)
 {
   int8_t reg_mask = reg | 0x80;
-  uint8_t cmd[7] = { 0x04, 0, 2, 0, 1, reg_mask, value };
+  uint8_t cmd[7] = { 0x04, 0, 2, 0, 0, reg_mask, value };
   write(fd, &cmd, 7);
 
   // 32 kHz?
   usleep(1000); // 1000
-  int n=bp_serial_readto(fd, &cmd, 2);
-  if (n!=2 || cmd[0] != 0x1 ) { return false; }
+  int n=bp_serial_readto(fd, &cmd, 1);
+  if (n!=1 || cmd[0] != 0x1 ) { return false; }
 
-  *result = cmd[1];
   return true;
 }
 
@@ -150,7 +149,7 @@ bool bp_spi_config(int fd)
   // SPI speed = 30 kHz
   // 000=30kHz, 001=125kHz, 010=250kHz, 011=1MHz, 100=2MHz, 101=2.6MHz, 110=4MHz, 111=8MHz
   // struggles to dump at 1M
-  ok=bp_bitbang_cmd(fd, 0x63);             // 0x60 == 0x60 | (30k = 000)
+  ok=bp_bitbang_cmd(fd, 0x62);             // 0x60 == 0x60 | (30k = 000)
   if (!ok) { perror("Unable to issue SPI SPEED"); return false; }
 
   // Enable CS

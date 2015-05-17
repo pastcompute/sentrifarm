@@ -25,4 +25,12 @@ int main(int argc, char* argv[])
   cout << format("Version: %.2x\n") % radio.QueryVersion();
 
   radio.ApplyDefaultLoraConfiguration();
+
+  while (true) {
+    if (!radio.SendSimpleMessage("Hello, World!\n")) {
+      break;
+    }
+    usleep(100000);
+  }
+  return 1;
 }

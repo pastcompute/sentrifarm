@@ -67,7 +67,6 @@ bool BusPirateSPI::ReadRegister(uint8_t reg, uint8_t& result)
 
 bool BusPirateSPI::WriteRegister(uint8_t reg, uint8_t value)
 {
-  uint8_t result = 0;
-  printf("[W] %.2x <-- %.2x\n", (int)reg, (int)value);
-  return bp_bitbang_spi_write_one(fd_, reg, value, &result);
+  printf("[W] %.2x <-- %.2x\n", (int)reg & 0x7f, (int)value);
+  return bp_bitbang_spi_write_one(fd_, reg | 0x80, value);
 }

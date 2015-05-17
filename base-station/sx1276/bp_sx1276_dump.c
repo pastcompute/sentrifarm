@@ -80,9 +80,18 @@ int main(int argc, char *argv[])
 {
   const bool reset_on_exit = false;
   const char *port = "/dev/ttyUSB0";
-  if (argc > 1) { port = argv[1]; }
 
-	int fd = open(port, O_RDWR | O_NOCTTY);
+  // dodgy cmd line args
+  int cmd = 1;
+  bool skip_reset = false;
+  if (argc > 1 && strcmp(argv[1], "--skip-reset")==0) {
+    skip_reset = true;
+    cmd ++;
+  }
+
+  if (cmd < argc) { port = argv[cmd]; }
+
+  int fd = open(port, O_RDWR | O_NOCTTY);
   if (fd == -1) { perror("Unable to open serial port"); return 1; }
 
   bool ok = true;
@@ -97,11 +106,17 @@ int main(int argc, char *argv[])
   if (ok) {
     printf("OK.\n");
 
-    bp_power_on(fd);
+    // FIXME: either make the following optional, or only power up if not already powered...
+    if (!skip_reset) {
+      bp_power_on(fd);
+    }
     bp_spi_config(fd);
 
-		// Without this the first register read sometimes misses
-		usleep(1000);
+    // Without this the first register read sometimes misses.
+    usleep(1000);
+    if (skip_reset) {
+      usleep(100000);
+    }
 
     uint8_t version = 0;
     if (!bp_bitbang_spi_read_one(fd, 0x42, &version)) { perror("Failed to read SX1276 version"); }    else printf("SX1276: Version=%.02x\n", (int)version);

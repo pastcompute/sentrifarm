@@ -18,24 +18,29 @@ class SPI;
 class SX1276Radio
 {
 public:
+	/// This radio instance is bound to a particular pre-configured SPI implementation and bus device.
   SX1276Radio(boost::shared_ptr<SPI> spi);
   ~SX1276Radio();
 
+	/// True if the fault flag was set by a prior operation
   bool fault() const;
 
+	/// Query and return the version reported by the SX1276 chip
   int QueryVersion();
 
   /// Reset the module to our specific configuration.
   /// This should always be called immediately after performing a hardware reset
   bool ApplyDefaultLoraConfiguration();
 
+	/// Send a message, including zero terminator, truncated by maximum payload length.
+	/// No headers or protocol layer are used, this is only a test / beacon function.
   bool SendSimpleMessage(const char *payload);
 
 private:
   uint8_t StandbyMode();
 
   boost::shared_ptr<SPI> spi_;   ///< Reference to SPI communication instance
-  bool fault_;
+  bool fault_;                   ///< True if something went wrong
 };
 
 #endif // SX1276_HPP__
