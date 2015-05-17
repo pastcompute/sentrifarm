@@ -1,5 +1,6 @@
 #include "sx1276.hpp"
 #include "spi.hpp"
+#include "misc.h"
 #include <string.h>
 
 #include <boost/chrono/time_point.hpp>
@@ -83,13 +84,26 @@ inline unsigned BitfieldToBandwidth(unsigned bitfield)
 
 SX1276Radio::SX1276Radio(boost::shared_ptr<SPI> spi)
 : spi_(spi),
-  fault_(false)
+  fault_(false),
+  max_tx_payload_bytes_(0x80),
+  frequency_hz_(918000000)
 {
 }
 
 SX1276Radio::~SX1276Radio()
 {
 }
+
+bool SX1276Radio::WriteRegisterVerify(uint8_t reg, uint8_t value, unsigned intra_delay)
+{
+  if (!spi_->WriteRegister(reg, value)) { fault_=true; return false; }
+  usleep(intra_delay);
+  uint8_t check;
+  if (!spi_->ReadRegister(reg, check)) { fault_=true; return false; }
+  if (check != value) { PR_ERROR("Failed to verify write of register %.02x\n", (int)reg); fault_=true; return false; }
+  return true;
+}
+
 
 int SX1276Radio::QueryVersion()
 {
@@ -100,35 +114,39 @@ int SX1276Radio::QueryVersion()
 
 uint8_t SX1276Radio::StandbyMode()
 {
-  uint8_t v;
-  if (fault_ = !spi_->ReadRegister(SX1276REG_OpMode, v)) return 0;
-  if (fault_ = !spi_->WriteRegister(SX1276REG_OpMode, 0x81)) return 0;
+  uint8_t v=0;
+  spi_->ReadRegister(SX1276REG_OpMode, v);
+  if (!fault_) { spi_->WriteRegister(SX1276REG_OpMode, 0x81); }
   return v;
 }
 
 // Set everything to a known default state for LoRa communication
 bool SX1276Radio::ApplyDefaultLoraConfiguration()
 {
+  fault_ = false;
+
   uint8_t v;
   // To switch to LoRa mode if we ere in OOK for some reason need to go to sleep mode first : zero 3 lower bits
   spi_->ReadRegister(SX1276REG_OpMode, v);
-  spi_->WriteRegister(SX1276REG_OpMode, v & 0xf8);
-  // usleep seems to be empriically needed for bus pirate. TBD for spidev...
+  WriteRegisterVerify(SX1276REG_OpMode, v & 0xf8);
+
+  // usleep seems to be emprically needed for bus pirate. TBD for spidev...
   usleep(10000);
 
-
   // Switch to LoRa mode in sleep mode, then turn on standby mode
-  spi_->WriteRegister(SX1276REG_OpMode, 0x80);
-  spi_->WriteRegister(SX1276REG_OpMode, 0x81);
+  WriteRegisterVerify(SX1276REG_OpMode, 0x80);
+  WriteRegisterVerify(SX1276REG_OpMode, 0x81);
 
-  spi_->WriteRegister(SX1276REG_MaxPayloadLength, 0x80);
+  // Maximum payload
+  WriteRegisterVerify(SX1276REG_MaxPayloadLength, max_tx_payload_bytes_);
 
   // Switch to maximum current mode (0x1B == 240mA), and enable overcurrent protection
-  spi_->WriteRegister(SX1276REG_Ocp, 0x20 | 0x1B);
+  WriteRegisterVerify(SX1276REG_Ocp, 0x20 | 0x1B);
 
-  // Re-read mode and check we set it as expected
+  // Re-read operating mode and check we set it as expected
   spi_->ReadRegister(SX1276REG_OpMode, v);
-  if (v != 0x81) {
+  if (fault_ || v != 0x81) {
+    fault_ = true;
     fprintf(stderr, "Unable to enter LoRa standby mode or configure the chip!\n");
     return false;
   }
@@ -146,29 +164,27 @@ bool SX1276Radio::ApplyDefaultLoraConfiguration()
 
   // 125kHz, 4/6, explicit header
   v = (SX1276_LORA_BW_125000 << 4) | (SX1276_LORA_CODING_RATE_4_6) | 0x0;
-  spi_->WriteRegister(SX1276REG_ModemConfig1, v);
+  WriteRegisterVerify(SX1276REG_ModemConfig1, v);
 
   // SF9, normal (not continuous) mode, CRC, and upper 2 bits of symbol timeout (maximum i.e. 1023)
   // We use 255, or 255 x (2^9)/125000 or ~1 second
   v = (0x9 << 4) | (0 << 3)| (1 << 2) | 0x0;
-  spi_->WriteRegister(SX1276REG_ModemConfig2, v);
+  WriteRegisterVerify(SX1276REG_ModemConfig2, v);
   v = 0xff;
-  spi_->WriteRegister(SX1276REG_SymbTimeoutLsb, v);
+  WriteRegisterVerify(SX1276REG_SymbTimeoutLsb, v);
 
   // Carrier frequency
   // { F(Xosc) x F } / 2^19
   // Resolution is 61.035 Hz | Xosc=32MHz, default F=0x6c8000 --> 434 MHz
   // AU ISM Band >= 915 MHz
   // Frequency latches when Lsb is written
-  // Lets start with 9185 MHz...
-  uint64_t Frf = 918000000ULL * (1 << 19) / 32000000ULL;
-  // printf("Frf=%.8x\n", (uint32_t)Frf);
+  uint64_t Frf = (uint64_t)frequency_hz_ * (1 << 19) / 32000000ULL;
   v = Frf >> 16;
-  spi_->WriteRegister(SX1276REG_FrfMsb, v);
+  WriteRegisterVerify(SX1276REG_FrfMsb, v);
   v = Frf >> 8;
-  spi_->WriteRegister(SX1276REG_FrfMid, v);
+  WriteRegisterVerify(SX1276REG_FrfMid, v);
   v = Frf & 0xff;
-  spi_->WriteRegister(SX1276REG_FrfLsb, v);
+  WriteRegisterVerify(SX1276REG_FrfLsb, v);
 
   spi_->ReadRegister(SX1276REG_FrfMsb, v);
   Frf = uint32_t(v) << 16;
@@ -188,7 +204,7 @@ bool SX1276Radio::ApplyDefaultLoraConfiguration()
   // Lets start at 12 max, 6dBm out (9) while in the lab
 
   v = 0 | (0x2 << 4) | 9;
-  spi_->WriteRegister(SX1276REG_PaConfig, v);
+  WriteRegisterVerify(SX1276REG_PaConfig, v);
 
   // TODO: Report node address
 
@@ -212,35 +228,33 @@ bool SX1276Radio::SendSimpleMessage(const char *payload)
   printf("Predicted time on air: %f\n", toa);
 
   // LoRa Standby
-  spi_->WriteRegister(SX1276REG_OpMode, 0x81);
+  WriteRegisterVerify(SX1276REG_OpMode, 0x81);
   usleep(10000);
 
   // Reset TX FIFO
-  spi_->WriteRegister(SX1276REG_FifoTxBaseAddr, 0x80);
-  spi_->WriteRegister(SX1276REG_FifoAddrPtr, 0x80);
+  WriteRegisterVerify(SX1276REG_FifoTxBaseAddr, 0x80);
+  WriteRegisterVerify(SX1276REG_FifoAddrPtr, 0x80);
   // Payload length includes zero terminator
-  spi_->WriteRegister(SX1276REG_PayloadLength, n+1);
+  WriteRegisterVerify(SX1276REG_PayloadLength, n+1);
 
   for (int b=0; b <= n; b++) {
     spi_->ReadRegister(SX1276REG_FifoAddrPtr, v);
-    spi_->WriteRegister(SX1276REG_Fifo, payload[b]);
+    spi_->WriteRegister(SX1276REG_Fifo, payload[b]); // Note: we dont verify
     usleep(100);
   }
   spi_->ReadRegister(SX1276REG_FifoAddrPtr, v);
 
   // Read ptr register and compare
-  if (v != 0x80 + n + 1) { fprintf(stderr, "FIFO ptr mismatch, got %.2x expected %.2x\n", (int)v, (int)(0x80+n+1)); return false; }
+  if (v != 0x80 + n + 1) { fprintf(stderr, "FIFO ptr mismatch, got %.2x expected %.2x\n", (int)v, (int)(0x80+n+1)); fault_ = true; return false; }
 
   // TX mode
-  spi_->WriteRegister(SX1276REG_IrqFlagsMask, 0x08);
+  WriteRegisterVerify(SX1276REG_IrqFlagsMask, 0x08);
   spi_->WriteRegister(SX1276REG_IrqFlags, 0xff);
   usleep(100);
   spi_->ReadRegister(SX1276REG_IrqFlags, v);
   usleep(100);
-  spi_->WriteRegister(SX1276REG_OpMode, 0x83);
-  usleep(100); // waiting too long here will fail intermittently!
-  spi_->ReadRegister(SX1276REG_OpMode, v);
-  if (v != 0x83) { fprintf(stderr, "Unable to enter TX mode\n"); spi_->ReadRegister(SX1276REG_IrqFlags, v); return false; }
+  WriteRegisterVerify(SX1276REG_OpMode, 0x83);
+  if (fault_) { fprintf(stderr, "Unable to enter TX mode\n"); spi_->ReadRegister(SX1276REG_IrqFlags, v); return false; }
 
   // Wait until TX DONE, or timeout
   // We should calculate it; for the moment just wait 1 second

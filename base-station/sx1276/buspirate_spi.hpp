@@ -16,7 +16,7 @@ public:
   ~BusPirateSPI();
 
   bool Open(const char *ttydev);
-  virtual bool IsOpen() const { return fd_ < 0; }
+  virtual bool is_open() const { return fd_ < 0; }
 
   const char *device() const { return ttydev_.c_str(); }
 

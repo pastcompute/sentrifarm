@@ -11,7 +11,7 @@ public:
   ~SpidevSPI();
 
   bool Open(const char *spidev);
-  virtual bool IsOpen() const { return fd_ < 0; }
+  virtual bool is_open() const { return fd_ < 0; }
 
   const char *device() const { return spidev_.c_str(); }
 

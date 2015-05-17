@@ -32,15 +32,20 @@ public:
   /// This should always be called immediately after performing a hardware reset
   bool ApplyDefaultLoraConfiguration();
 
-  /// Send a message, including zero terminator, truncated by maximum payload length.
+  /// Send an ASCII message, including zero terminator, truncated by maximum payload length.
   /// No headers or protocol layer are used, this is only a test / beacon function.
   bool SendSimpleMessage(const char *payload);
 
 private:
   uint8_t StandbyMode();
 
+  bool WriteRegisterVerify(uint8_t reg, uint8_t value, unsigned intra_delay=100);
+
   boost::shared_ptr<SPI> spi_;   ///< Reference to SPI communication instance
   bool fault_;                   ///< True if something went wrong
+
+  uint8_t max_tx_payload_bytes_;
+  uint32_t frequency_hz_;
 };
 
 #endif // SX1276_HPP__

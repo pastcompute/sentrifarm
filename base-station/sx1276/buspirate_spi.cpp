@@ -61,12 +61,12 @@ bool BusPirateSPI::Powerup()
 bool BusPirateSPI::ReadRegister(uint8_t reg, uint8_t& result)
 {
   bool ok = bp_bitbang_spi_read_one(fd_, reg, &result);
-  printf("[R] %.2x --> %.2x\n", (int)reg, (int)result);
+  if (trace_reads()) { fprintf(stderr, "[R] %.2x --> %.2x\n", (int)reg, (int)result); }
   return ok;
 }
 
 bool BusPirateSPI::WriteRegister(uint8_t reg, uint8_t value)
 {
-  printf("[W] %.2x <-- %.2x\n", (int)reg & 0x7f, (int)value);
+  if (trace_writes()) { fprintf(stderr, "[W] %.2x <-- %.2x\n", (int)reg, (int)value); }
   return bp_bitbang_spi_write_one(fd_, reg | 0x80, value);
 }
