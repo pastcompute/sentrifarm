@@ -16,7 +16,7 @@ shared_ptr<SPI> SPIFactory::GetInstance(const char *device)
     return spi;
   }
   shared_ptr<BusPirateSPI> spi(new BusPirateSPI);
-  if (!spi->Open(device)) { return NULL; }
-  if (!spi->Powerup()) { return NULL; }
+  if (!spi->Open(device)) { return shared_ptr<BusPirateSPI>(); }
+  if (!spi->Powerup()) { return shared_ptr<BusPirateSPI>(); }
   return spi;
 }

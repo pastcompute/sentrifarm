@@ -12,13 +12,16 @@
 #include <linux/spi/spidev.h>
 
 SpidevSPI::SpidevSPI()
-: fd_(-1)
 {
 }
 
 SpidevSPI::~SpidevSPI()
 {
   close(fd_);
+}
+
+void SpidevSPI::AssertReset()
+{
 }
 
 bool SpidevSPI::Open(const char *spidev)

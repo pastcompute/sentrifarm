@@ -8,7 +8,7 @@ class SpidevSPI : public SPI
 {
 public:
   SpidevSPI();
-  ~SpidevSPI();
+  virtual ~SpidevSPI();
 
   bool Open(const char *spidev);
   virtual bool is_open() const { return fd_ < 0; }
@@ -17,12 +17,12 @@ public:
 
   virtual bool ReadRegister(uint8_t reg, uint8_t& result);
   virtual bool WriteRegister(uint8_t reg, uint8_t value);
+	virtual void AssertReset();
 
 private:
   bool ConfigureSPI();
 
   std::string spidev_;
-  int fd_;
 };
 
 #endif // SPIDEV_SPI_HPP

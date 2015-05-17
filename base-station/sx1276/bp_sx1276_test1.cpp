@@ -8,6 +8,13 @@ using boost::shared_ptr;
 using boost::format;
 using std::cout;
 
+inline std::string safe_str(const char *m)
+{
+	std::string result;
+	for (; *m; ) { char c = *m++; result += iscntrl(c) ? '.' : c; }
+	return result;
+}
+
 int main(int argc, char* argv[])
 {
   if (argc < 2) { fprintf(stderr, "Usage: %s <spidev>", argv[0]); return 1; }
@@ -26,11 +33,26 @@ int main(int argc, char* argv[])
 
   radio.ApplyDefaultLoraConfiguration();
 
+	if (radio.fault()) return 1;
+
+	const char *msg = "Hello, World!\n";
+	printf("Beacon message: '%s'\n", safe_str(msg).c_str());
+	printf("Predicted time on air: %fs\n", radio.PredictTimeOnAir(msg));
+
+	long total = 0;
+	long faultCount = 0;
   while (true) {
-    if (!radio.SendSimpleMessage("Hello, World!\n")) {
-      break;
-    }
-    usleep(100000);
+		total++;
+    if (radio.SendSimpleMessage(msg)) { printf("."); fflush(stdout); radio.StandbyMode(); usleep(200000); continue; }
+		radio.StandbyMode();
+		printf("\n");
+		faultCount++;
+		PR_ERROR("Fault on send detected: %ld of %ld\n", faultCount, total);
+		printf("Beacon message: '%s'\n", safe_str(msg).c_str());
+		printf("Predicted time on air: %fs\n", radio.PredictTimeOnAir(msg));
+		spi->AssertReset();
+	  radio.ApplyDefaultLoraConfiguration();
+		usleep(500000);
   }
   return 1;
 }

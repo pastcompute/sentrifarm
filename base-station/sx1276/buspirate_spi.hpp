@@ -13,7 +13,7 @@ class BusPirateSPI : public SPI
 {
 public:
   BusPirateSPI();
-  ~BusPirateSPI();
+  virtual ~BusPirateSPI();
 
   bool Open(const char *ttydev);
   virtual bool is_open() const { return fd_ < 0; }
@@ -24,6 +24,7 @@ public:
 
   virtual bool ReadRegister(uint8_t reg, uint8_t& result);
   virtual bool WriteRegister(uint8_t reg, uint8_t value);
+	virtual void AssertReset();
 
 private:
   bool ConfigSerial();
@@ -31,7 +32,6 @@ private:
   bool ConfigSPI();
 
   std::string ttydev_;
-  int fd_;
 };
 
 #endif // BUSPIRATE_SPI_HPP

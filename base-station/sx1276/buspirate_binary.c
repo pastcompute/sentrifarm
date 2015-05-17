@@ -11,11 +11,11 @@
 int bp_serial_readto(int fd, void* buf, unsigned bytes)
 {
   int n = bytes;
-  int timeout = 0;
-  while (n > 0 && timeout < 2) { // was <10 but takes forever first time after powerup
+  int retry = 0;
+  while (n > 0 && retry < 3) { // was <10 but takes forever first time after powerup
     int er = read(fd, buf, n);
-    if (er == -1) { return -1; }
-    if (er == 0) { timeout++; }
+    if (er == -1) { perror("Read fault"); return -1; }
+    if (er == 0) { retry++; }
     n -= er;
   }
   return bytes;
@@ -38,7 +38,8 @@ bool bp_bitbang_spi_write_one(int fd, uint8_t reg, uint8_t value)
   // 32 kHz?
   usleep(1000); // 1000
   int n=bp_serial_readto(fd, &cmd, 1);
-  if (n!=1 || cmd[0] != 0x1 ) { return false; }
+  if (n==0 || cmd[0] != 0x1 ) { return false; }
+	// if (n > 1) ...
 
   return true;
 }

@@ -9,6 +9,8 @@
 class SPI
 {
 public:
+	SPI() : fd_(-1), trace_reads_(false), trace_writes_(false) {}
+
   virtual bool is_open() const = 0;
 
   /// Read byte value of single byte value register
@@ -22,15 +24,22 @@ public:
   /// @return false on error
   virtual bool WriteRegister(uint8_t reg, uint8_t value) = 0;
 
-  inline void TraceReads(bool enabled) { m_traceReads = enabled; }
-  inline void TraceWrites(bool enabled) { m_traceWrites = enabled; }
+	virtual void AssertReset() = 0;
 
-  inline bool trace_reads() const { return m_traceReads; }
-  inline bool trace_writes() const { return m_traceWrites; }
+	int fd() const { return fd_; }
+
+  inline void TraceReads(bool enabled) { trace_reads_ = enabled; }
+  inline void TraceWrites(bool enabled) { trace_writes_ = enabled; }
+
+  inline bool trace_reads() const { return trace_reads_; }
+  inline bool trace_writes() const { return trace_writes_; }
+
+protected:
+	int fd_;
 
 private:
-  bool m_traceReads;
-  bool m_traceWrites;
+  bool trace_reads_;
+  bool trace_writes_;
 };
 
 #endif // SPI_HPP__

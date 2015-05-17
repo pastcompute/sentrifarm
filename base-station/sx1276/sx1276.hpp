@@ -23,7 +23,7 @@ public:
   ~SX1276Radio();
 
   /// True if the fault flag was set by a prior operation
-  bool fault() const;
+  bool fault() const { return fault_; }
 
   /// Query and return the version reported by the SX1276 chip
   int QueryVersion();
@@ -36,10 +36,14 @@ public:
   /// No headers or protocol layer are used, this is only a test / beacon function.
   bool SendSimpleMessage(const char *payload);
 
-private:
   uint8_t StandbyMode();
 
+	float PredictTimeOnAir(const char *payload) const;
+
+private:
+
   bool WriteRegisterVerify(uint8_t reg, uint8_t value, unsigned intra_delay=100);
+  bool ReadRegisterHarder(uint8_t reg, uint8_t& value, unsigned retry=3);
 
   boost::shared_ptr<SPI> spi_;   ///< Reference to SPI communication instance
   bool fault_;                   ///< True if something went wrong

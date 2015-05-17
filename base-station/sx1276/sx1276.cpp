@@ -94,14 +94,35 @@ SX1276Radio::~SX1276Radio()
 {
 }
 
+/// The Bus Pirate interface seems to be intermittently susceptible to flipping a bit
+/// But we seem to be able to copy with that by trying again
+bool SX1276Radio::ReadRegisterHarder(uint8_t reg, uint8_t& value, unsigned retries)
+{
+	for (int r=0; r < retries; r++) {
+		if (spi_->ReadRegister(reg, value)) return true;
+	}
+	fault_ = true;
+  PR_ERROR("Retry fail reading register %.02x\n", (int)reg);
+	return false;
+}
+
+/// The Bus Pirate interface seems to be intermittently susceptible to flipping a bit
+/// But we seem to be able to copy with that by trying again
 bool SX1276Radio::WriteRegisterVerify(uint8_t reg, uint8_t value, unsigned intra_delay)
 {
-  if (!spi_->WriteRegister(reg, value)) { fault_=true; return false; }
-  usleep(intra_delay);
-  uint8_t check;
-  if (!spi_->ReadRegister(reg, check)) { fault_=true; return false; }
-  if (check != value) { PR_ERROR("Failed to verify write of register %.02x\n", (int)reg); fault_=true; return false; }
-  return true;
+  bool ok;
+  for (int retry=0; retry < 2; retry++) {
+    uint8_t check = ~value;
+    ok = spi_->WriteRegister(reg, value);
+    if (ok) {
+      usleep(intra_delay);
+      ok = spi_->ReadRegister(reg, check);
+    }
+    if (ok && check == value) { return true; }
+  }
+  PR_ERROR("Failed to verify write of register %.02x\n", (int)reg);
+  fault_=true;
+  return false;
 }
 
 
@@ -186,11 +207,11 @@ bool SX1276Radio::ApplyDefaultLoraConfiguration()
   v = Frf & 0xff;
   WriteRegisterVerify(SX1276REG_FrfLsb, v);
 
-  spi_->ReadRegister(SX1276REG_FrfMsb, v);
+  ReadRegisterHarder(SX1276REG_FrfMsb, v);
   Frf = uint32_t(v) << 16;
-  spi_->ReadRegister(SX1276REG_FrfMid, v);
+  ReadRegisterHarder(SX1276REG_FrfMid, v);
   Frf = Frf | (uint32_t(v) << 8);
-  spi_->ReadRegister(SX1276REG_FrfLsb, v);
+  ReadRegisterHarder(SX1276REG_FrfLsb, v);
   Frf = Frf | (uint32_t(v));
 
   int64_t fcheck = (32000000ULL * Frf) >> 19;
@@ -212,6 +233,14 @@ bool SX1276Radio::ApplyDefaultLoraConfiguration()
   return true;
 }
 
+float SX1276Radio::PredictTimeOnAir(const char *payload) const
+{
+  unsigned BW = 125000;
+  unsigned SF = 9;
+  float toa = (6.F+4.25F+8+ceil( (8*(strlen(payload)+1)-4*SF+28+16)/(4*SF))*6.F) * (1 << SF) / BW;
+  return toa;
+}
+
 /// Just send raw unframed data i.e. ASCII, zero terminated
 /// Only useful as a beacon but enough to get us started
 bool SX1276Radio::SendSimpleMessage(const char *payload)
@@ -220,12 +249,7 @@ bool SX1276Radio::SendSimpleMessage(const char *payload)
   unsigned n = strlen(payload);
   if (n > 126) { fprintf(stderr, "Message too long; truncated!\n"); }
 
-  printf("%.126s", payload);
-
-  unsigned BW = 125000;
-  unsigned SF = 9;
-  float toa = (6.F+4.25F+8+ceil( (8*(n+1)-4*SF+28+16)/(4*SF))*6.F) * (1 << SF) / BW;
-  printf("Predicted time on air: %f\n", toa);
+  // printf("%.126s", payload);
 
   // LoRa Standby
   WriteRegisterVerify(SX1276REG_OpMode, 0x81);
@@ -237,24 +261,32 @@ bool SX1276Radio::SendSimpleMessage(const char *payload)
   // Payload length includes zero terminator
   WriteRegisterVerify(SX1276REG_PayloadLength, n+1);
 
-  for (int b=0; b <= n; b++) {
-    spi_->ReadRegister(SX1276REG_FifoAddrPtr, v);
-    spi_->WriteRegister(SX1276REG_Fifo, payload[b]); // Note: we dont verify
-    usleep(100);
-  }
-  spi_->ReadRegister(SX1276REG_FifoAddrPtr, v);
+  usleep(100);
+	uint8_t fifo_pos;
+  ReadRegisterHarder(SX1276REG_FifoAddrPtr, fifo_pos);
 
-  // Read ptr register and compare
-  if (v != 0x80 + n + 1) { fprintf(stderr, "FIFO ptr mismatch, got %.2x expected %.2x\n", (int)v, (int)(0x80+n+1)); fault_ = true; return false; }
+  for (int b=0; b <= n; b++) {
+    spi_->WriteRegister(SX1276REG_Fifo, payload[b]); // Note: we cant verify
+    usleep(100);
+	  ReadRegisterHarder(SX1276REG_FifoAddrPtr, v);
+		if (v - fifo_pos != b + 1) {
+			fault_ = true;
+			PR_ERROR("Failed to write byte to FIFO\n");
+			return false;
+		}
+  }
+  ReadRegisterHarder(SX1276REG_FifoAddrPtr, v);
+  if (v != 0x80 + n + 1) {
+		fault_ = true;
+		PR_ERROR("FIFO ptr mismatch, got %.2x expected %.2x\n", (int)v, (int)(0x80+n+1));
+		return false;
+	}
 
   // TX mode
   WriteRegisterVerify(SX1276REG_IrqFlagsMask, 0x08);
-  spi_->WriteRegister(SX1276REG_IrqFlags, 0xff);
-  usleep(100);
-  spi_->ReadRegister(SX1276REG_IrqFlags, v);
-  usleep(100);
+  spi_->WriteRegister(SX1276REG_IrqFlags, 0xff); // cant verify; clears on 0xff write
   WriteRegisterVerify(SX1276REG_OpMode, 0x83);
-  if (fault_) { fprintf(stderr, "Unable to enter TX mode\n"); spi_->ReadRegister(SX1276REG_IrqFlags, v); return false; }
+  if (fault_) { PR_ERROR("Unable to enter TX mode\n"); spi_->ReadRegister(SX1276REG_IrqFlags, v); return false; }
 
   // Wait until TX DONE, or timeout
   // We should calculate it; for the moment just wait 1 second
@@ -263,7 +295,8 @@ bool SX1276Radio::SendSimpleMessage(const char *payload)
   steady_clock::time_point t1 = t0 + boost::chrono::milliseconds(1000); // 1 second is way overkill
   bool done = false;
   do {
-    spi_->ReadRegister(SX1276REG_IrqFlags, v);
+		v = 0x5a;
+    if (!ReadRegisterHarder(SX1276REG_IrqFlags, v, 4)) break;
     if (v & 0x08) {
       usleep(1000);
     } else {
@@ -272,10 +305,9 @@ bool SX1276Radio::SendSimpleMessage(const char *payload)
     }
   } while (steady_clock::now() < t1);
   if (done) {
-    //spi_->WriteRegister(SX1276REG_OpMode, 0x81);
-    usleep(10000);
     return true;
-  }    
-  fprintf(stderr, "TxDone timeout!\n");
+  } 
+	if (fault_) { PR_ERROR("Fault reading IrqFlags register\n"); return false; }
+  PR_ERROR("TxDone timeout!\n");
   return false;
 }
