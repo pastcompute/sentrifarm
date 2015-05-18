@@ -12,8 +12,6 @@ OWRT_STAGING=$(shell pwd)/openwrt/staging_dir
 
 all: prereq build
 
-prebuild: $(TREE)/feeds.conf patch openwrt.config $(TREE)/tmp/.kconfig-ar71xx_generic
-
 sx1276-clean:
 	@rm -rf build.sx1276
 
@@ -23,11 +21,12 @@ sx1276:
 											cmake -DCMAKE_TOOLCHAIN_FILE=../carambola2/toolchain.cmake ../../sx1276
 	@cd build.sx1276 && export STAGING_DIR=$(OWRT_STAGING) && make
 
+prebuild: $(TREE)/feeds.conf $(TREE)/.config patch $(TREE)/tmp/.kconfig-ar71xx_generic
 
 pre2: $(TREE)/tmp/.kconfig-ar71xx_generic
 
-openwrt.config:
-	@cp -v $^ $(TREE)/.config && cd $(TREE) && make defconfig
+$(TREE)/.config : $(CONF)
+	cp -v $^ $(TREE)/.config && cd $(TREE) && make defconfig
 
 build: prebuild
 	cd $(TREE) ; make -j4
