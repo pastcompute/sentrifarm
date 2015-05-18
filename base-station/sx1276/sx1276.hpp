@@ -38,7 +38,7 @@ public:
 
   uint8_t StandbyMode();
 
-	float PredictTimeOnAir(const char *payload) const;
+  float PredictTimeOnAir(const char *payload) const;
 
 private:
 

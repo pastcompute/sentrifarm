@@ -98,12 +98,12 @@ SX1276Radio::~SX1276Radio()
 /// But we seem to be able to copy with that by trying again
 bool SX1276Radio::ReadRegisterHarder(uint8_t reg, uint8_t& value, unsigned retries)
 {
-	for (int r=0; r < retries; r++) {
-		if (spi_->ReadRegister(reg, value)) return true;
-	}
-	fault_ = true;
+  for (int r=0; r < retries; r++) {
+    if (spi_->ReadRegister(reg, value)) return true;
+  }
+  fault_ = true;
   PR_ERROR("Retry fail reading register %.02x\n", (int)reg);
-	return false;
+  return false;
 }
 
 /// The Bus Pirate interface seems to be intermittently susceptible to flipping a bit
@@ -262,25 +262,25 @@ bool SX1276Radio::SendSimpleMessage(const char *payload)
   WriteRegisterVerify(SX1276REG_PayloadLength, n+1);
 
   usleep(100);
-	uint8_t fifo_pos;
+  uint8_t fifo_pos;
   ReadRegisterHarder(SX1276REG_FifoAddrPtr, fifo_pos);
 
   for (int b=0; b <= n; b++) {
     spi_->WriteRegister(SX1276REG_Fifo, payload[b]); // Note: we cant verify
     usleep(100);
-	  ReadRegisterHarder(SX1276REG_FifoAddrPtr, v);
-		if (v - fifo_pos != b + 1) {
-			fault_ = true;
-			PR_ERROR("Failed to write byte to FIFO\n");
-			return false;
-		}
+    ReadRegisterHarder(SX1276REG_FifoAddrPtr, v);
+    if (v - fifo_pos != b + 1) {
+      fault_ = true;
+      PR_ERROR("Failed to write byte to FIFO\n");
+      return false;
+    }
   }
   ReadRegisterHarder(SX1276REG_FifoAddrPtr, v);
   if (v != 0x80 + n + 1) {
-		fault_ = true;
-		PR_ERROR("FIFO ptr mismatch, got %.2x expected %.2x\n", (int)v, (int)(0x80+n+1));
-		return false;
-	}
+    fault_ = true;
+    PR_ERROR("FIFO ptr mismatch, got %.2x expected %.2x\n", (int)v, (int)(0x80+n+1));
+    return false;
+  }
 
   // TX mode
   WriteRegisterVerify(SX1276REG_IrqFlagsMask, 0x08);
@@ -295,7 +295,7 @@ bool SX1276Radio::SendSimpleMessage(const char *payload)
   steady_clock::time_point t1 = t0 + boost::chrono::milliseconds(1000); // 1 second is way overkill
   bool done = false;
   do {
-		v = 0x5a;
+    v = 0x5a;
     if (!ReadRegisterHarder(SX1276REG_IrqFlags, v, 4)) break;
     if (v & 0x08) {
       usleep(1000);
@@ -307,7 +307,7 @@ bool SX1276Radio::SendSimpleMessage(const char *payload)
   if (done) {
     return true;
   } 
-	if (fault_) { PR_ERROR("Fault reading IrqFlags register\n"); return false; }
+  if (fault_) { PR_ERROR("Fault reading IrqFlags register\n"); return false; }
   PR_ERROR("TxDone timeout!\n");
   return false;
 }

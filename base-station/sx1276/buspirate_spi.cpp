@@ -43,10 +43,10 @@ bool BusPirateSPI::ConfigSerial()
 
 bool BusPirateSPI::EnableBinaryMode()
 {
-	printf("Connecting to BusPirate...\n");
+  printf("Connecting to BusPirate...\n");
   bool ok = bp_enable_binary_spi_mode(fd_);
-	if (ok) { printf("OK.\n"); } else { printf("Error.\n"); }
-	return ok;
+  if (ok) { printf("OK.\n"); } else { printf("Error.\n"); }
+  return ok;
 }
 
 // Presently this function is hard coded to support inAir9 SPI. Config should perhaps be an arg.
@@ -62,12 +62,12 @@ bool BusPirateSPI::Powerup()
 
 void BusPirateSPI::AssertReset()
 {
-	bp_power_on(fd_);
+  bp_power_on(fd_);
 }
 
 bool BusPirateSPI::ReadRegister(uint8_t reg, uint8_t& result)
 {
-	usleep(100);
+  usleep(100);
   bool ok = bp_bitbang_spi_read_one(fd_, reg, &result);
   if (trace_reads()) { fprintf(stderr, "[R] %.2x --> %.2x\n", (int)reg, (int)result); }
   return ok;
@@ -76,6 +76,6 @@ bool BusPirateSPI::ReadRegister(uint8_t reg, uint8_t& result)
 bool BusPirateSPI::WriteRegister(uint8_t reg, uint8_t value)
 {
   if (trace_writes()) { fprintf(stderr, "[W] %.2x <-- %.2x\n", (int)reg, (int)value); }
-	usleep(100);
+  usleep(100);
   return bp_bitbang_spi_write_one(fd_, reg | 0x80, value);
 }

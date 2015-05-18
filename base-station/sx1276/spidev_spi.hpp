@@ -17,7 +17,7 @@ public:
 
   virtual bool ReadRegister(uint8_t reg, uint8_t& result);
   virtual bool WriteRegister(uint8_t reg, uint8_t value);
-	virtual void AssertReset();
+  virtual void AssertReset();
 
 private:
   bool ConfigureSPI();

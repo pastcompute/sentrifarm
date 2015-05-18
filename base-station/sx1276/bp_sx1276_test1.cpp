@@ -10,9 +10,9 @@ using std::cout;
 
 inline std::string safe_str(const char *m)
 {
-	std::string result;
-	for (; *m; ) { char c = *m++; result += iscntrl(c) ? '.' : c; }
-	return result;
+  std::string result;
+  for (; *m; ) { char c = *m++; result += iscntrl(c) ? '.' : c; }
+  return result;
 }
 
 int main(int argc, char* argv[])
@@ -33,26 +33,26 @@ int main(int argc, char* argv[])
 
   radio.ApplyDefaultLoraConfiguration();
 
-	if (radio.fault()) return 1;
+  if (radio.fault()) return 1;
 
-	const char *msg = "Hello, World!\n";
-	printf("Beacon message: '%s'\n", safe_str(msg).c_str());
-	printf("Predicted time on air: %fs\n", radio.PredictTimeOnAir(msg));
+  const char *msg = "Hello, World!\n";
+  printf("Beacon message: '%s'\n", safe_str(msg).c_str());
+  printf("Predicted time on air: %fs\n", radio.PredictTimeOnAir(msg));
 
-	long total = 0;
-	long faultCount = 0;
+  long total = 0;
+  long faultCount = 0;
   while (true) {
-		total++;
+    total++;
     if (radio.SendSimpleMessage(msg)) { printf("."); fflush(stdout); radio.StandbyMode(); usleep(200000); continue; }
-		radio.StandbyMode();
-		printf("\n");
-		faultCount++;
-		PR_ERROR("Fault on send detected: %ld of %ld\n", faultCount, total);
-		printf("Beacon message: '%s'\n", safe_str(msg).c_str());
-		printf("Predicted time on air: %fs\n", radio.PredictTimeOnAir(msg));
-		spi->AssertReset();
-	  radio.ApplyDefaultLoraConfiguration();
-		usleep(500000);
+    radio.StandbyMode();
+    printf("\n");
+    faultCount++;
+    PR_ERROR("Fault on send detected: %ld of %ld\n", faultCount, total);
+    printf("Beacon message: '%s'\n", safe_str(msg).c_str());
+    printf("Predicted time on air: %fs\n", radio.PredictTimeOnAir(msg));
+    spi->AssertReset();
+    radio.ApplyDefaultLoraConfiguration();
+    usleep(500000);
   }
   return 1;
 }
