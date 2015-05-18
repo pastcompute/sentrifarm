@@ -3,6 +3,10 @@ project(sx1276 C CXX)
 set(CMAKE_C_FLAGS "-std=c99 -pthread")
 
 find_package(Threads)
+
+set(Boost_USE_STATIC_LIBS OFF)
+set(Boost_USE_MULTITHREADED OFF)
+set(Boost_USE_STATIC_RUNTIME OFF)
 find_package(Boost 1.49.0 COMPONENTS system chrono thread)
 if(Boost_FOUND)
   include_directories(${Boost_INCLUDE_DIRS})

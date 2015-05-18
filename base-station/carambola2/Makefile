@@ -4,10 +4,25 @@
 
 # This could be a symlink to somewhere else, not tracked in git, or, to a submodule here...
 TREE=openwrt
+CONF=openwrt.config
+OWRT_TOOLCHAIN=toolchain-mips_34kc_gcc-4.8-linaro_uClibc-0.9.33.2
+OWRT_TARGET=target-mips_34kc_uClibc-0.9.33.2
+OWRT_GCC=mips-openwrt-linux-uclibc-gcc
+OWRT_STAGING=$(shell pwd)/openwrt/staging_dir
 
 all: prereq build
 
 prebuild: $(TREE)/feeds.conf patch openwrt.config $(TREE)/tmp/.kconfig-ar71xx_generic
+
+sx1276-clean:
+	@rm -rf build.sx1276
+
+sx1276:
+	@mkdir -p build.sx1276
+	@cd build.sx1276 && export OWRT_STAGING=$(OWRT_STAGING) OWRT_GCC=$(OWRT_GCC) OWRT_TARGET=$(OWRT_TARGET) OWRT_TOOLCHAIN=$(OWRT_TOOLCHAIN) && \
+											cmake -DCMAKE_TOOLCHAIN_FILE=../carambola2/toolchain.cmake ../../sx1276
+	@cd build.sx1276 && export STAGING_DIR=$(OWRT_STAGING) && make
+
 
 pre2: $(TREE)/tmp/.kconfig-ar71xx_generic
 
