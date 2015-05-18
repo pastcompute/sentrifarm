@@ -31,6 +31,8 @@ int main(int argc, char* argv[])
 
   cout << format("SX1276 Version: %.2x\n") % radio.QueryVersion();
 
+  spi->AssertReset();
+
   radio.ApplyDefaultLoraConfiguration();
 
   if (radio.fault()) return 1;

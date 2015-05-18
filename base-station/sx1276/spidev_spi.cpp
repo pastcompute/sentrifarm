@@ -22,6 +22,7 @@ SpidevSPI::~SpidevSPI()
 
 void SpidevSPI::AssertReset()
 {
+  // Flip the Reset GPIO here
 }
 
 bool SpidevSPI::Open(const char *spidev)
@@ -84,11 +85,30 @@ bool SpidevSPI::ReadRegister(uint8_t reg, uint8_t& result)
 
   int status = ioctl(fd_, SPI_IOC_MESSAGE(2), xfer);
   if (status < 0) { perror("SPI_IOC_MESSAGE"); return false; }
-  if (status != 2) { fprintf(stderr, "SPI status: %d at register %d\n", status, (int)reg); return false; }
+  if (status != 2) { fprintf(stderr, "SPI [R] status: %d at register %d\n", status, (int)reg); return false; }
   result = buf[0];
+
+  if (trace_reads()) { fprintf(stderr, "[R] %.2x --> %.2x\n", (int)reg, (int)result); }
   return true;
 }
 
 bool SpidevSPI::WriteRegister(uint8_t reg, uint8_t value)
 {
+  struct spi_ioc_transfer xfer[2];
+  uint8_t buf[4];
+  memset(xfer, 0, sizeof(xfer));
+  memset(buf, 0, sizeof(buf));
+  buf[0] = reg;
+  buf[1] = value;
+  xfer[0].tx_buf = (unsigned long)buf;
+  xfer[0].len = 2;
+  xfer[1].rx_buf = (unsigned long)buf;
+  xfer[1].len = 0;
+
+  if (trace_writes()) { fprintf(stderr, "[W] %.2x <-- %.2x\n", (int)reg, (int)value); }
+
+  int status = ioctl(fd_, SPI_IOC_MESSAGE(2), xfer);
+  if (status < 0) { perror("SPI_IOC_MESSAGE"); return false; }
+  if (status != 2) { fprintf(stderr, "SPI [W] status: %d at register %d\n", status, (int)reg); return false; }
+  return true;
 }
