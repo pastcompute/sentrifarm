@@ -4,6 +4,8 @@
 #include <unistd.h>
 #include <termios.h>
 #include <string.h>
+#include <stdio.h>
+#include <errno.h>
 
 #include <sys/ioctl.h>
 #include <sys/types.h>
@@ -77,13 +79,14 @@ bool SpidevSPI::ReadRegister(uint8_t reg, uint8_t& result)
   uint8_t buf[4];
   memset(xfer, 0, sizeof(xfer));
   memset(buf, 0, sizeof(buf));
-  buf[0] = reg;
+  buf[0] = reg & 0x7f;
   xfer[0].tx_buf = (unsigned long)buf;
   xfer[0].len = 1;
   xfer[1].rx_buf = (unsigned long)buf;
   xfer[1].len = 1;
 
   int status = ioctl(fd_, SPI_IOC_MESSAGE(2), xfer);
+  usleep(100);
   if (status < 0) { perror("SPI_IOC_MESSAGE"); return false; }
   if (status != 2) { fprintf(stderr, "SPI [R] status: %d at register %d\n", status, (int)reg); return false; }
   result = buf[0];
@@ -98,16 +101,15 @@ bool SpidevSPI::WriteRegister(uint8_t reg, uint8_t value)
   uint8_t buf[4];
   memset(xfer, 0, sizeof(xfer));
   memset(buf, 0, sizeof(buf));
-  buf[0] = reg;
+  buf[0] = reg | 0x80;
   buf[1] = value;
   xfer[0].tx_buf = (unsigned long)buf;
   xfer[0].len = 2;
-  xfer[1].rx_buf = (unsigned long)buf;
-  xfer[1].len = 0;
 
   if (trace_writes()) { fprintf(stderr, "[W] %.2x <-- %.2x\n", (int)reg, (int)value); }
 
-  int status = ioctl(fd_, SPI_IOC_MESSAGE(2), xfer);
+  int status = ioctl(fd_, SPI_IOC_MESSAGE(1), xfer);
+  usleep(100);
   if (status < 0) { perror("SPI_IOC_MESSAGE"); return false; }
   if (status != 2) { fprintf(stderr, "SPI [W] status: %d at register %d\n", status, (int)reg); return false; }
   return true;

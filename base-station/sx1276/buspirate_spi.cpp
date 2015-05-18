@@ -5,6 +5,8 @@
 #include <unistd.h>
 #include <termios.h>
 #include <string.h>
+#include <stdio.h>
+#include <errno.h>
 
 // TODO: abstract fprintf away
 

@@ -13,6 +13,7 @@ shared_ptr<SPI> SPIFactory::GetInstance(const char *device)
   const char *PFX_SPIDEV = "/dev/spidev";
   if (strncmp(device, PFX_SPIDEV, strlen(PFX_SPIDEV))==0) {
     shared_ptr<SpidevSPI> spi(new SpidevSPI);
+    if (!spi->Open(device)) { return shared_ptr<SpidevSPI>(); }
     return spi;
   }
   shared_ptr<BusPirateSPI> spi(new BusPirateSPI);

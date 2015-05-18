@@ -3,6 +3,7 @@
 #include "misc.h"
 #include <boost/shared_ptr.hpp>
 #include <boost/format.hpp>
+#include <iostream>
 
 using boost::shared_ptr;
 using boost::format;
@@ -21,6 +22,10 @@ int main(int argc, char* argv[])
 
   shared_ptr<SPI> spi = SPIFactory::GetInstance(argv[1]);
   if (!spi) { PR_ERROR("Unable to create SPI device instance\n"); return 1; }
+
+  // Pass a small value in for RTL-SDK spectrum analyser to show up
+  unsigned inter_msg_delay_us = 200000;
+  if (getenv("BEACON_INTERVAL")) { inter_msg_delay_us = atoi(getenv("BEACON_INTERVAL")); }
 
   Misc::UserTraceSettings(spi);
 
@@ -45,7 +50,7 @@ int main(int argc, char* argv[])
   long faultCount = 0;
   while (true) {
     total++;
-    if (radio.SendSimpleMessage(msg)) { printf("."); fflush(stdout); radio.StandbyMode(); usleep(200000); continue; }
+    if (radio.SendSimpleMessage(msg)) { printf("."); fflush(stdout); radio.StandbyMode(); usleep(inter_msg_delay_us); continue; }
     radio.StandbyMode();
     printf("\n");
     faultCount++;
