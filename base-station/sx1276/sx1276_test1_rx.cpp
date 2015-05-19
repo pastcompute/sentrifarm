@@ -4,6 +4,7 @@
 #include <boost/shared_ptr.hpp>
 #include <boost/format.hpp>
 #include <iostream>
+#include <string.h>
 
 using boost::shared_ptr;
 using boost::format;
@@ -42,20 +43,18 @@ int main(int argc, char* argv[])
 
   if (radio.fault()) return 1;
 
-  const char *msg = "Hello, World!\n";
-  printf("Beacon message: '%s'\n", safe_str(msg).c_str());
-  printf("Predicted time on air: %fs\n", radio.PredictTimeOnAir(msg));
-
   long total = 0;
   long faultCount = 0;
   while (true) {
     total++;
 
     bool crc = false;
-    uint8_t buffer[128];
+    uint8_t buffer[128]; memset(buffer, 0, 128);
     bool timeout = false;
     int size = 127;
-    if (!radio.ReceiveSimpleMessage(buffer, size, 5000, timeout, crc)) {
+    bool error = !radio.ReceiveSimpleMessage(buffer, size, 10000, timeout, crc);
+
+    if (crc || error) {
       radio.StandbyMode();
       printf("\n");
       faultCount++;
@@ -63,11 +62,14 @@ int main(int argc, char* argv[])
       spi->AssertReset();
       radio.ApplyDefaultLoraConfiguration();
       usleep(500000);
+    } else if (timeout) {
+      printf("x");
     } else {
-      printf("%-.126s", buffer);
+      FILE* f = popen("od -Ax -tx1z -v -w16", "w");
+      if (f) { fwrite(buffer, size, 1, f); pclose(f); }
+      //printf("%-.126s", buffer);
       radio.StandbyMode();
       usleep(inter_msg_delay_us);
-      continue;
     }
   }
   return 1;
