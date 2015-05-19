@@ -430,21 +430,41 @@ bool SX1276Radio::ReceiveSimpleMessage(uint8_t buffer[], int& size, int timeout_
   // User space polling loops are inefficient c/f proper threading wake up (or a kernel driver)
   // But it helps us get working sooner
   uint8_t flags = 0;
+  uint8_t stat = 0;
+  uint8_t old_stat = 0;
+  ReadRegisterHarder(SX1276REG_ModemStat, stat);
+  old_stat = stat;
   bool done = false;
   do {
     if (!ReadRegisterHarder(SX1276REG_IrqFlags, flags)) {
       PR_ERROR("SPI fault waiting for packet reading flags.\n");
       return false;
     }
+#if TRACE_STATE_CHANGE
+    if (!ReadRegisterHarder(SX1276REG_ModemStat, stat)) {
+      // this is not critical, so we could probably leave this out and be more resilient
+      // but all the error stuff is for the bus pirate anyway
+      PR_ERROR("SPI fault waiting for packet reading stat.\n");
+      return false;
+    }
+    if (stat != old_stat) {
+      DEBUG("Stat %.2x --> %.2x, flags=%.2x\n", (int)old_stat, (int)stat, (int)flags);
+      old_stat = stat;
+    }
+#endif
     if (flags & (1 << 6)) { // rx done
       done = true;
       break;
     }
     // still waiting...
+#if TRACE_STATE_CHANGE
+    usleep(5);
+#else
     usleep(100);
-
+#endif
   } while (steady_clock::now() < t1);
 
+  ReadRegisterHarder(SX1276REG_ModemStat, stat);
   DEBUG("[DBUG] RX fin flags=%.2x stat=%.2x\n", flags, (int)stat);
 
   last_rssi_dbm_ = 255;
@@ -460,7 +480,6 @@ bool SX1276Radio::ReceiveSimpleMessage(uint8_t buffer[], int& size, int timeout_
   int rssi_packet = 255;
   int snr_packet = -255;
   int coding_rate = 0;
-  uint8_t stat = 0;
   if (ReadRegisterHarder(SX1276REG_PacketRssi, v)) { rssi_packet = -137 + v; }
   if (ReadRegisterHarder(SX1276REG_PacketSnr, v)) { snr_packet = (v & 0x80 ? (~v + 1) : v) >> 4; } // 2's comp
   if (ReadRegisterHarder(SX1276REG_ModemStat, stat)) {
