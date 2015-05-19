@@ -66,6 +66,12 @@ using boost::chrono::steady_clock;
 #define BW_TO_SWITCH(number) case number : return PASTE(SX1276_LORA_BW_, number)
 #define BW_FR_SWITCH(number) case PASTE(SX1276_LORA_BW_, number) : return number;
 
+#if 0
+#define DEBUG(x ...) printf(x)
+#else
+#define DEBUG(x ...)
+#endif
+
 inline unsigned BandwidthToBitfield(unsigned bandwidthHz)
 {
   switch (bandwidthHz) {
@@ -439,9 +445,11 @@ bool SX1276Radio::ReceiveSimpleMessage(uint8_t buffer[], int& size, int timeout_
 
   } while (steady_clock::now() < t1);
 
+  DEBUG("[DBUG] RX fin flags=%.2x stat=%.2x\n", flags, (int)stat);
 
   last_rssi_dbm_ = 255;
   if (ReadRegisterHarder(SX1276REG_Rssi, v)) { last_rssi_dbm_ = -137 + v; }
+  DEBUG("[DBUG] RX rssi=%d\n", last_rssi_dbm_);
 
   if (!done) {
     timeout = true;
@@ -476,6 +484,13 @@ bool SX1276Radio::ReceiveSimpleMessage(uint8_t buffer[], int& size, int timeout_
   ReadRegisterHarder(SX1276REG_RxPacketCntValueLsb, v); packetCount |= v;
   // Note: SX1276REG_FifoRxByteAddrPtr == last addr written by modem
   ReadRegisterHarder(SX1276REG_FifoRxByteAddrPtr, byptr);
+
+  DEBUG("[DBUG] RX rssi_packet=%d\n", rssi_packet);
+  DEBUG("[DBUG] RX snr_packet=%d\n", snr_packet);
+  DEBUG("[DBUG] RX modem_stat=%02x\n", (unsigned)stat);
+  DEBUG("[DBUG] RX size=%d\n", (unsigned)payloadSizeBytes);
+  DEBUG("[DBUG] RX ptr=%d\n", (unsigned)byptr);
+  DEBUG("[DBUG] RX hdrcnt=%d pktcnt=%d\n", (unsigned)headerCount, (unsigned)packetCount);
 
   if (fault_) { PR_ERROR("SPI fault assessing packet.\n"); return false; }
 
