@@ -34,7 +34,9 @@ build: prebuild
 FEED_PACKAGES = \
 			netcat socat nmap wavemon picocom ntpd ntp-utils ntpdate pps-tools i2c-tools \
 			file htop less lsof patch coreutils micropython python \
-			mjpeg-streamer  nfc-utils irssi-nossl owfs owshell owhttpd owserver luci
+			mjpeg-streamer  nfc-utils irssi-nossl owfs owshell owhttpd owserver luci \
+			boost-chrono boost-date_time boost-regex boost-thread boost-timer
+
 
 feeds: $(TREE)/feeds.conf
 	cd $(TREE) && scripts/feeds update
