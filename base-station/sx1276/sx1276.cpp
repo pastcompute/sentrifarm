@@ -15,16 +15,26 @@ using boost::chrono::steady_clock;
 #define SX1276REG_FrfMid            0x07
 #define SX1276REG_FrfLsb            0x08
 #define SX1276REG_PaConfig          0x09
+#define SX1276REG_PaRamp            0x0A
 #define SX1276REG_Ocp               0x0B
+#define SX1276REG_Lna               0x0C
 #define SX1276REG_FifoAddrPtr       0x0D
 #define SX1276REG_FifoTxBaseAddr    0x0E
+#define SX1276REG_FifoRxBaseAddr    0x0F
 #define SX1276REG_IrqFlagsMask      0x11
 #define SX1276REG_IrqFlags          0x12
+#define SX1276REG_FifoRxBytesNb     0x13
+#define SX1276REG_ModemStat         0x18
+#define SX1276REG_PacketSnr         0x19
+#define SX1276REG_PacketRssi        0x1A
+#define SX1276REG_Rssi              0x1B
 #define SX1276REG_ModemConfig1      0x1D
 #define SX1276REG_ModemConfig2      0x1E
 #define SX1276REG_SymbTimeoutLsb    0x1F
 #define SX1276REG_PayloadLength     0x22
 #define SX1276REG_MaxPayloadLength  0x23
+#define SX1276REG_DioMapping1       0x40
+#define SX1276REG_DioMapping2       0x41
 
 // Bandwidth settings, for bits 4-7 of ModemConfig1
 #define SX1276_LORA_CODING_RATE_4_5 0x01
@@ -86,7 +96,9 @@ SX1276Radio::SX1276Radio(boost::shared_ptr<SPI> spi)
 : spi_(spi),
   fault_(false),
   max_tx_payload_bytes_(0x80),
-  frequency_hz_(918000000)
+  max_rx_payload_bytes_(0x80),
+  frequency_hz_(918000000),
+  last_rssi_dbm_(255)
 {
 }
 
@@ -158,9 +170,6 @@ bool SX1276Radio::ApplyDefaultLoraConfiguration()
   WriteRegisterVerify(SX1276REG_OpMode, 0x80);
   WriteRegisterVerify(SX1276REG_OpMode, 0x81);
 
-  // Maximum payload
-  WriteRegisterVerify(SX1276REG_MaxPayloadLength, max_tx_payload_bytes_);
-
   // Switch to maximum current mode (0x1B == 240mA), and enable overcurrent protection
   WriteRegisterVerify(SX1276REG_Ocp, 0x20 | 0x1B);
 
@@ -229,10 +238,29 @@ bool SX1276Radio::ApplyDefaultLoraConfiguration()
 
   // TODO: Report node address
 
+  // DIO mapping
+  // mapping 1 bits 6..7 DIO0
+  // mapping 1 bits 4..5 DIO1
+  // mapping 1 bits 2..3 DIO2
+  // mapping 1 bits 0..1 DIO3
+  // mapping 2 bits 6..7 DIO4
+  // mapping 2 bits 4..5 DIO5
+  // mapping 2 bits 0 - 1 = multiplex preambledetect 0 = multiplex rssi
+
+  // LED on DIO3 : Valid header : 01
+  // Pin header DIO5 : Clk Out: 10
+  // Pin header DIO1 : Rx timeout: 00
+  // Pin header DIO0 : Tx done: 01
+
+  WriteRegisterVerify(SX1276REG_DioMapping1, (0x1 << 6) | (0x0 << 4) | (0x1));
+  WriteRegisterVerify(SX1276REG_DioMapping2, (0x2 << 4));
+
   //FIXME: error handling - re-check read after write for everything...
-  return true;
+  return !fault_;
 }
 
+/// Calcluate estimated time on air for a given simple payload
+/// based on the formulae in the SX1276 datasheet
 float SX1276Radio::PredictTimeOnAir(const char *payload) const
 {
   unsigned BW = 125000;
@@ -259,6 +287,7 @@ bool SX1276Radio::SendSimpleMessage(const char *payload)
   WriteRegisterVerify(SX1276REG_FifoTxBaseAddr, 0x80);
   WriteRegisterVerify(SX1276REG_FifoAddrPtr, 0x80);
   // Payload length includes zero terminator
+  WriteRegisterVerify(SX1276REG_MaxPayloadLength, max_tx_payload_bytes_);
   WriteRegisterVerify(SX1276REG_PayloadLength, n+1);
 
   usleep(100);
@@ -286,7 +315,7 @@ bool SX1276Radio::SendSimpleMessage(const char *payload)
   WriteRegisterVerify(SX1276REG_IrqFlagsMask, 0x08);
   spi_->WriteRegister(SX1276REG_IrqFlags, 0xff); // cant verify; clears on 0xff write
   WriteRegisterVerify(SX1276REG_OpMode, 0x83);
-  if (fault_) { PR_ERROR("Unable to enter TX mode\n"); spi_->ReadRegister(SX1276REG_IrqFlags, v); return false; }
+  if (fault_) { PR_ERROR("SPI fault attempting to enter TX mode\n"); spi_->ReadRegister(SX1276REG_IrqFlags, v); return false; }
 
   // Wait until TX DONE, or timeout
   // We should calculate it; for the moment just wait 1 second
@@ -307,7 +336,129 @@ bool SX1276Radio::SendSimpleMessage(const char *payload)
   if (done) {
     return true;
   } 
-  if (fault_) { PR_ERROR("Fault reading IrqFlags register\n"); return false; }
+  if (fault_) { PR_ERROR("SPI fault reading IrqFlags register\n"); return false; }
   PR_ERROR("TxDone timeout!\n");
   return false;
+}
+
+/// Block and wait for a message, terminate on timeout.
+bool SX1276Radio::ReceiveSimpleMessage(uint8_t buffer[], int& size, int timeout_ms, bool& timeout, bool& crc_error)
+{
+  uint8_t v;
+
+  // LoRa Standby
+  WriteRegisterVerify(SX1276REG_OpMode, 0x81);
+  usleep(10000);
+
+  // Reset PA ramp back to default if it was not
+  // Why? we are receiving? lWriteRegisterVerify(SX1276REG_PaRamp, 0x09);
+
+  // Setup the LNA:
+  // To start with: midpoint gain (gain E G1 (max)..G6 (min)) bits 7-5 and no boost, while we are testing in the lab...
+  // Boost, bits 0..1 - 00 = default LNA current, 11 == 150% boost
+  WriteRegisterVerify(SX1276REG_FifoTxBaseAddr, (0x4 << 5) | (0x00));
+
+  // Reset RX FIFO
+  WriteRegisterVerify(SX1276REG_FifoRxBaseAddr, 0x0);
+  WriteRegisterVerify(SX1276REG_FifoAddrPtr, 0x0);
+
+  // For the moment we cant both tx and rx, lots of infrastructural code required if we want that later
+  WriteRegisterVerify(SX1276REG_MaxPayloadLength, max_rx_payload_bytes_);
+  WriteRegisterVerify(SX1276REG_PayloadLength, max_rx_payload_bytes_);
+
+  // RX mode
+  WriteRegisterVerify(SX1276REG_IrqFlagsMask, 0x60); // RxDone, CrcError, dont bother with RxTimeout, ValidHeader
+  spi_->WriteRegister(SX1276REG_IrqFlags, 0xff); // cant verify; clears on 0xff write
+  WriteRegisterVerify(SX1276REG_OpMode, 0x86); // RX Single
+
+  if (fault_) { PR_ERROR("SPI fault attempting to enter RX mode\n"); spi_->ReadRegister(SX1276REG_IrqFlags, v); return false; }
+
+  // Wait until RX DONE, or timeout
+  // This is a _user_ polling timeout, because of course there might be no-one transmitting
+
+  steady_clock::time_point t0 = steady_clock::now();
+  steady_clock::time_point t1 = t0 + boost::chrono::milliseconds(timeout_ms);
+
+  // User space polling loops are inefficient c/f proper threading wake up (or a kernel driver)
+  // But it helps us get working sooner
+  bool done = false;
+  do {
+    v = 0x5a;
+    if (!spi_->ReadRegister(SX1276REG_IrqFlags, v)) {
+      PR_ERROR("SPI fault waiting for packet.\n");
+      spi_->ReadRegister(SX1276REG_IrqFlags, v);
+      return false;
+    }
+    if (v & (1 << 6)) {
+      // still waiting...
+      // note, we could poll through ModemStatus here and report state changes.... (or use a LED!)
+      usleep(100);
+    } else {
+      done = true;
+      break;
+    }
+  } while (steady_clock::now() < t1);
+
+
+  last_rssi_dbm_ = 255;
+  if (ReadRegisterHarder(SX1276REG_Rssi, v)) { last_rssi_dbm_ = -137 + v; }
+
+  if (!done) {
+    timeout = true;
+    return true;
+  }
+
+  timeout = false;
+  int rssi_packet = 255;
+  int snr_packet = -255;
+  int coding_rate = 0;
+  if (ReadRegisterHarder(SX1276REG_PacketRssi, v)) { rssi_packet = -137 + v; }
+  if (ReadRegisterHarder(SX1276REG_PacketSnr, v)) { snr_packet = (v & 0x80 ? (~v + 1) : v) >> 4; } // 2's comp
+  if (ReadRegisterHarder(SX1276REG_ModemStat, v)) {
+    coding_rate = v >> 5;
+    switch (coding_rate) {
+    case 0x1: coding_rate = 5;
+    case 0x2: coding_rate = 6;
+    case 0x3: coding_rate = 7;
+    case 0x4: coding_rate = 8;
+    default: coding_rate = 0;
+    }
+  }
+
+  if (fault_) { PR_ERROR("SPI fault assessing packet.\n"); return false; }
+
+  // check CRC ...
+  if (v & (1 << 5) == 0) {
+    PR_ERROR("CRC Error. Packet rssi=%ddBm snr=%d cr=4/%d\n", rssi_packet, snr_packet, coding_rate);
+    crc_error = true;
+    return true;
+  }
+
+  uint8_t RX_BASE_ADDR = 0x0;
+  WriteRegisterVerify(SX1276REG_FifoAddrPtr, RX_BASE_ADDR);
+
+  // Note: SX1276REG_FifoRxByteAddrPtr == last addr written by modem
+  uint8_t payloadSizeBytes = 0;
+  ReadRegisterHarder(SX1276REG_FifoRxBytesNb, payloadSizeBytes);
+
+  if (fault_) { PR_ERROR("SPI fault processing packet.\n"); return false; }
+
+  if ((int)payloadSizeBytes > size) {
+    PR_ERROR("Buffer size %d not large enough for packet size %d!\n", size, (int)payloadSizeBytes);
+    return false;
+  }
+
+  for (unsigned n=0; n < payloadSizeBytes; n++) {
+    uint8_t byte = 0;
+    spi_->ReadRegister(SX1276REG_Fifo, byte);
+    usleep(100);
+    ReadRegisterHarder(SX1276REG_FifoAddrPtr, v); // Note, in the future this extra check should be optional
+    if (fault_ || v != RX_BASE_ADDR + v) { PR_ERROR("SPI fault reading packet.\n"); return false; }
+    buffer[n] = byte;
+  }
+  size = payloadSizeBytes;
+
+  return true;
+
+  // Caller should return to standby if going back to sleep
 }

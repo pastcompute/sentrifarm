@@ -25,6 +25,8 @@ endif(CMAKE_COMPILER_IS_GNUCXX)
 endif(enable_maintainer)
 
 add_executable(bp_sx1276_dump bp_sx1276_dump.c buspirate_binary.c )
-add_executable(bp_sx1276_test1 bp_sx1276_test1.cpp buspirate_binary.c buspirate_spi.cpp spi_factory.cpp misc.cpp spidev_spi.cpp sx1276.cpp spi.hpp)
-target_link_libraries(bp_sx1276_test1 ${CMAKE_THREAD_LIBS_INIT} ${Boost_SYSTEM_LIBRARY} ${Boost_CHRONO_LIBRARY})
+add_executable(sx1276_test1_tx bp_sx1276_test1.cpp buspirate_binary.c buspirate_spi.cpp spi_factory.cpp misc.cpp spidev_spi.cpp sx1276.cpp spi.hpp)
+add_executable(sx1276_test1_rx sx1276_test1_rx.cpp buspirate_binary.c buspirate_spi.cpp spi_factory.cpp misc.cpp spidev_spi.cpp sx1276.cpp spi.hpp)
+target_link_libraries(sx1276_test1_tx ${CMAKE_THREAD_LIBS_INIT} ${Boost_SYSTEM_LIBRARY} ${Boost_CHRONO_LIBRARY})
+target_link_libraries(sx1276_test1_rx ${CMAKE_THREAD_LIBS_INIT} ${Boost_SYSTEM_LIBRARY} ${Boost_CHRONO_LIBRARY})
 
