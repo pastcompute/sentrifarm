@@ -8,6 +8,9 @@
 
 using boost::chrono::steady_clock;
 
+// IMPORTANT: we seem to be able to transmit OK from the bus pirate (well, 99% of the time)
+// IMPORTANT: but, receiving is just not up to the job...
+
 // The following register naming convention follows SX1276 Datasheet chapter 6
 #define SX1276REG_Fifo              0x00
 #define SX1276REG_OpMode            0x01
