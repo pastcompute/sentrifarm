@@ -406,7 +406,7 @@ bool SX1276Radio::ReceiveSimpleMessage(uint8_t buffer[], int& size, int timeout_
   // "RegFifoRxCurrentAddr indicates the location of the last packet received in the FIFO"
 
   // RX mode
-  WriteRegisterVerify(SX1276REG_IrqFlagsMask, 0x60); // RxDone, CrcError, dont bother with RxTimeout, ValidHeader
+  WriteRegisterVerify(SX1276REG_IrqFlagsMask, 0xf0);
   spi_->WriteRegister(SX1276REG_IrqFlags, 0xff); // cant verify; clears on 0xff write
   WriteRegisterVerify(SX1276REG_OpMode, 0x86); // RX Single
 
