@@ -143,6 +143,29 @@ bool SX1276Radio::WriteRegisterVerify(uint8_t reg, uint8_t value, unsigned intra
   return false;
 }
 
+/// The Bus Pirate interface seems to be intermittently susceptible to flipping a bit
+/// But we seem to be able to copy with that by trying again
+/// @param mask Bits to modify: ~mask = bits to retain always
+bool SX1276Radio::WriteRegisterVerifyMask(uint8_t reg, uint8_t value, uint8_t mask, unsigned intra_delay)
+{
+  uint8_t old_value;
+  if (!ReadRegisterHarder(reg, old_value, 2)) return false;
+  value = (old_value & ~mask) | (value & mask);
+
+  bool ok;
+  for (int retry=0; retry < 2; retry++) {
+    uint8_t check = ~value;
+    ok = spi_->WriteRegister(reg, value);
+    if (ok) {
+      usleep(intra_delay);
+      ok = spi_->ReadRegister(reg, check);
+    }
+    if (ok && check == value) { return true; }
+  }
+  PR_ERROR("Failed to verify write of register %.02x\n", (int)reg);
+  fault_=true;
+  return false;
+}
 
 int SX1276Radio::QueryVersion()
 {

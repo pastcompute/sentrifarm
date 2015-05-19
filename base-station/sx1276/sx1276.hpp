@@ -48,6 +48,7 @@ public:
 private:
 
   bool WriteRegisterVerify(uint8_t reg, uint8_t value, unsigned intra_delay_us=100);
+  bool WriteRegisterVerifyMask(uint8_t reg, uint8_t value, uint8_t mask, unsigned intra_delay_us=100);
   bool ReadRegisterHarder(uint8_t reg, uint8_t& value, unsigned retry=3);
 
   boost::shared_ptr<SPI> spi_;   ///< Reference to SPI communication instance
