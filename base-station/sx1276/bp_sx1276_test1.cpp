@@ -60,6 +60,7 @@ int main(int argc, char* argv[])
     printf("Beacon message: '%s'\n", safe_str(msg).c_str());
     printf("Predicted time on air: %fs\n", radio.PredictTimeOnAir(msg));
     spi->AssertReset();
+    radio.reset_fault();
     radio.ApplyDefaultLoraConfiguration();
     usleep(500000);
   }

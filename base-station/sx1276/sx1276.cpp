@@ -264,7 +264,7 @@ bool SX1276Radio::ApplyDefaultLoraConfiguration()
   ReadCarrier();
 
   // Switch to maximum current mode (0x1B == 240mA), and enable overcurrent protection
-  WriteRegisterVerify(SX1276REG_Ocp, (1<<5) | 0x0B); // default
+  WriteRegisterVerify(SX1276REG_Ocp, (1<<5) | 0x0B); // 0b is default, 1b max, CAUSING ISSUES
 
   // Re-read operating mode and check we set it as expected
   spi_->ReadRegister(SX1276REG_OpMode, v);
@@ -304,7 +304,7 @@ bool SX1276Radio::ApplyDefaultLoraConfiguration()
   // Lets start at 12 max, 6dBm out (9) while in the lab
 
   //v = 0 | (0x2 << 4) | 9;
-  // Leave PON default // WriteRegisterVerify(SX1276REG_PaConfig, v);
+  //CAUSING ISSUES WriteRegisterVerify(SX1276REG_PaConfig, v);
 
   // TODO: Report node address
 
@@ -322,8 +322,8 @@ bool SX1276Radio::ApplyDefaultLoraConfiguration()
   // Pin header DIO1 : Rx timeout: 00
   // Pin header DIO0 : Tx done: 01
 
-  //WriteRegisterVerify(SX1276REG_DioMapping1, (0x1 << 6) | (0x0 << 4) | (0x1));
-  //WriteRegisterVerify(SX1276REG_DioMapping2, (0x2 << 4));
+  // WriteRegisterVerify(SX1276REG_DioMapping1, (0x1 << 6) | (0x0 << 4) | (0x1));  CAUSING ISSUES?
+  // WriteRegisterVerify(SX1276REG_DioMapping2, (0x2 << 4));                       CAUSING ISSUES?
 
   //FIXME: error handling - re-check read after write for everything...
   return !fault_;
@@ -379,7 +379,7 @@ bool SX1276Radio::SendSimpleMessage(const char *payload)
   }
 
   // TX mode
-  // WriteRegisterVerify(SX1276REG_IrqFlagsMask, 0xf7);
+  WriteRegisterVerify(SX1276REG_IrqFlagsMask, 0xf7); // write a 1 to IRQ to ignore
   spi_->WriteRegister(SX1276REG_IrqFlags, 0xff); // cant verify; clears on 0xff write
   WriteRegisterVerify(SX1276REG_OpMode, 0x83);
   if (fault_) { PR_ERROR("SPI fault attempting to enter TX mode\n"); spi_->ReadRegister(SX1276REG_IrqFlags, v); return false; }
@@ -392,11 +392,11 @@ bool SX1276Radio::SendSimpleMessage(const char *payload)
   bool done = false;
   do {
     if (!ReadRegisterHarder(SX1276REG_IrqFlags, v, 4)) break;
-    if (v & 0x08) {
-      usleep(100);
+    if (v & (1 << 3)) {
+			done = true;
+			break;
     } else {
-      done = true;
-      break;
+      usleep(100);
     }
   } while (steady_clock::now() < t1);
   if (done) {
@@ -442,8 +442,10 @@ bool SX1276Radio::ReceiveSimpleMessage(uint8_t buffer[], int& size, int timeout_
   // Note:
   // "RegFifoRxCurrentAddr indicates the location of the last packet received in the FIFO"
 
+  DEBUG("[DBUG] RX \n");
+
   // RX mode
-  // WriteRegisterVerify(SX1276REG_IrqFlagsMask, 0x0f);
+  WriteRegisterVerify(SX1276REG_IrqFlagsMask, 0x0f);
   spi_->WriteRegister(SX1276REG_IrqFlags, 0xff); // cant verify; clears on 0xff write
   WriteRegisterVerify(SX1276REG_OpMode, 0x86); // RX Single
 
@@ -469,8 +471,7 @@ bool SX1276Radio::ReceiveSimpleMessage(uint8_t buffer[], int& size, int timeout_
       break;
     }
     // still waiting...
-    usleep(100);
-
+    usleep(10);
   } while (steady_clock::now() < t1);
 
   uint8_t stat = 0;

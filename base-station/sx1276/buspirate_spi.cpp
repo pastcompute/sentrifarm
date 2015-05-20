@@ -64,7 +64,7 @@ bool BusPirateSPI::Powerup()
 
 void BusPirateSPI::AssertReset()
 {
-  bp_power_on(fd_);
+  bp_power_cycle(fd_);
 }
 
 bool BusPirateSPI::ReadRegister(uint8_t reg, uint8_t& result)
