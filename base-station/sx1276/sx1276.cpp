@@ -66,7 +66,7 @@ using boost::chrono::steady_clock;
 #define BW_TO_SWITCH(number) case number : return PASTE(SX1276_LORA_BW_, number)
 #define BW_FR_SWITCH(number) case PASTE(SX1276_LORA_BW_, number) : return number;
 
-#if 0
+#if 1
 #define DEBUG(x ...) printf(x)
 #else
 #define DEBUG(x ...)
@@ -184,11 +184,13 @@ bool SX1276Radio::WriteRegisterVerifyMask(uint8_t reg, uint8_t value, uint8_t ma
 void SX1276Radio::EnterStandby()
 {
   WriteRegisterVerify(SX1276REG_OpMode, 0x81);
+  usleep(10000);
 }
 
 void SX1276Radio::EnterSleep()
 {
   WriteRegisterVerify(SX1276REG_OpMode, 0x80);
+  usleep(10000);
 }
 
 bool SX1276Radio::Standby(uint8_t& old_mode)
@@ -262,7 +264,7 @@ bool SX1276Radio::ApplyDefaultLoraConfiguration()
   ReadCarrier();
 
   // Switch to maximum current mode (0x1B == 240mA), and enable overcurrent protection
-  WriteRegisterVerify(SX1276REG_Ocp, 0x20 | 0x1B);
+  WriteRegisterVerify(SX1276REG_Ocp, (1<<5) | 0x0B); // default
 
   // Re-read operating mode and check we set it as expected
   spi_->ReadRegister(SX1276REG_OpMode, v);
@@ -301,8 +303,8 @@ bool SX1276Radio::ApplyDefaultLoraConfiguration()
 
   // Lets start at 12 max, 6dBm out (9) while in the lab
 
-  v = 0 | (0x2 << 4) | 9;
-  WriteRegisterVerify(SX1276REG_PaConfig, v);
+  //v = 0 | (0x2 << 4) | 9;
+  // Leave PON default // WriteRegisterVerify(SX1276REG_PaConfig, v);
 
   // TODO: Report node address
 
@@ -320,8 +322,8 @@ bool SX1276Radio::ApplyDefaultLoraConfiguration()
   // Pin header DIO1 : Rx timeout: 00
   // Pin header DIO0 : Tx done: 01
 
-  WriteRegisterVerify(SX1276REG_DioMapping1, (0x1 << 6) | (0x0 << 4) | (0x1));
-  WriteRegisterVerify(SX1276REG_DioMapping2, (0x2 << 4));
+  //WriteRegisterVerify(SX1276REG_DioMapping1, (0x1 << 6) | (0x0 << 4) | (0x1));
+  //WriteRegisterVerify(SX1276REG_DioMapping2, (0x2 << 4));
 
   //FIXME: error handling - re-check read after write for everything...
   return !fault_;
@@ -346,8 +348,7 @@ bool SX1276Radio::SendSimpleMessage(const char *payload)
   if (n > 126) { fprintf(stderr, "Message too long; truncated!\n"); }
 
   // LoRa Standby
-  WriteRegisterVerify(SX1276REG_OpMode, 0x81);
-  usleep(10000);
+  Standby();
 
   // Reset TX FIFO
   WriteRegisterVerify(SX1276REG_FifoTxBaseAddr, 0x80);
@@ -378,7 +379,7 @@ bool SX1276Radio::SendSimpleMessage(const char *payload)
   }
 
   // TX mode
-  WriteRegisterVerify(SX1276REG_IrqFlagsMask, 0xf7);
+  // WriteRegisterVerify(SX1276REG_IrqFlagsMask, 0xf7);
   spi_->WriteRegister(SX1276REG_IrqFlags, 0xff); // cant verify; clears on 0xff write
   WriteRegisterVerify(SX1276REG_OpMode, 0x83);
   if (fault_) { PR_ERROR("SPI fault attempting to enter TX mode\n"); spi_->ReadRegister(SX1276REG_IrqFlags, v); return false; }
@@ -390,10 +391,9 @@ bool SX1276Radio::SendSimpleMessage(const char *payload)
   steady_clock::time_point t1 = t0 + boost::chrono::milliseconds(1000); // 1 second is way overkill
   bool done = false;
   do {
-    v = 0x5a;
     if (!ReadRegisterHarder(SX1276REG_IrqFlags, v, 4)) break;
     if (v & 0x08) {
-      usleep(1000);
+      usleep(100);
     } else {
       done = true;
       break;
@@ -443,7 +443,7 @@ bool SX1276Radio::ReceiveSimpleMessage(uint8_t buffer[], int& size, int timeout_
   // "RegFifoRxCurrentAddr indicates the location of the last packet received in the FIFO"
 
   // RX mode
-  WriteRegisterVerify(SX1276REG_IrqFlagsMask, 0x0f);
+  // WriteRegisterVerify(SX1276REG_IrqFlagsMask, 0x0f);
   spi_->WriteRegister(SX1276REG_IrqFlags, 0xff); // cant verify; clears on 0xff write
   WriteRegisterVerify(SX1276REG_OpMode, 0x86); // RX Single
 
@@ -473,6 +473,8 @@ bool SX1276Radio::ReceiveSimpleMessage(uint8_t buffer[], int& size, int timeout_
 
   } while (steady_clock::now() < t1);
 
+  uint8_t stat = 0;
+  ReadRegisterHarder(SX1276REG_ModemStat, stat);
   DEBUG("[DBUG] RX fin flags=%.2x stat=%.2x\n", flags, (int)stat);
 
   last_rssi_dbm_ = 255;
@@ -488,7 +490,6 @@ bool SX1276Radio::ReceiveSimpleMessage(uint8_t buffer[], int& size, int timeout_
   int rssi_packet = 255;
   int snr_packet = -255;
   int coding_rate = 0;
-  uint8_t stat = 0;
   if (ReadRegisterHarder(SX1276REG_PacketRssi, v)) { rssi_packet = -137 + v; }
   if (ReadRegisterHarder(SX1276REG_PacketSnr, v)) { snr_packet = (v & 0x80 ? (~v + 1) : v) >> 4; } // 2's comp
   if (ReadRegisterHarder(SX1276REG_ModemStat, stat)) {

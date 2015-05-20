@@ -42,6 +42,9 @@ int main(int argc, char* argv[])
   radio.ChangeCarrier(918000000);
   radio.ApplyDefaultLoraConfiguration();
 
+  cout << format("Check read Carrier Frequency: %uHz\n") % radio.carrier();
+
+
   if (radio.fault()) return 1;
 
   long total = 0;
