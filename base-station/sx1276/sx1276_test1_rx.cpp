@@ -35,11 +35,15 @@ int main(int argc, char* argv[])
   usleep(100);
   SX1276Radio radio(spi);
 
-  cout << format("SX1276 Version: %.2x\n") % radio.QueryVersion();
+  cout << format("SX1276 Version: %.2x\n") % radio.version();
 
   spi->AssertReset();
 
+  radio.ChangeCarrier(918000000);
   radio.ApplyDefaultLoraConfiguration();
+
+  cout << format("Check read Carrier Frequency: %uHz\n") % radio.carrier();
+
 
   if (radio.fault()) return 1;
 
@@ -55,7 +59,7 @@ int main(int argc, char* argv[])
     bool error = !radio.ReceiveSimpleMessage(buffer, size, 10000, timeout, crc);
 
     if (crc || error) {
-      radio.StandbyMode();
+      radio.Standby();
       printf("\n");
       faultCount++;
       PR_ERROR("Fault on receive detected: %ld of %ld\n", faultCount, total);
@@ -68,7 +72,7 @@ int main(int argc, char* argv[])
       FILE* f = popen("od -Ax -tx1z -v -w16", "w");
       if (f) { fwrite(buffer, size, 1, f); pclose(f); }
       //printf("%-.126s", buffer);
-      radio.StandbyMode();
+      radio.Standby();
       usleep(inter_msg_delay_us);
     }
   }
