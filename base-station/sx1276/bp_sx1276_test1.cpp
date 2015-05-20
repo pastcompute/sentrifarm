@@ -61,8 +61,9 @@ int main(int argc, char* argv[])
     PR_ERROR("Fault on send detected: %ld of %ld\n", faultCount, total);
     printf("Beacon message: '%s'\n", safe_str(msg).c_str());
     printf("Predicted time on air: %fs\n", radio.PredictTimeOnAir(msg));
-    spi->AssertReset();
     radio.reset_fault();
+    spi->AssertReset();
+	  radio.ChangeCarrier(918000000);
     radio.ApplyDefaultLoraConfiguration();
     usleep(500000);
   }
