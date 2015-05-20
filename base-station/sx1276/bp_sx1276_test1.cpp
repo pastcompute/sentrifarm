@@ -34,10 +34,11 @@ int main(int argc, char* argv[])
   usleep(100);
   SX1276Radio radio(spi);
 
-  cout << format("SX1276 Version: %.2x\n") % radio.QueryVersion();
+  cout << format("SX1276 Version: %.2x\n") % radio.version();
 
   spi->AssertReset();
 
+  radio.ChangeCarrier(918000000);
   radio.ApplyDefaultLoraConfiguration();
 
   if (radio.fault()) return 1;
@@ -50,8 +51,8 @@ int main(int argc, char* argv[])
   long faultCount = 0;
   while (true) {
     total++;
-    if (radio.SendSimpleMessage(msg)) { printf("."); fflush(stdout); radio.StandbyMode(); usleep(inter_msg_delay_us); continue; }
-    radio.StandbyMode();
+    if (radio.SendSimpleMessage(msg)) { printf("."); fflush(stdout); radio.Standby(); usleep(inter_msg_delay_us); continue; }
+    radio.Standby();
     printf("\n");
     faultCount++;
     PR_ERROR("Fault on send detected: %ld of %ld\n", faultCount, total);

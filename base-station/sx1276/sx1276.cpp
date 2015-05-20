@@ -107,14 +107,16 @@ inline unsigned BitfieldToBandwidth(unsigned bitfield)
   }
 }
 
-SX1276Radio::SX1276Radio(boost::shared_ptr<SPI> spi)
+SX1276Radio::SX1276Radio(const boost::shared_ptr<SPI>& spi)
 : spi_(spi),
   fault_(false),
   max_tx_payload_bytes_(0x80),
   max_rx_payload_bytes_(0x80),
-  frequency_hz_(918000000),
+  actual_hz_(0),
   last_rssi_dbm_(255)
 {
+  fault_ = !spi_->ReadRegister(0x42, version_);
+  ReadCarrier();
 }
 
 SX1276Radio::~SX1276Radio()
@@ -122,11 +124,12 @@ SX1276Radio::~SX1276Radio()
 }
 
 /// The Bus Pirate interface seems to be intermittently susceptible to flipping a bit
-/// But we seem to be able to copy with that by trying again
+/// But we seem to be able to cope with that by trying again. Default is 3
+/// FIXME: This should probably move to the SPI class
 bool SX1276Radio::ReadRegisterHarder(uint8_t reg, uint8_t& value, unsigned retries)
 {
   for (int r=0; r < retries; r++) {
-    if (spi_->ReadRegister(reg, value)) return true;
+    if (spi_->ReadRegister(reg, value)) { return true; }
   }
   fault_ = true;
   PR_ERROR("Retry fail reading register %.02x\n", (int)reg);
@@ -135,6 +138,7 @@ bool SX1276Radio::ReadRegisterHarder(uint8_t reg, uint8_t& value, unsigned retri
 
 /// The Bus Pirate interface seems to be intermittently susceptible to flipping a bit
 /// But we seem to be able to copy with that by trying again
+/// FIXME: This should probably move to the SPI class
 bool SX1276Radio::WriteRegisterVerify(uint8_t reg, uint8_t value, unsigned intra_delay)
 {
   bool ok;
@@ -148,13 +152,14 @@ bool SX1276Radio::WriteRegisterVerify(uint8_t reg, uint8_t value, unsigned intra
     if (ok && check == value) { return true; }
   }
   PR_ERROR("Failed to verify write of register %.02x\n", (int)reg);
-  fault_=true;
+  fault_ = true;
   return false;
 }
 
 /// The Bus Pirate interface seems to be intermittently susceptible to flipping a bit
 /// But we seem to be able to copy with that by trying again
 /// @param mask Bits to modify: ~mask = bits to retain always
+/// FIXME: This should probably move to the SPI class
 bool SX1276Radio::WriteRegisterVerifyMask(uint8_t reg, uint8_t value, uint8_t mask, unsigned intra_delay)
 {
   uint8_t old_value;
@@ -176,28 +181,74 @@ bool SX1276Radio::WriteRegisterVerifyMask(uint8_t reg, uint8_t value, uint8_t ma
   return false;
 }
 
-int SX1276Radio::QueryVersion()
+void SX1276Radio::EnterStandby()
 {
-  uint8_t value = 0xff;
-  fault_ = !spi_->ReadRegister(0x42, value);
-  return value;
+  WriteRegisterVerify(SX1276REG_OpMode, 0x81);
 }
 
-uint8_t SX1276Radio::StandbyMode()
+void SX1276Radio::EnterSleep()
+{
+  WriteRegisterVerify(SX1276REG_OpMode, 0x80);
+}
+
+bool SX1276Radio::Standby(uint8_t& old_mode)
 {
   uint8_t v=0;
   spi_->ReadRegister(SX1276REG_OpMode, v);
-  if (!fault_) { spi_->WriteRegister(SX1276REG_OpMode, 0x81); }
-  return v;
+  if (!fault_) { EnterStandby(); }
+  return !fault_;
 }
 
-// Set everything to a known default state for LoRa communication
+bool SX1276Radio::Sleep(uint8_t& old_mode)
+{
+  uint8_t v=0;
+  spi_->ReadRegister(SX1276REG_OpMode, v);
+  if (!fault_) { EnterSleep(); }
+  return !fault_;
+}
+
+bool SX1276Radio::ChangeCarrier(uint32_t carrier_hz)
+{
+  // Carrier frequency
+  // { F(Xosc) x F } / 2^19
+  // Resolution is 61.035 Hz | Xosc=32MHz, default F=0x6c8000 --> 434 MHz
+  // AU ISM Band >= 915 MHz
+  // Frequency latches when Lsb is written
+  uint8_t v;
+  uint64_t Frf = (uint64_t)carrier_hz * (1 << 19) / 32000000ULL;
+  v = Frf >> 16;
+  WriteRegisterVerify(SX1276REG_FrfMsb, v);
+  v = Frf >> 8;
+  WriteRegisterVerify(SX1276REG_FrfMid, v);
+  v = Frf & 0xff;
+  WriteRegisterVerify(SX1276REG_FrfLsb, v);
+
+  ReadCarrier();
+  return fault_;
+}
+
+void SX1276Radio::ReadCarrier()
+{
+  uint8_t v;
+  uint64_t Frf = 0;
+  ReadRegisterHarder(SX1276REG_FrfMsb, v);
+  Frf = uint32_t(v) << 16;
+  ReadRegisterHarder(SX1276REG_FrfMid, v);
+  Frf = Frf | (uint32_t(v) << 8);
+  ReadRegisterHarder(SX1276REG_FrfLsb, v);
+  Frf = Frf | (uint32_t(v));
+
+  int64_t actual_hz = (32000000ULL * Frf) >> 19;
+  // printf("Check read Carrier Frequency: %uHz\n", (unsigned)fcheck);
+  actual_hz_ = actual_hz;
+}
+
 bool SX1276Radio::ApplyDefaultLoraConfiguration()
 {
   fault_ = false;
 
   uint8_t v;
-  // To switch to LoRa mode if we ere in OOK for some reason need to go to sleep mode first : zero 3 lower bits
+  // To switch to LoRa mode if we were in OOK for some reason need to go to sleep mode first : zero 3 lower bits
   spi_->ReadRegister(SX1276REG_OpMode, v);
   WriteRegisterVerify(SX1276REG_OpMode, v & 0xf8);
 
@@ -205,8 +256,10 @@ bool SX1276Radio::ApplyDefaultLoraConfiguration()
   usleep(10000);
 
   // Switch to LoRa mode in sleep mode, then turn on standby mode
-  WriteRegisterVerify(SX1276REG_OpMode, 0x80);
-  WriteRegisterVerify(SX1276REG_OpMode, 0x81);
+  Sleep();
+  Standby();
+
+  ReadCarrier();
 
   // Switch to maximum current mode (0x1B == 240mA), and enable overcurrent protection
   WriteRegisterVerify(SX1276REG_Ocp, 0x20 | 0x1B);
@@ -241,29 +294,6 @@ bool SX1276Radio::ApplyDefaultLoraConfiguration()
   v = 0xff;
   WriteRegisterVerify(SX1276REG_SymbTimeoutLsb, v);
 
-  // Carrier frequency
-  // { F(Xosc) x F } / 2^19
-  // Resolution is 61.035 Hz | Xosc=32MHz, default F=0x6c8000 --> 434 MHz
-  // AU ISM Band >= 915 MHz
-  // Frequency latches when Lsb is written
-  uint64_t Frf = (uint64_t)frequency_hz_ * (1 << 19) / 32000000ULL;
-  v = Frf >> 16;
-  WriteRegisterVerify(SX1276REG_FrfMsb, v);
-  v = Frf >> 8;
-  WriteRegisterVerify(SX1276REG_FrfMid, v);
-  v = Frf & 0xff;
-  WriteRegisterVerify(SX1276REG_FrfLsb, v);
-
-  ReadRegisterHarder(SX1276REG_FrfMsb, v);
-  Frf = uint32_t(v) << 16;
-  ReadRegisterHarder(SX1276REG_FrfMid, v);
-  Frf = Frf | (uint32_t(v) << 8);
-  ReadRegisterHarder(SX1276REG_FrfLsb, v);
-  Frf = Frf | (uint32_t(v));
-
-  int64_t fcheck = (32000000ULL * Frf) >> 19;
-  printf("Check read Carrier Frequency: %uHz\n", (unsigned)fcheck);
-
   // Power (PA)
   // Bit 7 == 0 -- 14dBm max (our inAir9 version)
   // Bit 4..6 --> max power : 10.8 + 0.6 * K  dBm i.e. 10.8, 11.4, 12, 12.6, 13.2, 13.8, 14.4
@@ -297,7 +327,7 @@ bool SX1276Radio::ApplyDefaultLoraConfiguration()
   return !fault_;
 }
 
-/// Calcluate estimated time on air for a given simple payload
+/// Calcluates the estimated time on air for a given simple payload
 /// based on the formulae in the SX1276 datasheet
 float SX1276Radio::PredictTimeOnAir(const char *payload) const
 {
@@ -314,8 +344,6 @@ bool SX1276Radio::SendSimpleMessage(const char *payload)
   uint8_t v;
   unsigned n = strlen(payload);
   if (n > 126) { fprintf(stderr, "Message too long; truncated!\n"); }
-
-  // printf("%.126s", payload);
 
   // LoRa Standby
   WriteRegisterVerify(SX1276REG_OpMode, 0x81);
@@ -379,7 +407,7 @@ bool SX1276Radio::SendSimpleMessage(const char *payload)
   return false;
 }
 
-/// Block and wait for a message, terminate on timeout.
+/// This method blocks up to a given timeout, and wait for a packet.
 bool SX1276Radio::ReceiveSimpleMessage(uint8_t buffer[], int& size, int timeout_ms, bool& timeout, bool& crc_error)
 {
   uint8_t v;
