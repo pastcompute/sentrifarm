@@ -3,9 +3,9 @@
 
 #include <stdint.h>
 
-// Abstract interface to SPI.
-// Subclassed by BusPirate and SpiDev.
-// API assumes byte value registers E 0..7f, with 0x80..ff for write
+/// Abstract interface to SPI.
+/// Subclassed by BusPirate and SpiDev.
+/// API assumes byte value registers E 0..7f, with 0x80..ff for write
 class SPI
 {
 public:

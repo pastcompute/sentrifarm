@@ -52,13 +52,13 @@ int main(int argc, char* argv[])
   int faultCount = 0;
   while (true) {
     total++;
-		snprintf(msg, sizeof(msg), "Hello, World! %6d\n", total);
+    snprintf(msg, sizeof(msg), "Hello, World! %6d\n", total);
 	
     if (radio.SendSimpleMessage(msg)) { printf("."); fflush(stdout); radio.Standby(); usleep(inter_msg_delay_us); continue; }
     radio.Standby();
     printf("\n");
     faultCount++;
-    PR_ERROR("Fault on send detected: %ld of %ld\n", faultCount, total);
+    PR_ERROR("Fault on send detected: %d of %d\n", faultCount, total);
     printf("Beacon message: '%s'\n", safe_str(msg).c_str());
     printf("Predicted time on air: %fs\n", radio.PredictTimeOnAir(msg));
     radio.reset_fault();
