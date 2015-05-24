@@ -94,7 +94,6 @@ private:
   uint8_t max_tx_payload_bytes_;
   uint8_t max_rx_payload_bytes_;
   int last_rssi_dbm_;            ///< RSSI read during last call to ReceiveSimpleMessage
-
   uint32_t actual_hz_;           ///< Actual carrier frequency, hz
 };
 

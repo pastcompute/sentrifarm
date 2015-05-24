@@ -91,7 +91,7 @@ bool SpidevSPI::ReadRegister(uint8_t reg, uint8_t& result)
   if (status != 2) { fprintf(stderr, "SPI [R] status: %d at register %d\n", status, (int)reg); return false; }
   result = buf[0];
 
-  if (trace_reads()) { fprintf(stderr, "[R] %.2x --> %.2x\n", (int)reg, (int)result); }
+  if (trace_reads_) { fprintf(stderr, "[R] %.2x --> %.2x\n", (int)reg, (int)result); }
   return true;
 }
 
@@ -106,7 +106,7 @@ bool SpidevSPI::WriteRegister(uint8_t reg, uint8_t value)
   xfer[0].tx_buf = (unsigned long)buf;
   xfer[0].len = 2;
 
-  if (trace_writes()) { fprintf(stderr, "[W] %.2x <-- %.2x\n", (int)reg, (int)value); }
+  if (trace_writes_) { fprintf(stderr, "[W] %.2x <-- %.2x\n", (int)reg, (int)value); }
 
   int status = ioctl(fd_, SPI_IOC_MESSAGE(1), xfer);
   usleep(100);

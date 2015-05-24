@@ -121,6 +121,20 @@ bool bp_power_cycle(int fd)
   bp_power_on(fd);
 }
 
+bool bp_cycle_reset(int fd)
+{
+  return bp_power_on(fd);
+}
+
+bool bp_power_off(int fd)
+{
+  bool ok;
+  printf("POWER OFF, AUX:RESET ACTIVE(LOW), CS HIGH\n");
+  ok=bp_bitbang_cmd(fd, 0x41);             // 0x4d == 0x40 | (cs)
+  if (!ok) { perror("Unable to issue SPI PERIPH"); return false; }
+  return ok;
+}
+
 bool bp_power_on(int fd)
 {
   bool ok;

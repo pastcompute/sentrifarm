@@ -62,22 +62,17 @@ bool BusPirateSPI::Powerup()
   return bp_power_on(fd_);
 }
 
-void BusPirateSPI::AssertReset()
-{
-  bp_power_cycle(fd_);
-}
-
 bool BusPirateSPI::ReadRegister(uint8_t reg, uint8_t& result)
 {
   usleep(100);
   bool ok = bp_bitbang_spi_read_one(fd_, reg, &result);
-  if (trace_reads()) { fprintf(stderr, "[R] %.2x --> %.2x\n", (int)reg, (int)result); }
+  if (trace_reads_) { fprintf(stderr, "[R] %.2x --> %.2x\n", (int)reg, (int)result); }
   return ok;
 }
 
 bool BusPirateSPI::WriteRegister(uint8_t reg, uint8_t value)
 {
-  if (trace_writes()) { fprintf(stderr, "[W] %.2x <-- %.2x\n", (int)reg, (int)value); }
+  if (trace_writes_) { fprintf(stderr, "[W] %.2x <-- %.2x\n", (int)reg, (int)value); }
   usleep(100);
   return bp_bitbang_spi_write_one(fd_, reg | 0x80, value);
 }

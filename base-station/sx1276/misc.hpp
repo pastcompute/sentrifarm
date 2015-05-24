@@ -1,5 +1,5 @@
-#ifndef MISC_H__
-#define MISC_H__
+#ifndef MISC_HPP__
+#define MISC_HPP__
 
 #include <boost/shared_ptr.hpp>
 

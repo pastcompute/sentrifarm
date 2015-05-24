@@ -1,6 +1,6 @@
 #include "sx1276.hpp"
 #include "spi.hpp"
-#include "misc.h"
+#include "misc.hpp"
 #include <string.h>
 
 #include <boost/chrono/time_point.hpp>
@@ -112,8 +112,8 @@ SX1276Radio::SX1276Radio(const boost::shared_ptr<SPI>& spi)
   fault_(false),
   max_tx_payload_bytes_(0x80),
   max_rx_payload_bytes_(0x80),
-  actual_hz_(0),
-  last_rssi_dbm_(255)
+  last_rssi_dbm_(255),
+  actual_hz_(0)
 {
   fault_ = !spi_->ReadRegister(0x42, version_);
   ReadCarrier();
@@ -128,7 +128,7 @@ SX1276Radio::~SX1276Radio()
 /// FIXME: This should probably move to the SPI class
 bool SX1276Radio::ReadRegisterHarder(uint8_t reg, uint8_t& value, unsigned retries)
 {
-  for (int r=0; r < retries; r++) {
+  for (unsigned r=0; r < retries; r++) {
     if (spi_->ReadRegister(reg, value)) { return true; }
   }
   fault_ = true;
@@ -361,11 +361,11 @@ bool SX1276Radio::SendSimpleMessage(const char *payload)
   uint8_t fifo_pos;
   ReadRegisterHarder(SX1276REG_FifoAddrPtr, fifo_pos);
 
-  for (int b=0; b <= n; b++) {
+  for (uint8_t b=0; b <= n; b++) {
     spi_->WriteRegister(SX1276REG_Fifo, payload[b]); // Note: we cant verify
     usleep(100);
     ReadRegisterHarder(SX1276REG_FifoAddrPtr, v);
-    if (v - fifo_pos != b + 1) {
+    if (v - fifo_pos - 1 != b) {
       fault_ = true;
       PR_ERROR("Failed to write byte to FIFO\n");
       return false;
@@ -461,9 +461,11 @@ bool SX1276Radio::ReceiveSimpleMessage(uint8_t buffer[], int& size, int timeout_
   // But it helps us get working sooner
   uint8_t flags = 0;
   uint8_t stat = 0;
+#if TRACE_STATE_CHANGE
   uint8_t old_stat = 0;
   ReadRegisterHarder(SX1276REG_ModemStat, stat);
-  old_stat = stat;
+  //old_stat = stat;
+#endif
   bool done = false;
   do {
     if (!ReadRegisterHarder(SX1276REG_IrqFlags, flags)) {
@@ -544,7 +546,7 @@ bool SX1276Radio::ReceiveSimpleMessage(uint8_t buffer[], int& size, int timeout_
   if (fault_) { PR_ERROR("SPI fault assessing packet.\n"); return false; }
 
   // check CRC ...
-  if (v & (1 << 5) == 0) {
+  if ((v & (1 << 5)) == 0) {
     PR_ERROR("CRC Error. Packet rssi=%ddBm snr=%d cr=4/%d\n", rssi_packet, snr_packet, coding_rate);
     crc_error = true;
     return true;

@@ -1,6 +1,6 @@
 #include "sx1276.hpp"
-#include "spi_factory.hpp"
-#include "misc.h"
+#include "misc.hpp"
+#include "sx1276_platform.hpp"
 #include <boost/shared_ptr.hpp>
 #include <boost/format.hpp>
 #include <iostream>
@@ -21,8 +21,11 @@ int main(int argc, char* argv[])
 {
   if (argc < 2) { fprintf(stderr, "Usage: %s <spidev>", argv[0]); return 1; }
 
-  shared_ptr<SPI> spi = SPIFactory::GetInstance(argv[1]);
-  if (!spi) { PR_ERROR("Unable to create SPI device instance\n"); return 1; }
+  shared_ptr<SX1276Platform> platform = SX1276Platform::GetInstance(argv[1]);
+  if (!platform) { PR_ERROR("Unable to create platform instance\n"); return 1; }
+
+  shared_ptr<SPI> spi = platform->GetSPI();
+  if (!spi) { PR_ERROR("Unable to get SPI instance\n"); return 1; }
 
   // Pass a small value in for RTL-SDK spectrum analyser to show up
   unsigned inter_msg_delay_us = 200000;
@@ -36,8 +39,6 @@ int main(int argc, char* argv[])
   SX1276Radio radio(spi);
 
   cout << format("SX1276 Version: %.2x\n") % radio.version();
-
-  spi->AssertReset();
 
   radio.ChangeCarrier(918000000);
   radio.ApplyDefaultLoraConfiguration();
@@ -63,7 +64,7 @@ int main(int argc, char* argv[])
       printf("\n");
       faultCount++;
       PR_ERROR("Fault on receive detected: %ld of %ld\n", faultCount, total);
-      spi->AssertReset();
+      platform->ResetSX1276();
       radio.ApplyDefaultLoraConfiguration();
       usleep(500000);
     } else if (timeout) {
