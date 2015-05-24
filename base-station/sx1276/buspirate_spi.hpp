@@ -24,11 +24,10 @@ public:
   bool Open(const char *ttydev);
   bool Powerup();
 
-  virtual bool IsOpen() const { return fd_ < 0; }
+  virtual bool IsOpen() const { return fd_ >= 0; }
 
   virtual bool ReadRegister(uint8_t reg, uint8_t& result);
   virtual bool WriteRegister(uint8_t reg, uint8_t value);
-
 
   /// At the moment to simplify implementation of the platform class, we make it a friend for access to the fd
   friend class BusPiratePlatform;

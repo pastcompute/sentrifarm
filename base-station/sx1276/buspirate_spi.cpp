@@ -29,7 +29,7 @@ bool BusPirateSPI::Open(const char *ttydev)
   if (fd == -1) { perror("Unable to open device"); return false; }
 
   fd_ = fd;
-  if (ConfigSerial() && EnableBinaryMode() && ConfigSPI()) {
+  if (ConfigSerial() && EnableBinaryMode() && Powerup() && ConfigSPI()) {
     ttydev_ = ttydev;
     return true;
   }

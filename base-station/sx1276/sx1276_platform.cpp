@@ -13,7 +13,9 @@ public:
   BusPiratePlatform(const char *device)
   : device_(device)
   {
+    printf("Platform:BusPirate\n");
     spi_.reset(new BusPirateSPI);
+    spi_->Open(device);
   }
   virtual ~BusPiratePlatform() {}
 
@@ -24,7 +26,7 @@ public:
   virtual boost::shared_ptr<SPI> GetSPI() const { return spi_; }
 
 private:
-  const char *device_;
+  std::string device_;
   shared_ptr<BusPirateSPI> spi_;
 };
 
@@ -34,7 +36,8 @@ public:
   Carambola2Platform(const char *device)
   : device_(device)
   {
-    shared_ptr<SpidevSPI> spi(new SpidevSPI);
+    printf("Platform:Linux spidev\n");
+    spi_.reset(new SpidevSPI);
     spi_->Open(device);
   }
   virtual ~Carambola2Platform() {}
@@ -47,7 +50,7 @@ public:
   virtual bool ResetSX1276()  { return true; }
 
 private:
-  const char *device_;
+  std::string device_;
   shared_ptr<SpidevSPI> spi_;
 };
 
@@ -58,9 +61,9 @@ shared_ptr<SX1276Platform> SX1276Platform::GetInstance(const char *device)
   // if not /dev/spidev then tty for buspirate
   const char *PFX_SPIDEV = "/dev/spidev";
   if (strncmp(device, PFX_SPIDEV, strlen(PFX_SPIDEV))==0) {
-    platform.reset(new BusPiratePlatform(device));
-  } else {
     platform.reset(new Carambola2Platform(device));
+  } else {
+    platform.reset(new BusPiratePlatform(device));
   }
   if (platform->GetSPI()->IsOpen()) { return platform; }
   return shared_ptr<SX1276Platform>();

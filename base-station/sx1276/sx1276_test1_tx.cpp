@@ -39,7 +39,9 @@ int main(int argc, char* argv[])
 
   cout << format("SX1276 Version: %.2x\n") % radio.version();
 
-  radio.ChangeCarrier(918000000);
+  platform->ResetSX1276();
+
+  radio.ChangeCarrier(919000000);
   radio.ApplyDefaultLoraConfiguration();
   cout << format("Check read Carrier Frequency: %uHz\n") % radio.carrier();
 
@@ -64,7 +66,7 @@ int main(int argc, char* argv[])
     printf("Predicted time on air: %fs\n", radio.PredictTimeOnAir(msg));
     radio.reset_fault();
     platform->ResetSX1276();
-    radio.ChangeCarrier(918000000);
+    radio.ChangeCarrier(919000000);
     radio.ApplyDefaultLoraConfiguration();
     usleep(500000);
   }

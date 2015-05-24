@@ -22,11 +22,6 @@ SpidevSPI::~SpidevSPI()
   close(fd_);
 }
 
-void SpidevSPI::AssertReset()
-{
-  // Flip the Reset GPIO here
-}
-
 bool SpidevSPI::Open(const char *spidev)
 {
   assert(fd_ < 0);
@@ -46,8 +41,8 @@ bool SpidevSPI::Open(const char *spidev)
 
 bool SpidevSPI::ConfigureSPI()
 {
-  __u8	lsb, bits, mode;
-  __u32	speed;
+  __u8  lsb, bits, mode;
+  __u32  speed;
 
   // SPI_IOC_RD_MODE32 can be missing on some systems (like Xubuntu 14.04.2) and present on others (openwrt CC)
 

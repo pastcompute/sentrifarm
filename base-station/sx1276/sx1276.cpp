@@ -546,7 +546,7 @@ bool SX1276Radio::ReceiveSimpleMessage(uint8_t buffer[], int& size, int timeout_
   if (fault_) { PR_ERROR("SPI fault assessing packet.\n"); return false; }
 
   // check CRC ...
-  if ((v & (1 << 5)) == 0) {
+  if ((flags & (1 << 5)) == 1) {
     PR_ERROR("CRC Error. Packet rssi=%ddBm snr=%d cr=4/%d\n", rssi_packet, snr_packet, coding_rate);
     crc_error = true;
     return true;

@@ -11,13 +11,10 @@ public:
   virtual ~SpidevSPI();
 
   bool Open(const char *spidev);
-  virtual bool IsOpen() const { return fd_ < 0; }
-
-  const char *device() const { return spidev_.c_str(); }
+  virtual bool IsOpen() const { return fd_ >= 0; }
 
   virtual bool ReadRegister(uint8_t reg, uint8_t& result);
   virtual bool WriteRegister(uint8_t reg, uint8_t value);
-  virtual void AssertReset();
 
 private:
   bool ConfigureSPI();
