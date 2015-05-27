@@ -44,14 +44,17 @@ endif(enable_maintainer)
 # FIXME This should probably be a lib, sort it out later
 
 set(MY_FILES buspirate_binary.c buspirate_spi.cpp sx1276_platform.cpp misc.cpp spidev_spi.cpp sx1276.cpp spi.hpp)
+set(MY_LIBS ${CMAKE_THREAD_LIBS_INIT} ${Boost_SYSTEM_LIBRARY} ${Boost_CHRONO_LIBRARY})
 
 add_executable(bp_sx1276_dump bp_sx1276_dump.c buspirate_binary.c )
 add_executable(sx1276_test1_tx sx1276_test1_tx.cpp ${MY_FILES})
 add_executable(sx1276_test1_rx sx1276_test1_rx.cpp ${MY_FILES})
 
-add_executable(test_mqtt_discard test_mqtt_discard.cpp)
+add_executable(test_mqtt_discard test_mqtt_discard.cpp)     # dumb version using C'ish C++ and mosquito client library
+add_executable(test_mqtt_discard2 mqttclient.cpp test_mqtt_discard2.cpp)   # discard test using C++ MQTT class
 
-target_link_libraries(sx1276_test1_tx ${CMAKE_THREAD_LIBS_INIT} ${Boost_SYSTEM_LIBRARY} ${Boost_CHRONO_LIBRARY})
-target_link_libraries(sx1276_test1_rx ${CMAKE_THREAD_LIBS_INIT} ${Boost_SYSTEM_LIBRARY} ${Boost_CHRONO_LIBRARY})
-target_link_libraries(test_mqtt_discard ${CMAKE_THREAD_LIBS_INIT} ${Boost_SYSTEM_LIBRARY} ${Boost_CHRONO_LIBRARY} ${MOSQUITTO_LIBRARIES})
 
+target_link_libraries(sx1276_test1_tx ${MY_LIBS})
+target_link_libraries(sx1276_test1_rx ${MY_LIBS})
+target_link_libraries(test_mqtt_discard ${MY_LIBS} ${MOSQUITTO_LIBRARIES})
+target_link_libraries(test_mqtt_discard2 ${MY_LIBS} ${MOSQUITTO_LIBRARIES})
