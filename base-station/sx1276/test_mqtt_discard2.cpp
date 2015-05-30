@@ -1,4 +1,5 @@
 #include "mqttclient.hpp"
+#include "util.hpp"
 #include <string>
 #include <iostream>
 #include <boost/format.hpp>
@@ -10,21 +11,12 @@ using std::cout;
 using std::cerr;
 using boost::format;
 using boost::shared_ptr;
-
-string safe_payload(const void *data, unsigned len)
-{
-  string result;
-  for (unsigned i=0; i < len; i++) {
-    char c = ((const char*)data)[i];
-    result += iscntrl(c) ? '.' : c;
-  }
-  return result;
-}
+using util::buf2str;
 
 struct MsgHandler
 {
   void TopicHandler(const char*client_id, const char*topic, const void* payload, unsigned len) {
-    cout << format("CLIENT=%s TOPIC=%s PAYLOAD=%s\n") % client_id % topic % safe_payload(payload, len);
+    cout << format("CLIENT=%s TOPIC=%s PAYLOAD=%s\n") % client_id % topic % buf2str(payload, len);
   }
   void ConnackHandler(const char*client_id, bool error) {
     cout << format("CONNACK=%s %s\n") % client_id % (error?"ERROR":"OK");

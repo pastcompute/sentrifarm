@@ -40,7 +40,7 @@ public:
   /// @return Last RSSI value, set by last call to ReceiveSimpleMessage()
   int last_rssi() const { return last_rssi_dbm_; }
 
-	uint32_t carrier() const { return actual_hz_; }
+  uint32_t carrier() const { return actual_hz_; }
 
   /// Reset the module to our specific configuration.
   /// This should always be called immediately after performing a hardware reset

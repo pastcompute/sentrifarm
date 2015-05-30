@@ -1,10 +1,9 @@
-#define _XOPEN_SOURCE 600
 #include "mqttclient.hpp"
+#include "util.hpp"
 #include <mosquitto.h>
 #include <iostream>
 #include <boost/format.hpp>
 #include <boost/noncopyable.hpp>
-#include <string.h>
 #include <boost/chrono/time_point.hpp>
 #include <boost/chrono/system_clocks.hpp>
 
@@ -14,12 +13,12 @@ using std::cerr;
 using boost::format;
 using boost::chrono::steady_clock;
 
-string safe_perror(const char *txt)
-{
-  char buf[64];
-  strerror_r(errno, buf, sizeof(buf));
-  return (txt ? (string(txt) + ": ") : string()) + string(buf);
-}
+#if 0
+#define DEBUG(x ...) printf("[DBG] " x)
+#define REPORT_DEBUG
+#else
+#define DEBUG(x ...)
+#endif
 
 class MosquittoLibrarySingleton : boost::noncopyable
 {
@@ -73,38 +72,32 @@ boost::shared_ptr<MQTTClient> MQTTClient::CreateInstance(const char *client_id, 
   return boost::shared_ptr<MQTTClient>(new MoqsuittoMQTTClient(client_id, host, port));
 }
 
-MQTTClient::MQTTClient(const char *client_id, const char *host, int port)
-  : valid_(false),
-    client_id_(client_id),
-    broker_host_(host), broker_port_(port), keep_alive_s_(60)
-{
-}
-
-MQTTClient::~MQTTClient()
-{
-}
-
 MoqsuittoMQTTClient::MoqsuittoMQTTClient(const char *client_id, const char *host, int port)
   : MQTTClient(client_id, host, port),
     mosq_(NULL),
     connack_state_(NONE)
 {
+#ifdef REPORT_DEBUG
+  mosquitto.ReportVersion();
+#endif
   valid_ = Init();
   if (!valid_) { mosquitto_destroy(mosq_); mosq_ = NULL; }
 }
 
 MoqsuittoMQTTClient::~MoqsuittoMQTTClient()
 {
+  DEBUG("Destructor()\n");
   if (mosq_) { mosquitto_destroy(mosq_); }
 }
 
 bool MoqsuittoMQTTClient::Init()
 {
+  DEBUG("Init() %s %s:%d\n", client_id_.c_str(), broker_host_.c_str(), broker_port_);
   // NOTE: need to ensure all callbacks finish before destruction
   // NOTE: NULL returned only on out of memory or invalid argument.
   // NOTE: in either case there is not much that we can do so just run dead.
   mosq_ = mosquitto_new(client_id_.c_str(), true, this);
-  if (!mosq_) { last_error_ = safe_perror(NULL); return false; }
+  if (!mosq_) { last_error_ = util::safe_perror(errno, NULL); return false; }
   mosquitto_connect_callback_set(mosq_, &on_connect);
   mosquitto_message_callback_set(mosq_, &on_message);
   return true;
@@ -112,12 +105,14 @@ bool MoqsuittoMQTTClient::Init()
 
 void MoqsuittoMQTTClient::on_connect(struct mosquitto *mosq, void *obj, int rc)
 {
+  DEBUG("on_connect()\n");
   MoqsuittoMQTTClient* self = static_cast<MoqsuittoMQTTClient*>(obj);
   self->OnConnect(mosq, rc);
 }
 
 void MoqsuittoMQTTClient::on_message(struct mosquitto *mosq, void *obj, const struct mosquitto_message *msg)
 {
+  DEBUG("on_message()\n");
   MoqsuittoMQTTClient* self = static_cast<MoqsuittoMQTTClient*>(obj);
   self->OnMessage(mosq, msg);
 }
@@ -152,13 +147,13 @@ std::string MosqErrStr(int code, const char *txt)
   case MOSQ_ERR_SUCCESS:
     return "ok";
   case MOSQ_ERR_ERRNO:
-    return safe_perror(txt);
+    return util::safe_perror(errno, txt);
   case MOSQ_ERR_NO_CONN:
     return string(txt) + ": Out of memory";
   case MOSQ_ERR_PROTOCOL:
     return string(txt) + ": Protocol error";
   case MOSQ_ERR_NOMEM:
-    return string(txt) + ": Not connected to roker";
+    return string(txt) + ": Not connected to broker";
   case MOSQ_ERR_INVAL:
     return string(txt) + ": Invalid argument";
   }
@@ -167,6 +162,7 @@ std::string MosqErrStr(int code, const char *txt)
 
 bool MoqsuittoMQTTClient::Connect()
 {
+  DEBUG("Connect()\n");
   if (!valid_) return false;
   last_error_ = "";
   // This function is not re-entrant
@@ -178,6 +174,7 @@ bool MoqsuittoMQTTClient::Connect()
 
 bool MoqsuittoMQTTClient::Poll()
 {
+  DEBUG("Poll()\n");
   if (!valid_) return false;
   last_error_ = "";
   int rc = mosquitto_loop(mosq_, 1000, 1);
@@ -191,6 +188,7 @@ bool MoqsuittoMQTTClient::Poll()
 
 bool MoqsuittoMQTTClient::Subscribe(const char *topic)
 {
+  DEBUG("Subscribe(%s)\n", topic);
   if (!valid_) return false;
   last_error_ = "";
   int rc = mosquitto_subscribe(mosq_, NULL, topic, 0);
@@ -200,6 +198,7 @@ bool MoqsuittoMQTTClient::Subscribe(const char *topic)
 
 bool MoqsuittoMQTTClient::Unsubscribe(const char *topic)
 {
+  DEBUG("Unsubscribe(%s)\n", topic);
   if (!valid_) return false;
   last_error_ = "";
   int rc = mosquitto_unsubscribe(mosq_, NULL, topic);

@@ -10,9 +10,9 @@
 /// Designed for simple use cases, in particular, where there is a broker locally or on a low latency link.
 ///
 /// Presently this is implemented using mosquitto, however this may change, or need to be
-/// changed in the future for various reasons.
-/// The client is immutable and thus doesnt make sense to copy an instance.
+/// changed in the future for various reasons, the class is designed in such a way that all changes are isolated to mqttclient.cpp.
 ///
+/// The client is immutable and thus doesnt make sense to copy an instance.
 /// For the moment assume methods are not re-entrant.
 class MQTTClient : boost::noncopyable
 {
@@ -52,8 +52,7 @@ public:
   /// If the connection to the broker was dropped will try and reconnect automatically
   virtual bool Poll() = 0;
 
-  // We could probably go to town and have a function specific for a topic.
-  // But leave that for a rainly day
+  // We could probably go to town and have a function specific for a topic, but for now we leave that for a rainly day
   inline void RegisterMessageHandler(const message_fcn_t& handler);
   inline void RegisterConnackHandler(const connack_fcn_t& handler);
 
@@ -76,6 +75,18 @@ protected:
 
 private:
 };
+
+inline MQTTClient::MQTTClient(const char *client_id, const char *host, int port)
+  : valid_(false),
+    client_id_(client_id),
+    broker_host_(host), broker_port_(port), keep_alive_s_(60)
+{
+}
+
+inline MQTTClient::~MQTTClient()
+{
+}
+
 
 inline void MQTTClient::RegisterMessageHandler(const message_fcn_t& handler)
 {

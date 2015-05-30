@@ -1,3 +1,4 @@
+#include "util.hpp"
 #include <mosquitto.h>
 #include <string>
 #include <iostream>
@@ -9,6 +10,7 @@ using std::cout;
 using std::cerr;
 using boost::format;
 using boost::shared_ptr;
+using util::buf2str;
 
 struct UserData {
 
@@ -30,12 +32,7 @@ void connect_callback(struct mosquitto *mosq, void *obj, int result)
 
 void message_callback(struct mosquitto *mosq, void *obj, const struct mosquitto_message *message)
 {
-  string safe_payload;
-  for (int i=0; i < message->payloadlen; i++) {
-    char c = ((const char*)message->payload)[i];
-    safe_payload += iscntrl(c) ? '.' : c;
-  }
-  cout << format("TOPIC='%s', PAYLOAD='%s'\n") % message->topic % safe_payload;
+  cout << format("TOPIC='%s', PAYLOAD='%s'\n") % message->topic % buf2str(message->payload, message->payloadlen);
 }
 
 // Dumb MQTT LoRa 'relay' - subscribes to everything, compresses selected topics, and dump to stdout in binary
