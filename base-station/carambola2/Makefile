@@ -9,17 +9,54 @@ OWRT_TOOLCHAIN=toolchain-mips_34kc_gcc-4.8-linaro_uClibc-0.9.33.2
 OWRT_TARGET=target-mips_34kc_uClibc-0.9.33.2
 OWRT_GCC=mips-openwrt-linux-uclibc-gcc
 OWRT_STAGING=$(shell pwd)/openwrt/staging_dir
+OWRT_TUPLE=mips-openwrt-linux-uclibc
+
+# FIXME: query root-ar71xx from openwrt/ build
+STAGING_DESTDIR=$(OWRT_STAGING)/$(OWRT_TARGET)
+
+MY_CMAKE_OPTS=-DOPENWRT=yes -DCMAKE_TOOLCHAIN_FILE=../carambola2/toolchain.cmake -DCMAKE_INSTALL_PREFIX=/usr
+#-DCMAKE_SKIP_RPATH=TRUE
 
 all: prereq build
 
 sx1276-clean:
 	@rm -rf build.sx1276
 
-sx1276:
+sx1276: $(STAGING_DESTDIR)/usr/lib/libmosquitto.so
 	@mkdir -p build.sx1276
 	@cd build.sx1276 && export OWRT_STAGING=$(OWRT_STAGING) OWRT_GCC=$(OWRT_GCC) OWRT_TARGET=$(OWRT_TARGET) OWRT_TOOLCHAIN=$(OWRT_TOOLCHAIN) && \
-											cmake -DCMAKE_TOOLCHAIN_FILE=../carambola2/toolchain.cmake ../../sx1276
-	@cd build.sx1276 && export STAGING_DIR=$(OWRT_STAGING) && make
+											cmake $(MY_CMAKE_OPTS) ../../sx1276
+	@cd build.sx1276 && export STAGING_DIR=$(OWRT_STAGING) && $(MAKE)
+
+mosquitto: build.mosquitto/Makefile
+	@echo [BUILD] mosquitto...
+	@cd build.mosquitto && export STAGING_DIR=$(OWRT_STAGING) && PATH=$(OWRT_STAGING)/$(OWRT_TOOLCHAIN)/bin:$$PATH $(MAKE)
+	@cd build.mosquitto && export STAGING_DIR=$(OWRT_STAGING) && PATH=$(OWRT_STAGING)/$(OWRT_TOOLCHAIN)/bin:$$PATH $(MAKE) install DESTDIR=$(STAGING_DESTDIR)
+
+build.mosquitto/Makefile: $(STAGING_DESTDIR)/usr/lib/libcares.so | ../org.eclipse.mosquitto
+	@echo [PREP] mosquitto...
+	@mkdir -p build.mosquitto
+	@cd build.mosquitto && export OWRT_STAGING=$(OWRT_STAGING) OWRT_GCC=$(OWRT_GCC) OWRT_TARGET=$(OWRT_TARGET) OWRT_TOOLCHAIN=$(OWRT_TOOLCHAIN) && \
+											cmake $(MY_CMAKE_OPTS) ../../org.eclipse.mosquitto
+
+$(STAGING_DESTDIR)/usr/lib/libcares.so c-ares: build.c-ares/Makefile
+	@echo [BUILD] c-ares...
+	@cd build.c-ares && export STAGING_DIR=$(OWRT_STAGING) && PATH=$(OWRT_STAGING)/$(OWRT_TOOLCHAIN)/bin:$$PATH $(MAKE) install dist DESTDIR=$(STAGING_DESTDIR)
+
+build.c-ares/Makefile: ../c-ares/Makefile.in | ../c-ares
+	@echo [PREP] c-ares...
+	@mkdir -p build.c-ares
+	@cd build.c-ares && export OWRT_STAGING=$(OWRT_STAGING) OWRT_GCC=$(OWRT_GCC) OWRT_TARGET=$(OWRT_TARGET) OWRT_TOOLCHAIN=$(OWRT_TOOLCHAIN) && \
+											PATH=$(OWRT_STAGING)/$(OWRT_TOOLCHAIN)/bin:$$PATH ../../c-ares/configure --host=$(OWRT_TUPLE) --prefix=/usr
+
+../c-ares/Makefile.in:
+	@cd ../c-ares && ./buildconf
+
+../org.eclipse.mosquitto:
+	(cd .. && git clone git://git.eclipse.org/gitroot/mosquitto/org.eclipse.mosquitto.git )
+
+../c-ares:
+	(cd .. && git clone https://github.com/bagder/c-ares.git )
 
 prebuild: $(TREE)/feeds.conf $(TREE)/.config patch $(TREE)/tmp/.kconfig-ar71xx_generic
 

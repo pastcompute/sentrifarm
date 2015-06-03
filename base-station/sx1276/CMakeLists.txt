@@ -23,9 +23,21 @@
 #
 # Before adding new libraries, reread https://wiki.52north.org/bin/view/Documentation/ThirdPartyLicensesForGPL
 
-cmake_minimum_required(VERSION 2.8)
+cmake_minimum_required(VERSION 2.8.11)   # <-- target_include_directories() needs 2.8.11
 project(sx1276 C CXX)
-set(CMAKE_C_FLAGS "-std=c99 -pthread")
+
+#message("CMAKE_HOST_SYSTEM=${CMAKE_HOST_SYSTEM}")
+#message("CMAKE_SYSTEM=${CMAKE_SYSTEM} CMAKE_TOOLCHAIN_FILE=${CMAKE_TOOLCHAIN_FILE}")
+#message("CMAKE_SYSTEM_NAME=${CMAKE_SYSTEM_NAME} CMAKE_SYSTEM_VERSION=${CMAKE_SYSTEM_VERSION} CMAKE_SYSTEM_PROCESSOR=${CMAKE_SYSTEM_PROCESSOR}")
+
+if(CMAKE_COMPILER_IS_GNUCC)
+set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -std=c++11")
+set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} -std=c99 -pthread")
+endif(CMAKE_COMPILER_IS_GNUCC)
+
+set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} -D_XOPEN_SOURCE=600")
+set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -D_XOPEN_SOURCE=600")
+set (CMAKE_INSTALL_RPATH "${CMAKE_INSTALL_PREFIX}/${LIBDIR}")
 
 find_package(Threads)
 
@@ -44,22 +56,39 @@ endif()
 #  MOSQUITTO_INCLUDE_DIRS
 #  MOSQUITTO_LIBRARIES
 #  MOSQUITTO_DEFINITIONS
-# TODO : ref sources dir in hints in case mosquitto cloned relative to sx1276/
-find_path(MOSQUITTO_INCLUDE_DIR mosquitto.h HINTS ${HOME}/org.eclipse.mosquitto/lib REQUIRED)
-find_library(MOSQUITTO_LIBRARY NAMES mosquitto HINTS ${HOME}/org.eclipse.mosquitto/lib REQUIRED)
+#
+# Mosquitto needs c-ares:
+#
+#  apt-get install libc-ares-dev  # https://github.com/bagder/c-ares.git
+#
+# Mosquitto needs libuuid:
+#
+#
+# Local testing example:
+#
+# Prerequisite:
+#
+#   cd base-station
+#   git clone git://git.eclipse.org/gitroot/mosquitto/org.eclipse.mosquitto.git
+#   ( cd org.eclipse.mosquitto && make -j DESTDIR=$HOME/opt/mosquitto-1.4.2 prefix= install )
+#
+# Cross-compile testing example:
+#
+#   { set environment as required ... } cmake -DCMAKE_TOOLCHAIN_FILE=<...> -DMOSQUITTO_HINT_x86=...path/to/xcc/mosquitto
+
+set(MOSQUITTO_HINT_x86 $ENV{HOME}/opt/mosquitto-1.4.2)
+
+find_path(MOSQUITTO_INCLUDE_DIR mosquitto.h HINTS ${MOSQUITTO_HINT_x86}/include REQUIRED)
+find_library(MOSQUITTO_LIBRARY NAMES mosquitto HINTS ${MOSQUITTO_HINT_x86}/lib REQUIRED)
 set(MOSQUITTO_LIBRARIES ${MOSQUITTO_LIBRARY} )
 set(MOSQUITTO_INCLUDE_DIRS ${MOSQUITTO_INCLUDE_DIR} )
 include(FindPackageHandleStandardArgs)
 find_package_handle_standard_args(Mosquitto DEFAULT_MSG MOSQUITTO_LIBRARY MOSQUITTO_INCLUDE_DIR)
 mark_as_advanced(MOSQUITTO_INCLUDE_DIR MOSQUITTO_LIBRARY )
 
-if(CMAKE_COMPILER_IS_GNUCC)
-set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -std=c++11")
-set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} -std=c99")
-endif(CMAKE_COMPILER_IS_GNUCC)
-
-set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} -D_XOPEN_SOURCE=600")
-set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -D_XOPEN_SOURCE=600")
+# For whatever reason we dont automagically find the dependencies of mosquitto.
+# Possibly this is because I turned off rpath or am doing something else wrong, so fix it here
+find_package(PkgConfig REQUIRED)
 
 option(enable_maintainer "Enable maintainer CFLAGS (-Wall -Werror)" OFF)
 if(enable_maintainer)
@@ -79,6 +108,8 @@ add_executable(sx1276_test1_rx sx1276_test1_rx.cpp ${MY_FILES})
 add_executable(test_mqtt_discard test_mqtt_discard.cpp)     # dumb version using C'ish C++ and mosquito client library
 add_executable(test_mqtt_discard2 mqttclient.cpp test_mqtt_discard2.cpp)   # discard test using C++ MQTT class
 
+target_include_directories(test_mqtt_discard PRIVATE ${MOSQUITTO_INCLUDE_DIR})
+target_include_directories(test_mqtt_discard2 PRIVATE ${MOSQUITTO_INCLUDE_DIR})
 
 target_link_libraries(sx1276_test1_tx ${MY_LIBS})
 target_link_libraries(sx1276_test1_rx ${MY_LIBS})

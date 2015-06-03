@@ -21,6 +21,7 @@
 
 #include <string>
 #include <string.h>
+#include <stdio.h>
 
 namespace util {
 
