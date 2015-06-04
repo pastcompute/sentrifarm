@@ -15,11 +15,11 @@
 #  You should have received a copy of the GNU General Public License
 #  along with SentriFarm Radio Relay.  If not, see <http://www.gnu.org/licenses/>.
 
-# This software uses the following third party libraries, listed with associated licenses:
+# This software uses the following third party libraries, listed here with associated licenses:
 #
 # * mosquitto : Eclipse Distribution License (EDL) 1.0
-#
-#
+# * c-ares (used by mosquitto) MIT License, portions open source ISC license
+# * boost : Boost Software License 1.0
 #
 # Before adding new libraries, reread https://wiki.52north.org/bin/view/Documentation/ThirdPartyLicensesForGPL
 
