@@ -24,6 +24,47 @@
 # Before adding new libraries, reread https://wiki.52north.org/bin/view/Documentation/ThirdPartyLicensesForGPL
 
 cmake_minimum_required(VERSION 2.8.11)   # <-- target_include_directories() needs 2.8.11
+
+# Incremental design approach.
+#
+# 1. Build simple test programs to exercise various low level components:
+#    (a) sx1276 class, simple tx/rx (DONE)
+#    (b) mqtt '#' subscriber printer (DONE)
+#    (c) script to start everything on PC for testing
+#
+# State of play as at 2015-06-02:
+#
+# MQTT-SN tested using RSMB as broker, including bridging to MQTT.
+# It looks like MQTT-SN might be better approach over the sx1276 link.
+# So, way forward is build a mqtt-sn-sx1276 bridge which lets us set up
+# two RSMB broker_mqtts instances and transports UDP bridge-bridge comms over
+# the SX1276 link. Start with hub/spoke or store/forward architecture requiring
+# two radios per node except the leaves, and deal with combined links later.
+#
+# 2. Build simple do one thing programs, again useful for testing & STW
+#
+# Other things that may or may not happen, probably should in a long term
+# production system if needed but not necessary to progress hackaday prize 2015
+# Do if needed to prove a point. List very subject to change.
+#
+#    * simple program that transmits subscribed mqtt over sx1276 without ack
+#    * simple program that publishes sx1276 received data as MQTT
+#    * sx1276 LoRaWAN class, ack tx/rx
+#    * simple program that receives mqtt over Lora and republishes
+#    * simple program that transmits subscribed mqtt over LoRa, with ack processing according to LoRaWAN spec
+#        unacked messages are discarded
+#    * simple program that receives mqtt over Lora and republishes, with ack processing according to LoRaWAN spec
+#    * transmit subscribed MQTT with a queue and retries / aging
+#    * transmit subscribed MQTT with a queue per topic, with retries / aging and smart algorithm that tries to keep spread of data
+#
+# 3. Summary of programs eventually required:
+#    (a) daemon(s) to run on fencepost to subscribe, and store and forward, or age out, mqtt messages over LoRaWAN
+#    (b) daemon to run on fencepost to receive and publish LoRaWAN mqtt
+#    (c) plumbing to run broker on fencepost
+#    (d) plumbing to run broker on farm end and forward mqtt to datastore, etc.
+#    (e) daemon / cron on fencepost to read sensors and publish mqtt data to fencepost broker
+#    (f) build mqtt publisher in ground sensors
+
 project(sx1276 C CXX)
 
 #message("CMAKE_HOST_SYSTEM=${CMAKE_HOST_SYSTEM}")
