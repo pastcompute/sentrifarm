@@ -2,7 +2,7 @@ trace_output protocol
 log_level detail
 listener 1883 INADDR_ANY mqtts
 listener 1883 INADDR_ANY
-connection BRIDGE01
-  address 127.0.0.1:1884
-  protocol mqtts
-  topic #
+#connection BRIDGE01
+#  address 127.0.0.1:1884
+#  protocol mqtts
+

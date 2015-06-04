@@ -4,4 +4,4 @@ listener 1893 INADDR_ANY mqtts
 connection BRIDGE02
   address 127.0.0.1:1894
   protocol mqtts
-  topic #
+  topic far out "" far/ fencepost1/
