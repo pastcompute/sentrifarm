@@ -3,4 +3,4 @@
 	url = git@github.com:pastcompute/esp8266-frankenstein.git
 [submodule "base-station/libsocket"]
 	path = base-station/libsocket
-	url = https://github.com/dermesser/libsocket.git
+	url = https://github.com/pastcompute/libsocket.git

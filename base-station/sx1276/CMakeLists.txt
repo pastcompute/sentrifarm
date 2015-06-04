@@ -41,6 +41,10 @@ cmake_minimum_required(VERSION 2.8.11)   # <-- target_include_directories() need
 # the SX1276 link. Start with hub/spoke or store/forward architecture requiring
 # two radios per node except the leaves, and deal with combined links later.
 #
+# Under consideration:
+#
+# wise-lib : http://www.wiselib.org/
+#
 # 2. Build simple do one thing programs, again useful for testing & STW
 #
 # Other things that may or may not happen, probably should in a long term
@@ -78,9 +82,10 @@ endif(CMAKE_COMPILER_IS_GNUCC)
 
 set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} -D_XOPEN_SOURCE=600")
 set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -D_XOPEN_SOURCE=600")
-set (CMAKE_INSTALL_RPATH "${CMAKE_INSTALL_PREFIX}/${LIBDIR}")
+set(CMAKE_INSTALL_RPATH "${CMAKE_INSTALL_PREFIX}/${LIBDIR}")
 
-find_package(Threads)
+find_package(PkgConfig REQUIRED)
+find_package(Threads REQUIRED)
 
 set(Boost_USE_STATIC_LIBS OFF)
 set(Boost_USE_MULTITHREADED OFF)
@@ -127,9 +132,17 @@ include(FindPackageHandleStandardArgs)
 find_package_handle_standard_args(Mosquitto DEFAULT_MSG MOSQUITTO_LIBRARY MOSQUITTO_INCLUDE_DIR)
 mark_as_advanced(MOSQUITTO_INCLUDE_DIR MOSQUITTO_LIBRARY )
 
-# For whatever reason we dont automagically find the dependencies of mosquitto.
-# Possibly this is because I turned off rpath or am doing something else wrong, so fix it here
-find_package(PkgConfig REQUIRED)
+# We clone libsocket at the same level as sx1276
+# For OpenWRT the makefile will build it into the correct locals
+# Use build/ on a standard linux PC and install to /usr/local as cmake -DCMAKE_INSTALL_PREFIX=/usr/local
+# Our clone has https://github.com/dermesser/libsocket/pull/21 applied
+find_path(LIBSOCKET_INCLUDE_DIR libsocket/inetdgram.hpp REQUIRED)
+find_library(LIBSOCKET_LIBRARY NAMES socket++ REQUIRED)
+set(LIBSOCKET_LIBRARIES ${LIBSOCKET_LIBRARY} )
+set(LIBSOCKET_INCLUDE_DIRS ${LIBSOCKET_INCLUDE_DIR} )
+include(FindPackageHandleStandardArgs)
+find_package_handle_standard_args(socket++ DEFAULT_MSG LIBSOCKET_LIBRARY LIBSOCKET_INCLUDE_DIR)
+mark_as_advanced(LIBSOCKET_INCLUDE_DIR LIBSOCKET_LIBRARY )
 
 option(enable_maintainer "Enable maintainer CFLAGS (-Wall -Werror)" OFF)
 if(enable_maintainer)
@@ -149,6 +162,13 @@ add_executable(sx1276_test1_rx sx1276_test1_rx.cpp ${MY_FILES})
 add_executable(test_mqtt_discard test_mqtt_discard.cpp)     # dumb version using C'ish C++ and mosquito client library
 add_executable(test_mqtt_discard2 mqttclient.cpp test_mqtt_discard2.cpp)   # discard test using C++ MQTT class
 
+# POC: Listens on UDP like a broker and forwards data transparently over named fifo
+# Probably does what can be done with socat but I have more control for debugging and experimentation
+add_executable(fifo_mqttsn_bridge fifo_mqttsn_bridge.cpp ${MY_FILES})
+
+# Listens on UDP like a broker but forwards data transparently over radio to another bridge
+add_executable(sx1276_mqttsn_bridge sx1276_mqttsn_bridge.cpp ${MY_FILES})
+
 target_include_directories(test_mqtt_discard PRIVATE ${MOSQUITTO_INCLUDE_DIR})
 target_include_directories(test_mqtt_discard2 PRIVATE ${MOSQUITTO_INCLUDE_DIR})
 
@@ -156,3 +176,6 @@ target_link_libraries(sx1276_test1_tx ${MY_LIBS})
 target_link_libraries(sx1276_test1_rx ${MY_LIBS})
 target_link_libraries(test_mqtt_discard ${MY_LIBS} ${MOSQUITTO_LIBRARIES})
 target_link_libraries(test_mqtt_discard2 ${MY_LIBS} ${MOSQUITTO_LIBRARIES})
+
+target_link_libraries(fifo_mqttsn_bridge ${MY_LIBS} ${LIBSOCKET_LIBRARIES})
+target_link_libraries(sx1276_mqttsn_bridge ${MY_LIBS})
