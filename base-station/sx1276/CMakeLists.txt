@@ -80,15 +80,21 @@ set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -std=c++11")
 set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} -std=c99 -pthread")
 endif(CMAKE_COMPILER_IS_GNUCC)
 
-set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} -D_XOPEN_SOURCE=600")
-set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -D_XOPEN_SOURCE=600")
+set(COMMON_FLAGS "-D_XOPEN_SOURCE=600")
+set(COMMON_FLAGS_DEBUG "-g")
+
+set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} ${COMMON_FLAGS}")
+set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} ${COMMON_FLAGS}")
 set(CMAKE_INSTALL_RPATH "${CMAKE_INSTALL_PREFIX}/${LIBDIR}")
+
+set(CMAKE_C_FLAGS_DEBUG "${CMAKE_C_FLAGS_DEBUG} ${COMMON_FLAGS_DEBUG}")
+set(CMAKE_CXX_FLAGS_DEBUG "${CMAKE_CXX_FLAGS_DEBUG} ${COMMON_FLAGS_DEBUG}")
 
 find_package(PkgConfig REQUIRED)
 find_package(Threads REQUIRED)
 
 set(Boost_USE_STATIC_LIBS OFF)
-set(Boost_USE_MULTITHREADED OFF)
+set(Boost_USE_MULTITHREADED ON)
 set(Boost_USE_STATIC_RUNTIME OFF)
 find_package(Boost 1.49.0 COMPONENTS system chrono thread)
 if(Boost_FOUND)
@@ -177,5 +183,5 @@ target_link_libraries(sx1276_test1_rx ${MY_LIBS})
 target_link_libraries(test_mqtt_discard ${MY_LIBS} ${MOSQUITTO_LIBRARIES})
 target_link_libraries(test_mqtt_discard2 ${MY_LIBS} ${MOSQUITTO_LIBRARIES})
 
-target_link_libraries(fifo_mqttsn_bridge ${MY_LIBS} ${LIBSOCKET_LIBRARIES})
+target_link_libraries(fifo_mqttsn_bridge ${MY_LIBS} ${LIBSOCKET_LIBRARIES} ${Boost_THREAD_LIBRARY})
 target_link_libraries(sx1276_mqttsn_bridge ${MY_LIBS})

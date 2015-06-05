@@ -40,9 +40,8 @@ inline std::string buf2str(const void *data, unsigned len)
 inline std::string safe_perror(int code, const char *prefix)
 {
   char buf[96] = "";
-  strerror_r(code, buf, sizeof(buf));
-  if (strlen(buf)==0) { snprintf(buf, sizeof(buf), "Error code %d", code); }
-  return (prefix ? (std::string(prefix) + ": ") : std::string()) + std::string(buf);
+  char *err = strerror_r(code, buf, sizeof(buf));
+  return (prefix ? (std::string(prefix) + ": ") : std::string()) + std::string(err);
 }
 
 };
