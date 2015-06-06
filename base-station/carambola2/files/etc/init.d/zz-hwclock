@@ -40,11 +40,11 @@ echo bmp085 0x77 > '/sys/class/i2c-dev/i2c-0/device/new_device'
 # SCK    : phys J13 pin 12 :  spi0 CLK  - pulled down via 10k resistor
 # 
 
-# Extra LED on LED6 / dev phys pin 2 / gpio 16
+# Extra LED on LED4 / dev phys pin 2 / gpio 15
 # Reversed: 1 = off, 0 = on
-echo 16 > /sys/class/gpio/export
-echo out > /sys/class/gpio/gpio16/direction
-echo 0 > /sys/class/gpio/gpio16/value
+echo 15 > /sys/class/gpio/export
+echo out > /sys/class/gpio/gpio15/direction
+echo 0 > /sys/class/gpio/gpio15/value
 
 # 1-wire
 
