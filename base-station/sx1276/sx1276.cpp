@@ -340,6 +340,9 @@ bool SX1276Radio::ApplyDefaultLoraConfiguration()
   // Pin header DIO1 : Rx timeout: 00
   // Pin header DIO0 : Tx done: 01
 
+  spi_->ReadRegister(SX1276REG_DioMapping1, v);
+  WriteRegisterVerify(SX1276REG_DioMapping1, v | 0x1);
+
   // WriteRegisterVerify(SX1276REG_DioMapping1, (0x1 << 6) | (0x0 << 4) | (0x1));  CAUSING ISSUES?
   // WriteRegisterVerify(SX1276REG_DioMapping2, (0x2 << 4));                       CAUSING ISSUES?
 
