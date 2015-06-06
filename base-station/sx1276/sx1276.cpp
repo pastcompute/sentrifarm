@@ -360,13 +360,17 @@ float SX1276Radio::PredictTimeOnAir(const char *payload) const
   return toa;
 }
 
-/// Just send raw unframed data i.e. ASCII, zero terminated
-/// Only useful as a beacon but enough to get us started
 bool SX1276Radio::SendSimpleMessage(const char *payload)
 {
+  return SendSimpleMessage(payload, strlen(payload));
+}
+
+/// Just send raw unframed data i.e. ASCII, zero terminated
+/// Only useful as a beacon but enough to get us started
+bool SX1276Radio::SendSimpleMessage(const void *payload, unsigned n)
+{
   uint8_t v;
-  unsigned n = strlen(payload);
-  if (n > 126) { fprintf(stderr, "Message too long; truncated!\n"); }
+  if (n > 127) { fprintf(stderr, "Message too long; truncated!\n"); }
 
   // LoRa Standby
   Standby();
@@ -383,7 +387,7 @@ bool SX1276Radio::SendSimpleMessage(const char *payload)
   ReadRegisterHarder(SX1276REG_FifoAddrPtr, fifo_pos);
 
   for (uint8_t b=0; b <= n; b++) {
-    spi_->WriteRegister(SX1276REG_Fifo, payload[b]); // Note: we cant verify
+    spi_->WriteRegister(SX1276REG_Fifo, ((const uint8_t*)payload)[b]); // Note: we cant verify
     usleep(100);
     ReadRegisterHarder(SX1276REG_FifoAddrPtr, v);
     if (v - fifo_pos - 1 != b) {
@@ -414,8 +418,8 @@ bool SX1276Radio::SendSimpleMessage(const char *payload)
   do {
     if (!ReadRegisterHarder(SX1276REG_IrqFlags, v, 4)) break;
     if (v & (1 << 3)) {
-			done = true;
-			break;
+      done = true;
+      break;
     } else {
       usleep(100);
     }

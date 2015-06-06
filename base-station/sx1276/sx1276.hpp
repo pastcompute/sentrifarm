@@ -76,6 +76,9 @@ public:
   /// @return true if OK, false if a fault() happened
   bool SendSimpleMessage(const char *payload);
 
+  /// Send a binary message, truncated by maximum payload length.
+  bool SendSimpleMessage(const void *payload, unsigned len);
+
   /// Wait for a message
   bool ReceiveSimpleMessage(uint8_t buffer[], int& size, int timeout_ms, bool& timeout, bool& crc_error);
 

@@ -186,4 +186,4 @@ target_link_libraries(test_mqtt_discard ${MY_LIBS} ${MOSQUITTO_LIBRARIES})
 target_link_libraries(test_mqtt_discard2 ${MY_LIBS} ${MOSQUITTO_LIBRARIES})
 
 target_link_libraries(fifo_mqttsn_bridge ${MY_LIBS} ${LIBSOCKET_LIBRARIES} ${Boost_THREAD_LIBRARY})
-target_link_libraries(sx1276_mqttsn_bridge ${MY_LIBS})
+target_link_libraries(sx1276_mqttsn_bridge ${MY_LIBS} ${LIBSOCKET_LIBRARIES} ${Boost_THREAD_LIBRARY})
