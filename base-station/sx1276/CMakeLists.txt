@@ -162,6 +162,7 @@ set(MY_FILES buspirate_binary.c buspirate_spi.cpp sx1276_platform.cpp misc.cpp s
 set(MY_LIBS ${CMAKE_THREAD_LIBS_INIT} ${Boost_SYSTEM_LIBRARY} ${Boost_CHRONO_LIBRARY})
 
 add_executable(bp_sx1276_dump bp_sx1276_dump.c buspirate_binary.c )
+add_executable(sx1276_dump_regs sx1276_dump_regs.cpp ${MY_FILES})
 add_executable(sx1276_test1_tx sx1276_test1_tx.cpp ${MY_FILES})
 add_executable(sx1276_test1_rx sx1276_test1_rx.cpp ${MY_FILES})
 
@@ -180,6 +181,7 @@ target_include_directories(test_mqtt_discard2 PRIVATE ${MOSQUITTO_INCLUDE_DIR})
 
 target_link_libraries(sx1276_test1_tx ${MY_LIBS})
 target_link_libraries(sx1276_test1_rx ${MY_LIBS})
+target_link_libraries(sx1276_dump_regs ${MY_LIBS})
 target_link_libraries(test_mqtt_discard ${MY_LIBS} ${MOSQUITTO_LIBRARIES})
 target_link_libraries(test_mqtt_discard2 ${MY_LIBS} ${MOSQUITTO_LIBRARIES})
 

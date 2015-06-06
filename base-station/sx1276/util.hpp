@@ -36,6 +36,15 @@ inline std::string buf2str(const void *data, unsigned len)
   return result;
 }
 
+inline std::string safe_str(const char *m)
+{
+  std::string result;
+  for (; *m; ) { char c = *m++; result += iscntrl(c) ? '.' : c; }
+  return result;
+}
+
+
+
 // Requires : #define _XOPEN_SOURCE 600
 inline std::string safe_perror(int code, const char *prefix)
 {
