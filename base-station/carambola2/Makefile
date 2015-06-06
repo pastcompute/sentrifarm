@@ -7,7 +7,7 @@ TREE=openwrt
 CONF=openwrt.config
 OWRT_TOOLCHAIN=toolchain-mips_34kc_gcc-4.8-linaro_uClibc-0.9.33.2
 OWRT_TARGET=target-mips_34kc_uClibc-0.9.33.2
-OWRT_GCC=mips-openwrt-linux-uclibc-gcc
+OWRT_GCC_PFX=mips-openwrt-linux-uclibc
 OWRT_STAGING=$(shell pwd)/openwrt/staging_dir
 OWRT_TUPLE=mips-openwrt-linux-uclibc
 
@@ -22,13 +22,24 @@ all: prereq build
 sx1276-clean:
 	@rm -rf build.sx1276
 
-sx1276: $(STAGING_DESTDIR)/usr/lib/libmosquitto.so
+sx1276: $(STAGING_DESTDIR)/usr/lib/libmosquitto.so $(STAGING_DESTDIR)/usr/lib/libsocket++.so
 	@mkdir -p build.sx1276
-	@cd build.sx1276 && export OWRT_STAGING=$(OWRT_STAGING) OWRT_GCC=$(OWRT_GCC) OWRT_TARGET=$(OWRT_TARGET) OWRT_TOOLCHAIN=$(OWRT_TOOLCHAIN) && \
+	@cd build.sx1276 && export OWRT_STAGING=$(OWRT_STAGING) OWRT_GCC_PFX=$(OWRT_GCC_PFX) OWRT_TARGET=$(OWRT_TARGET) OWRT_TOOLCHAIN=$(OWRT_TOOLCHAIN) && \
 											cmake $(MY_CMAKE_OPTS) ../../sx1276
-	@cd build.sx1276 && export STAGING_DIR=$(OWRT_STAGING) && $(MAKE)
+	@cd build.sx1276 && STAGING_DIR=$(OWRT_STAGING) $(MAKE)
 
-mosquitto: build.mosquitto/Makefile
+$(STAGING_DESTDIR)/usr/lib/libsocket++.so libsocket: build.libsocket/Makefile
+	@echo [BUILD] libsocket...
+	@cd build.libsocket && export STAGING_DIR=$(OWRT_STAGING) && PATH=$(OWRT_STAGING)/$(OWRT_TOOLCHAIN)/bin:$$PATH $(MAKE)
+	@cd build.libsocket && export STAGING_DIR=$(OWRT_STAGING) && PATH=$(OWRT_STAGING)/$(OWRT_TOOLCHAIN)/bin:$$PATH $(MAKE) install DESTDIR=$(STAGING_DESTDIR)
+
+build.libsocket/Makefile: | ../libsocket
+	@echo [PREP] libsocket...
+	@mkdir -p build.libsocket
+	@cd build.libsocket && export OWRT_STAGING=$(OWRT_STAGING) OWRT_GCC_PFX=$(OWRT_GCC_PFX) OWRT_TARGET=$(OWRT_TARGET) OWRT_TOOLCHAIN=$(OWRT_TOOLCHAIN) && \
+											cmake $(MY_CMAKE_OPTS) ../../libsocket
+
+$(STAGING_DESTDIR)/usr/lib/libmosquitto.so mosquitto: build.mosquitto/Makefile
 	@echo [BUILD] mosquitto...
 	@cd build.mosquitto && export STAGING_DIR=$(OWRT_STAGING) && PATH=$(OWRT_STAGING)/$(OWRT_TOOLCHAIN)/bin:$$PATH $(MAKE)
 	@cd build.mosquitto && export STAGING_DIR=$(OWRT_STAGING) && PATH=$(OWRT_STAGING)/$(OWRT_TOOLCHAIN)/bin:$$PATH $(MAKE) install DESTDIR=$(STAGING_DESTDIR)
@@ -36,7 +47,7 @@ mosquitto: build.mosquitto/Makefile
 build.mosquitto/Makefile: $(STAGING_DESTDIR)/usr/lib/libcares.so | ../org.eclipse.mosquitto
 	@echo [PREP] mosquitto...
 	@mkdir -p build.mosquitto
-	@cd build.mosquitto && export OWRT_STAGING=$(OWRT_STAGING) OWRT_GCC=$(OWRT_GCC) OWRT_TARGET=$(OWRT_TARGET) OWRT_TOOLCHAIN=$(OWRT_TOOLCHAIN) && \
+	@cd build.mosquitto && export OWRT_STAGING=$(OWRT_STAGING) OWRT_GCC_PFX=$(OWRT_GCC_PFX) OWRT_TARGET=$(OWRT_TARGET) OWRT_TOOLCHAIN=$(OWRT_TOOLCHAIN) && \
 											cmake $(MY_CMAKE_OPTS) ../../org.eclipse.mosquitto
 
 $(STAGING_DESTDIR)/usr/lib/libcares.so c-ares: build.c-ares/Makefile
@@ -46,7 +57,7 @@ $(STAGING_DESTDIR)/usr/lib/libcares.so c-ares: build.c-ares/Makefile
 build.c-ares/Makefile: ../c-ares/Makefile.in | ../c-ares
 	@echo [PREP] c-ares...
 	@mkdir -p build.c-ares
-	@cd build.c-ares && export OWRT_STAGING=$(OWRT_STAGING) OWRT_GCC=$(OWRT_GCC) OWRT_TARGET=$(OWRT_TARGET) OWRT_TOOLCHAIN=$(OWRT_TOOLCHAIN) && \
+	@cd build.c-ares && export OWRT_STAGING=$(OWRT_STAGING) OWRT_GCC_PFX=$(OWRT_GCC_PFX) OWRT_TARGET=$(OWRT_TARGET) OWRT_TOOLCHAIN=$(OWRT_TOOLCHAIN) && \
 											PATH=$(OWRT_STAGING)/$(OWRT_TOOLCHAIN)/bin:$$PATH ../../c-ares/configure --host=$(OWRT_TUPLE) --prefix=/usr
 
 ../c-ares/Makefile.in:

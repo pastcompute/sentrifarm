@@ -142,8 +142,8 @@ mark_as_advanced(MOSQUITTO_INCLUDE_DIR MOSQUITTO_LIBRARY )
 # For OpenWRT the makefile will build it into the correct locals
 # Use build/ on a standard linux PC and install to /usr/local as cmake -DCMAKE_INSTALL_PREFIX=/usr/local
 # Our clone has https://github.com/dermesser/libsocket/pull/21 applied
-find_path(LIBSOCKET_INCLUDE_DIR libsocket/inetdgram.hpp REQUIRED)
-find_library(LIBSOCKET_LIBRARY NAMES socket++ REQUIRED)
+find_path(LIBSOCKET_INCLUDE_DIR libsocket/inetdgram.hpp)
+find_library(LIBSOCKET_LIBRARY NAMES socket++)
 set(LIBSOCKET_LIBRARIES ${LIBSOCKET_LIBRARY} )
 set(LIBSOCKET_INCLUDE_DIRS ${LIBSOCKET_INCLUDE_DIR} )
 include(FindPackageHandleStandardArgs)
