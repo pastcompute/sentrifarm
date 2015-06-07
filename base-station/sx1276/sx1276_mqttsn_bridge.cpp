@@ -66,10 +66,11 @@ struct Shared
   }
 
   shared_ptr<SX1276Radio> radio;
+  shared_ptr<SX1276Platform> platform;
   mutex radio_mx;
 
 	bool TransmitHello() {
-		radio->SetPreamble(0x80);
+		// radio->SetPreamble(0x80);
 		for (int i=0; i < 5; i++) {
 			uint8_t buffer[9] = { 0x02, 0x02, (global_counter++) & 0xff, 'h', 'e', 'l', 'l', 'o', 0x30+i};
 	    radio->SendSimpleMessage(buffer, 9);
@@ -79,12 +80,22 @@ struct Shared
 
 	bool TransmitAck(uint8_t counter) {
 		cerr << format("Send ACK %d\n") % (int)counter;
-		radio->SetPreamble(0x80);
-		for (int i=0; i < 1; i++) {
-			uint8_t buffer[9] = { 0x01, counter, (global_counter++) & 0xff, 1, 2, 3, 4, 5, i+0x30 };
-	    radio->SendSimpleMessage(buffer, 9);
-			usleep(10000);
-		}
+		// radio->SetPreamble(0x80);
+		// FIXME radio->SetSymbolTimeout(0x80);
+		int i=0;
+		uint8_t buffer[9] = { 0x01, counter, (global_counter++) & 0xff, 1, 2, 3, 4, 5, i+0x30 };
+    radio->SendSimpleMessage(buffer, 9);
+	}
+
+	void Init() {
+    platform->ResetSX1276();
+    radio->ChangeCarrier(919000000);
+    radio->ApplyDefaultLoraConfiguration();
+	}
+
+	void Restart() {
+    radio->Standby();
+    Init();
 	}
 
   // This stuff is a hack   :needs to be abstracted into a thread safe radio instance
@@ -102,32 +113,44 @@ struct Shared
 	  steady_clock::time_point t0 = steady_clock::now();
 	  steady_clock::time_point t1 = t0 + boost::chrono::milliseconds(15000);
 		int tries = 0;
-		radio->SetPreamble(0x50); // probably a red herring now I found the RX bug
+		// radio->SetPreamble(0x50); // probably a red herring now I found the RX bug
 		for (; steady_clock::now() <= t1; ) {
 			buffer[2] = (global_counter++) & 0xff;
-	    if (radio->SendSimpleMessage(buffer, len+2)) {
-				uint8_t ack_buffer[256];
-				bool rx_timeout = false;
-				bool rx_crc_error = false;
-				int received = 255;
-	      if (radio->ReceiveSimpleMessage(ack_buffer, received, 3000, rx_timeout, rx_crc_error)) {
-					// ACK packet: 01 + counter echo
-					if (!rx_timeout && !rx_crc_error) {
-						if (received == 10 && ack_buffer[0] == 1 && ack_buffer[1] == counter) {
-							counter ++;
-							return true;
-						}
-						cerr << format("Waiting for ACK; got other data: %.2x %.2x\n") % int(ack_buffer[0]) % int(ack_buffer[1]);
-					}
-					else {
-					  if (rx_timeout) { cerr << "to "; }
-						if (rx_crc_error) { cerr << "crc "; }
-						cerr << "\n";
-					}
-					tries++;
+
+			if (tries % 15 == 0) { // resend every 5 missed ack for the moiment
+			  if (!radio->SendSimpleMessage(buffer, len+3)) {
+					break;
 				}
-			} else {
-				break;
+			}
+			// Wait for an ack then try again
+
+			uint8_t ack_buffer[256];
+			bool rx_timeout = false;
+			bool rx_crc_error = false;
+			int received = 255;
+      if (radio->ReceiveSimpleMessage(ack_buffer, received, 3000, rx_timeout, rx_crc_error)) {
+				// ACK packet: 01 + counter echo
+				if (!rx_timeout && !rx_crc_error) {
+					if (received == 10 && ack_buffer[0] == 1 && ack_buffer[1] == counter) {
+						cerr << format("ACK OK %d\n") % (int)counter;
+						counter ++;
+						return true;
+					}
+					cerr << format("Waiting for ACK; got other data: %.2x %.2x\n") % int(ack_buffer[0]) % int(ack_buffer[1]);
+
+					// This is where it gets really really dodgy
+					// we get a 'deadlock' unless we ack this message
+					// for now then, though, discard it after acking
+					// and let MQTT-SN sort out the mess
+					if (ack_buffer[0] == 0) {
+						TransmitAck(ack_buffer[1]);
+					}
+				}
+				else {
+				  //if (rx_timeout) { cerr << "to "; }
+					if (rx_crc_error) { cerr << "crc\n"; }
+				}
+				tries++;
 			}
 		}
 		cerr << format("Failed to send msg and get ack, counter = %u tried %d times\n") % (unsigned)counter % tries;
@@ -140,33 +163,33 @@ struct Shared
 
     bool crc_error = false;
     bool timeout = false;
-    unsigned timeout_ms = 3000; // This will need a lot of tuning probably
+    unsigned timeout_ms = 20000; // This timeout is a safety sanity check; ReceiveSimpleMessage returns on a symbol timeout without retrying
 
     unique_lock<mutex> lock(radio_mx);
     int received = 0;
-		uint8_t buffer[len+2];
+		uint8_t buffer[len+3];
     do {
-      received = len+2;
+      received = len+3;
       if (!radio->ReceiveSimpleMessage(buffer, received, timeout_ms, timeout, crc_error)) { return false; }
 
 			if (!timeout && !crc_error) {
 
-	      FILE* f = popen("od -Ax -tx1z -v -w16", "w");
-	      if (f) { fwrite(buffer, received, 1, f); pclose(f); }
+//	      FILE* f = popen("od -Ax -tx1z -v -w16", "w");
+//	      if (f) { fwrite(buffer, received, 1, f); pclose(f); }
 
 				if (buffer[0] == 2) { cout << "[RX Hello]\n"; continue; } // hello msg, ignore
 				if (buffer[0] == 1) { cout << "[RX ACK]\n"; continue; } // ack, ignore (for the moment)
 				if (buffer[0] == 0) {
 					TransmitAck(buffer[1]);
-					memcpy(payload, buffer+2, received-2);
-					rx = received-2;
+					memcpy(payload, buffer+3, received-3);
+					rx = received-3;
 					return true;
 				}
 			}
 
       // allow pending tx...
       lock.unlock();
-      usleep(100); // there must be a better way to do this...
+      usleep(50); // there must be a better way to do this...
       lock.lock();
     } while (true); // DODGY: we need a higher level time timeout for O/S servicing
 		cerr << format("Junk? %.2x\n") % buffer[0];
@@ -186,12 +209,17 @@ class WorkerThread
       string from, fromport;
       int n = srv_.rcvfrom(buffer, sizeof(buffer), from, fromport);
       if (n > 0) {
-        cerr << format("[Radio TX] %s:%d : %s\n") % from % fromport % util::buf2str(buffer,n);
+        cerr << format("[UDP RX] %s:%d : %d:%s\n") % from % fromport % n % util::buf2str(buffer,n);
+
+	      FILE* f = popen("od -Ax -tx1z -v -w16", "w");
+	      if (f) { fwrite(buffer, n, 1, f); pclose(f); }
+
         { shared_.Update(from, fromport); }
 
         if (!shared_.Transmit(buffer, n)) {
 	        cerr << "TX error!\n";
 				}
+        cerr << format("[UDP RX] FIN\n");
 
       }
     }
@@ -207,20 +235,22 @@ class WorkerThread
       // The SX1276 supports all sorts of nice stuff, like CAD but we havent gotten into that yet
       // For the moment we need to sit here and wait (receive with block)
       // but with a way of falling out to allow transmits to happen...
-      bool have_msg = shared_.TryReceive(buffer, 256, r);
+      bool ok = shared_.TryReceive(buffer, 256, r);
 
-      if (have_msg) { // FIXME
+      if (ok) { // FIXME
         string ip; string port;
         bool have_port = shared_.Get(ip, port);
 				if (!have_port) { cerr << format("[Radio RX -> NOWHERE] %d:%s\n") % r % util::buf2str(buffer,r); }
 				else {
         cerr << format("[Radio RX -> %s:%s] %d:%s\n") % ip % port % r % util::buf2str(buffer,r);
+	      FILE* f = popen("od -Ax -tx1z -v -w16", "w");
+	      if (f) { fwrite(buffer, r, 1, f); pclose(f); }
         try {
           srv_.sndto(buffer, r, ip, port);
-        } catch (...) {}
+        } catch (libsocket::socket_exception& e) { cerr << e.mesg<< "\n"; }
 				}
       } else {
-//        cout << "punt\n";
+		    shared_.Restart();
       }
     }
   }
@@ -261,14 +291,17 @@ int main(int argc, char *argv[])
   usleep(100);
   shared_ptr<SX1276Radio> radio(new SX1276Radio(spi));
   cout << format("SX1276 Version: %.2x\n") % radio->version();
-  platform->ResetSX1276();
-  radio->ChangeCarrier(919000000);
-  radio->ApplyDefaultLoraConfiguration();
-  cout << format("Carrier Frequency: %uHz\n") % radio->carrier();
-  if (radio->fault()) { PR_ERROR("Radio Fault\n"); return 1; }
+
+  radio->SetPreamble(0x50); // probably a red herring now I found the RX bug
 
   Shared shared;
   shared.radio = radio;
+  shared.platform = platform;
+
+	shared.Init();
+  cout << format("Carrier Frequency: %uHz\n") % radio->carrier();
+  if (shared.radio->fault()) { PR_ERROR("Radio Fault\n"); return 1; }
+
   WorkerThread outThread(srv, shared, true);
   WorkerThread inThread(srv, shared, false);
 

@@ -82,6 +82,7 @@ public:
   /// Wait for a message
   bool ReceiveSimpleMessage(uint8_t buffer[], int& size, int timeout_ms, bool& timeout, bool& crc_error);
 
+	void SetSymbolTimeout(unsigned symbolTimeout) { symbolTimeout_ = symbolTimeout; }
   void SetPreamble(unsigned preamble) { preamble_ = preamble; }
   bool EnableContinuousRx(bool enabled) { continuousMode_ = enabled; }
 
@@ -122,6 +123,7 @@ private:
   bool continuousMode_;          ///< If true then next call to ReceiveSimpleMessage will use continuous mode and not return to standby
   bool continuousSetup_;
 	unsigned preamble_;
+	unsigned symbolTimeout_;
 };
 
 #endif // SX1276_HPP__

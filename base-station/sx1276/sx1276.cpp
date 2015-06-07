@@ -136,7 +136,8 @@ SX1276Radio::SX1276Radio(const boost::shared_ptr<SPI>& spi)
   actual_hz_(0),
   continuousMode_(false),
   continuousSetup_(false),
-  preamble_(0x8)
+  preamble_(0x8),
+	symbolTimeout_(0x08)
 {
   fault_ = !spi_->ReadRegister(0x42, version_);
   ReadCarrier();
@@ -318,9 +319,9 @@ bool SX1276Radio::ApplyDefaultLoraConfiguration()
 
   // SF9, normal (not continuous) mode, CRC, and upper 2 bits of symbol timeout (maximum i.e. 1023)
   // We use 255, or 255 x (2^9)/125000 or ~1 second
-  v = (0x9 << 4) | (0 << 3)| (1 << 2) | 0x0;
+  v = (0x9 << 4) | (0 << 3)| (1 << 2) | ((symbolTimeout_ >> 8) & 0x03);
   WriteRegisterVerify(SX1276REG_ModemConfig2, v);
-  v = 0xff;
+  v = symbolTimeout_ & 0xff;
   WriteRegisterVerify(SX1276REG_SymbTimeoutLsb, v);
 
   // Power (PA)
@@ -515,7 +516,7 @@ bool SX1276Radio::ReceiveSimpleMessage(uint8_t buffer[], int& size, int timeout_
   // But it helps us get working sooner
   uint8_t flags = 0;
   uint8_t stat = 0;
-#define TRACE_STATE_CHANGE 1
+#define TRACE_STATE_CHANGE 0
 #if TRACE_STATE_CHANGE
   uint8_t old_stat = 0;
   ReadRegisterHarder(SX1276REG_ModemStat, stat);
@@ -548,15 +549,9 @@ bool SX1276Radio::ReceiveSimpleMessage(uint8_t buffer[], int& size, int timeout_
       done = true;
       break;
     } else if (flags & (1 << 7)) {
-			// symbol timeout: start again
-      DEBUG("Symbol Timeout stat=%.2x, flags=%.2x\n", (int)stat, (int)flags);
-		  if (!continuousMode_) {
-			  WriteRegisterVerify(SX1276REG_OpMode, 0x81);
-			  spi_->WriteRegister(SX1276REG_IrqFlags, 0xff);
-			  WriteRegisterVerify(SX1276REG_OpMode, 0x86);
-			} else {
-			}
-			have_header = false;
+			// symbol timeout: finish
+			timeout = true;
+			break;
 		}
     // still waiting...
 #if TRACE_STATE_CHANGE
@@ -570,11 +565,10 @@ bool SX1276Radio::ReceiveSimpleMessage(uint8_t buffer[], int& size, int timeout_
 
   last_rssi_dbm_ = 255;
   if (ReadRegisterHarder(SX1276REG_Rssi, v)) { last_rssi_dbm_ = -137 + v; }
-  DEBUG("[DBUG] RX fin flags=%.2x stat=%.2x rssi=%d\n", flags, (int)stat, last_rssi_dbm_);
 
   if (!done) {
-    timeout = true;
-    return true;
+	  // DEBUG("[DBUG] RX fin flags=%.2x stat=%.2x rssi=%d\n", flags, (int)stat, last_rssi_dbm_);
+    return true; // no error, only a timeout or crc
   }
 
   timeout = false;
@@ -593,7 +587,7 @@ bool SX1276Radio::ReceiveSimpleMessage(uint8_t buffer[], int& size, int timeout_
     default: coding_rate = 0;
     }
   }
-  uint8_t payloadSizeBytes = 0x5a;
+  uint8_t payloadSizeBytes = 0xff;
   uint16_t headerCount = 0;
   uint16_t packetCount = 0;
   uint8_t byptr = 0;
@@ -604,6 +598,8 @@ bool SX1276Radio::ReceiveSimpleMessage(uint8_t buffer[], int& size, int timeout_
   ReadRegisterHarder(SX1276REG_RxPacketCntValueLsb, v); packetCount |= v;
   // Note: SX1276REG_FifoRxByteAddrPtr == last addr written by modem
   ReadRegisterHarder(SX1276REG_FifoRxByteAddrPtr, byptr);
+
+	payloadSizeBytes--; // DONT KNOW WHY, I THINK FifoRxNbBytes points 1 down
 
   DEBUG("[DBUG] ");
   DEBUG("RX rssi_pkt=%d ", rssi_packet);
