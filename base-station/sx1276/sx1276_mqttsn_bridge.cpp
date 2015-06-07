@@ -24,6 +24,8 @@ along with SentriFarm Radio Relay.  If not, see <http://www.gnu.org/licenses/>.
 #include <boost/thread.hpp>
 #include <boost/shared_ptr.hpp>
 #include <boost/format.hpp>
+#include <boost/chrono/time_point.hpp>
+#include <boost/chrono/system_clocks.hpp>
 #include <iostream>
 #include <string.h>
 #include <string>
@@ -38,20 +40,26 @@ using boost::thread;
 using boost::mutex;
 using boost::condition_variable;
 using boost::unique_lock;
+using boost::chrono::steady_clock;
 
 struct Shared
 {
   mutable mutex mx;
   string from_ip;
   string from_port;
-  Shared() {}
-  void Get(string& ip, string& port) const {
+	bool have_port;
+	uint8_t counter;
+	uint8_t global_counter;
+  Shared() : have_port(false), counter(0), global_counter(0) {}
+  bool Get(string& ip, string& port) const {
     unique_lock<mutex> lock(mx);
     ip = from_ip;
     port = from_port;
+		return have_port;
   }
   void Update(const string& ip, const string& port) {
     unique_lock<mutex> lock(mx);
+		have_port = true;
     if (from_ip != ip || from_port != port) { cout << format("Port change: %s %s\n") % ip % port; }
     from_ip = ip;
     from_port = port;
@@ -59,30 +67,109 @@ struct Shared
 
   shared_ptr<SX1276Radio> radio;
   mutex radio_mx;
+
+	bool TransmitHello() {
+		radio->SetPreamble(0x80);
+		for (int i=0; i < 5; i++) {
+			uint8_t buffer[9] = { 0x02, 0x02, (global_counter++) & 0xff, 'h', 'e', 'l', 'l', 'o', 0x30+i};
+	    radio->SendSimpleMessage(buffer, 9);
+			usleep(100000); // Not too close, we do miss them (maybe still a bug in rx)
+		}
+	}
+
+	bool TransmitAck(uint8_t counter) {
+		cerr << format("Send ACK %d\n") % (int)counter;
+		radio->SetPreamble(0x80);
+		for (int i=0; i < 1; i++) {
+			uint8_t buffer[9] = { 0x01, counter, (global_counter++) & 0xff, 1, 2, 3, 4, 5, i+0x30 };
+	    radio->SendSimpleMessage(buffer, 9);
+			usleep(10000);
+		}
+	}
+
   // This stuff is a hack   :needs to be abstracted into a thread safe radio instance
   bool Transmit(const void* payload, unsigned len) {
     unique_lock<mutex> lock(radio_mx);
-    return radio->SendSimpleMessage(payload, len);
+
+		uint8_t buffer[len+3]; // first byte: 00 = MQTT-SN, 01 = ACK second byte: counter; 02 = HELLO, 3rd = global counter
+		buffer[0] = 0;
+		buffer[1] = counter & 0xff;
+		memcpy(buffer+3, payload, len);
+
+		// So first problem: message not getting through when only sent once.
+		// Needs further investigation, there is a lot of stuff in the PDF I still havent addressed yet
+		// So lets put a layer over the top: very Dodgy Bros ACK / timeout thing
+	  steady_clock::time_point t0 = steady_clock::now();
+	  steady_clock::time_point t1 = t0 + boost::chrono::milliseconds(15000);
+		int tries = 0;
+		radio->SetPreamble(0x50); // probably a red herring now I found the RX bug
+		for (; steady_clock::now() <= t1; ) {
+			buffer[2] = (global_counter++) & 0xff;
+	    if (radio->SendSimpleMessage(buffer, len+2)) {
+				uint8_t ack_buffer[256];
+				bool rx_timeout = false;
+				bool rx_crc_error = false;
+				int received = 255;
+	      if (radio->ReceiveSimpleMessage(ack_buffer, received, 3000, rx_timeout, rx_crc_error)) {
+					// ACK packet: 01 + counter echo
+					if (!rx_timeout && !rx_crc_error) {
+						if (received == 10 && ack_buffer[0] == 1 && ack_buffer[1] == counter) {
+							counter ++;
+							return true;
+						}
+						cerr << format("Waiting for ACK; got other data: %.2x %.2x\n") % int(ack_buffer[0]) % int(ack_buffer[1]);
+					}
+					else {
+					  if (rx_timeout) { cerr << "to "; }
+						if (rx_crc_error) { cerr << "crc "; }
+						cerr << "\n";
+					}
+					tries++;
+				}
+			} else {
+				break;
+			}
+		}
+		cerr << format("Failed to send msg and get ack, counter = %u tried %d times\n") % (unsigned)counter % tries;
+    counter ++;
   }
-  bool TryReceive(const void* payload, unsigned len, unsigned& rx) {
+  bool TryReceive(uint8_t* payload, unsigned len, unsigned& rx) {
 
     // Do a blocking receive, but in such a way we can break it out if Transmit needs to do its thing
     // OTOH dont let a high rate of TX starve receiving
 
     bool crc_error = false;
     bool timeout = false;
-    unsigned timeout_ms = 500; // This will need a lot of tuning probably
+    unsigned timeout_ms = 3000; // This will need a lot of tuning probably
 
     unique_lock<mutex> lock(radio_mx);
     int received = 0;
+		uint8_t buffer[len+2];
     do {
-      int received = len;
-      if (!radio->ReceiveSimpleMessage((uint8_t*)payload, received, timeout_ms, timeout, crc_error)) { return false; }
+      received = len+2;
+      if (!radio->ReceiveSimpleMessage(buffer, received, timeout_ms, timeout, crc_error)) { return false; }
+
+			if (!timeout && !crc_error) {
+
+	      FILE* f = popen("od -Ax -tx1z -v -w16", "w");
+	      if (f) { fwrite(buffer, received, 1, f); pclose(f); }
+
+				if (buffer[0] == 2) { cout << "[RX Hello]\n"; continue; } // hello msg, ignore
+				if (buffer[0] == 1) { cout << "[RX ACK]\n"; continue; } // ack, ignore (for the moment)
+				if (buffer[0] == 0) {
+					TransmitAck(buffer[1]);
+					memcpy(payload, buffer+2, received-2);
+					rx = received-2;
+					return true;
+				}
+			}
+
       // allow pending tx...
       lock.unlock();
       usleep(100); // there must be a better way to do this...
       lock.lock();
-    } while (timeout || crc_error);
+    } while (true); // DODGY: we need a higher level time timeout for O/S servicing
+		cerr << format("Junk? %.2x\n") % buffer[0];
     rx = received;
     return true;
   }
@@ -102,7 +189,9 @@ class WorkerThread
         cerr << format("[Radio TX] %s:%d : %s\n") % from % fromport % util::buf2str(buffer,n);
         { shared_.Update(from, fromport); }
 
-        shared_.Transmit(buffer, n);
+        if (!shared_.Transmit(buffer, n)) {
+	        cerr << "TX error!\n";
+				}
 
       }
     }
@@ -122,11 +211,14 @@ class WorkerThread
 
       if (have_msg) { // FIXME
         string ip; string port;
-        shared_.Get(ip, port);
-        cerr << format("[Radio RX] %s:%s %s\n") % ip % port % util::buf2str(buffer,r);
+        bool have_port = shared_.Get(ip, port);
+				if (!have_port) { cerr << format("[Radio RX -> NOWHERE] %d:%s\n") % r % util::buf2str(buffer,r); }
+				else {
+        cerr << format("[Radio RX -> %s:%s] %d:%s\n") % ip % port % r % util::buf2str(buffer,r);
         try {
           srv_.sndto(buffer, r, ip, port);
         } catch (...) {}
+				}
       } else {
 //        cout << "punt\n";
       }
@@ -154,11 +246,11 @@ int main(int argc, char *argv[])
   string UDP_BIND_IP = "127.0.0.1";
   int port = 1884;
 
-  if (argc < 3) { fprintf(stderr, "Usage: %s <spidev> <udp-listen-port>", argv[0]); return 1; }
+  if (argc < 3) { fprintf(stderr, "Usage: %s <spidev> <udp-listen-port>\n", argv[0]); return 1; }
 
   if ((port = atoi(argv[2]) < 1)) { cerr << "Invalid port.\n"; return 1; }
 
-  libsocket::inet_dgram_server srv(UDP_BIND_IP, argv[2], LIBSOCKET_BOTH);
+  libsocket::inet_dgram_server srv(UDP_BIND_IP, argv[2], LIBSOCKET_IPv4);
 
   shared_ptr<SX1276Platform> platform = SX1276Platform::GetInstance(argv[1]);
   if (!platform) { PR_ERROR("Unable to create platform instance\n"); return 1; }
@@ -179,6 +271,8 @@ int main(int argc, char *argv[])
   shared.radio = radio;
   WorkerThread outThread(srv, shared, true);
   WorkerThread inThread(srv, shared, false);
+
+	shared.TransmitHello();
 
   thread outInstance(boost::bind(&WorkerThread::Run, &outThread));
   thread inInstance(boost::bind(&WorkerThread::Run, &inThread));

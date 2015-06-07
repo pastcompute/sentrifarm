@@ -57,6 +57,8 @@ using boost::chrono::steady_clock;
 #define SX1276REG_ModemConfig1      0x1D
 #define SX1276REG_ModemConfig2      0x1E
 #define SX1276REG_SymbTimeoutLsb    0x1F
+#define SX1276REG_PreambleMSB       0x20
+#define SX1276REG_PreambleLSB       0x21
 #define SX1276REG_PayloadLength     0x22
 #define SX1276REG_MaxPayloadLength  0x23
 #define SX1276REG_FifoRxByteAddrPtr 0x25
@@ -131,7 +133,10 @@ SX1276Radio::SX1276Radio(const boost::shared_ptr<SPI>& spi)
   max_tx_payload_bytes_(0x80),
   max_rx_payload_bytes_(0x80),
   last_rssi_dbm_(255),
-  actual_hz_(0)
+  actual_hz_(0),
+  continuousMode_(false),
+  continuousSetup_(false),
+  preamble_(0x8)
 {
   fault_ = !spi_->ReadRegister(0x42, version_);
   ReadCarrier();
@@ -202,12 +207,14 @@ bool SX1276Radio::WriteRegisterVerifyMask(uint8_t reg, uint8_t value, uint8_t ma
 void SX1276Radio::EnterStandby()
 {
   WriteRegisterVerify(SX1276REG_OpMode, 0x81);
+  continuousSetup_ = false;
   usleep(10000);
 }
 
 void SX1276Radio::EnterSleep()
 {
   WriteRegisterVerify(SX1276REG_OpMode, 0x80);
+  continuousSetup_ = false;
   usleep(10000);
 }
 
@@ -244,6 +251,8 @@ bool SX1276Radio::ChangeCarrier(uint32_t carrier_hz)
   WriteRegisterVerify(SX1276REG_FrfLsb, v);
 
   ReadCarrier();
+
+  continuousSetup_ = false;
   return fault_;
 }
 
@@ -346,6 +355,8 @@ bool SX1276Radio::ApplyDefaultLoraConfiguration()
   // WriteRegisterVerify(SX1276REG_DioMapping1, (0x1 << 6) | (0x0 << 4) | (0x1));  CAUSING ISSUES?
   // WriteRegisterVerify(SX1276REG_DioMapping2, (0x2 << 4));                       CAUSING ISSUES?
 
+  continuousSetup_ = false;
+
   //FIXME: error handling - re-check read after write for everything...
   return !fault_;
 }
@@ -362,7 +373,9 @@ float SX1276Radio::PredictTimeOnAir(const char *payload) const
 
 bool SX1276Radio::SendSimpleMessage(const char *payload)
 {
-  return SendSimpleMessage(payload, strlen(payload));
+  char buf[strlen(payload)+1];
+  snprintf(buf, sizeof(buf), payload);
+  return SendSimpleMessage(payload, strlen(buf)+1);
 }
 
 /// Just send raw unframed data i.e. ASCII, zero terminated
@@ -372,8 +385,15 @@ bool SX1276Radio::SendSimpleMessage(const void *payload, unsigned n)
   uint8_t v;
   if (n > 127) { fprintf(stderr, "Message too long; truncated!\n"); }
 
+  continuousSetup_ = false;
+
+  DEBUG("[DBUG] TX %u\n", n);
+
   // LoRa Standby
   Standby();
+
+  // Turns out this need to be longer for very short messages
+  WriteRegisterVerify(SX1276REG_PreambleLSB, preamble_);
 
   // Reset TX FIFO
   WriteRegisterVerify(SX1276REG_FifoTxBaseAddr, 0x80);
@@ -386,7 +406,7 @@ bool SX1276Radio::SendSimpleMessage(const void *payload, unsigned n)
   uint8_t fifo_pos;
   ReadRegisterHarder(SX1276REG_FifoAddrPtr, fifo_pos);
 
-  for (uint8_t b=0; b <= n; b++) {
+  for (uint8_t b=0; b < n; b++) {
     spi_->WriteRegister(SX1276REG_Fifo, ((const uint8_t*)payload)[b]); // Note: we cant verify
     usleep(100);
     ReadRegisterHarder(SX1276REG_FifoAddrPtr, v);
@@ -397,7 +417,7 @@ bool SX1276Radio::SendSimpleMessage(const void *payload, unsigned n)
     }
   }
   ReadRegisterHarder(SX1276REG_FifoAddrPtr, v);
-  if (v != 0x80 + n + 1) {
+  if (v != 0x80 + n) {
     fault_ = true;
     PR_ERROR("FIFO ptr mismatch, got %.2x expected %.2x\n", (int)v, (int)(0x80+n+1));
     return false;
@@ -421,10 +441,11 @@ bool SX1276Radio::SendSimpleMessage(const void *payload, unsigned n)
       done = true;
       break;
     } else {
-      usleep(100);
+      usleep(1000);
     }
   } while (steady_clock::now() < t1);
   if (done) {
+    // DEBUG("[DBUG] TX fin %u\n", n);
     return true;
   } 
   if (fault_) { PR_ERROR("SPI fault reading IrqFlags register\n"); return false; }
@@ -436,6 +457,9 @@ bool SX1276Radio::SendSimpleMessage(const void *payload, unsigned n)
 bool SX1276Radio::ReceiveSimpleMessage(uint8_t buffer[], int& size, int timeout_ms, bool& timeout, bool& crc_error)
 {
   uint8_t v;
+  uint8_t RX_BASE_ADDR = 0x0;
+
+  if (!continuousMode_ || (continuousMode_ && !continuousSetup_)) {
 
   // LoRa Standby
   WriteRegisterVerify(SX1276REG_OpMode, 0x81);
@@ -449,7 +473,6 @@ bool SX1276Radio::ReceiveSimpleMessage(uint8_t buffer[], int& size, int timeout_
   // Boost, bits 0..1 - 00 = default LNA current, 11 == 150% boost
   WriteRegisterVerify(SX1276REG_FifoTxBaseAddr, (0x4 << 5) | (0x00));
 
-  uint8_t RX_BASE_ADDR = 0x0;
 
   // For the moment we cant both tx and rx, lots of infrastructural code required if we want that later
   WriteRegisterVerify(SX1276REG_MaxPayloadLength, max_rx_payload_bytes_);
@@ -467,12 +490,18 @@ bool SX1276Radio::ReceiveSimpleMessage(uint8_t buffer[], int& size, int timeout_
   // Note:
   // "RegFifoRxCurrentAddr indicates the location of the last packet received in the FIFO"
 
-  DEBUG("[DBUG] RX \n");
-
   // RX mode
   WriteRegisterVerify(SX1276REG_IrqFlagsMask, 0x0f);
+  }
+
   spi_->WriteRegister(SX1276REG_IrqFlags, 0xff); // cant verify; clears on 0xff write
-  WriteRegisterVerify(SX1276REG_OpMode, 0x86); // RX Single
+
+  if (!continuousMode_) {
+    WriteRegisterVerify(SX1276REG_OpMode, 0x86); // RX Single
+  } else if (!continuousSetup_) {
+    WriteRegisterVerify(SX1276REG_OpMode, 0x85); // RX cont
+    continuousSetup_ = true;
+  }
 
   if (fault_) { PR_ERROR("SPI fault attempting to enter RX mode\n"); spi_->ReadRegister(SX1276REG_IrqFlags, v); return false; }
 
@@ -486,12 +515,14 @@ bool SX1276Radio::ReceiveSimpleMessage(uint8_t buffer[], int& size, int timeout_
   // But it helps us get working sooner
   uint8_t flags = 0;
   uint8_t stat = 0;
+#define TRACE_STATE_CHANGE 1
 #if TRACE_STATE_CHANGE
   uint8_t old_stat = 0;
   ReadRegisterHarder(SX1276REG_ModemStat, stat);
   //old_stat = stat;
 #endif
   bool done = false;
+	bool have_header = false;
   do {
     if (!ReadRegisterHarder(SX1276REG_IrqFlags, flags)) {
       PR_ERROR("SPI fault waiting for packet reading flags.\n");
@@ -509,24 +540,37 @@ bool SX1276Radio::ReceiveSimpleMessage(uint8_t buffer[], int& size, int timeout_
       old_stat = stat;
     }
 #endif
+		if (flags & (1<<4)) { // valid header
+			// dodgy hack : once we started getting a message we rely on the symbol timeout to exit
+			have_header = true;
+		}
     if (flags & (1 << 6)) { // rx done
       done = true;
       break;
-    }
+    } else if (flags & (1 << 7)) {
+			// symbol timeout: start again
+      DEBUG("Symbol Timeout stat=%.2x, flags=%.2x\n", (int)stat, (int)flags);
+		  if (!continuousMode_) {
+			  WriteRegisterVerify(SX1276REG_OpMode, 0x81);
+			  spi_->WriteRegister(SX1276REG_IrqFlags, 0xff);
+			  WriteRegisterVerify(SX1276REG_OpMode, 0x86);
+			} else {
+			}
+			have_header = false;
+		}
     // still waiting...
 #if TRACE_STATE_CHANGE
     usleep(5);
 #else
     usleep(100);
 #endif
-  } while (steady_clock::now() < t1);
+  } while (steady_clock::now() < t1 || have_header); // once we get a valid header dont break until final
 
   ReadRegisterHarder(SX1276REG_ModemStat, stat);
-  DEBUG("[DBUG] RX fin flags=%.2x stat=%.2x\n", flags, (int)stat);
 
   last_rssi_dbm_ = 255;
   if (ReadRegisterHarder(SX1276REG_Rssi, v)) { last_rssi_dbm_ = -137 + v; }
-  DEBUG("[DBUG] RX rssi=%d\n", last_rssi_dbm_);
+  DEBUG("[DBUG] RX fin flags=%.2x stat=%.2x rssi=%d\n", flags, (int)stat, last_rssi_dbm_);
 
   if (!done) {
     timeout = true;
@@ -561,12 +605,13 @@ bool SX1276Radio::ReceiveSimpleMessage(uint8_t buffer[], int& size, int timeout_
   // Note: SX1276REG_FifoRxByteAddrPtr == last addr written by modem
   ReadRegisterHarder(SX1276REG_FifoRxByteAddrPtr, byptr);
 
-  DEBUG("[DBUG] RX rssi_packet=%d\n", rssi_packet);
-  DEBUG("[DBUG] RX snr_packet=%d\n", snr_packet);
-  DEBUG("[DBUG] RX modem_stat=%02x\n", (unsigned)stat);
-  DEBUG("[DBUG] RX size=%d\n", (unsigned)payloadSizeBytes);
-  DEBUG("[DBUG] RX ptr=%d\n", (unsigned)byptr);
-  DEBUG("[DBUG] RX hdrcnt=%d pktcnt=%d\n", (unsigned)headerCount, (unsigned)packetCount);
+  DEBUG("[DBUG] ");
+  DEBUG("RX rssi_pkt=%d ", rssi_packet);
+  DEBUG("snr_pkt=%d ", snr_packet);
+  DEBUG("stat=%02x ", (unsigned)stat);
+  DEBUG("sz=%d ", (unsigned)payloadSizeBytes);
+  DEBUG("ptr=%d ", (unsigned)byptr);
+  DEBUG("hdrcnt=%d pktcnt=%d\n", (unsigned)headerCount, (unsigned)packetCount);
 
   if (fault_) { PR_ERROR("SPI fault assessing packet.\n"); return false; }
 

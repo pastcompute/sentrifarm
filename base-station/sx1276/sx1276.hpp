@@ -82,6 +82,9 @@ public:
   /// Wait for a message
   bool ReceiveSimpleMessage(uint8_t buffer[], int& size, int timeout_ms, bool& timeout, bool& crc_error);
 
+  void SetPreamble(unsigned preamble) { preamble_ = preamble; }
+  bool EnableContinuousRx(bool enabled) { continuousMode_ = enabled; }
+
   /// Revert to LoRa standby mode.
   /// @param old_value Previous mode register value
   /// @return true if OK, false if a fault() happened
@@ -116,6 +119,9 @@ private:
   uint8_t max_rx_payload_bytes_;
   int last_rssi_dbm_;            ///< RSSI read during last call to ReceiveSimpleMessage
   uint32_t actual_hz_;           ///< Actual carrier frequency, hz
+  bool continuousMode_;          ///< If true then next call to ReceiveSimpleMessage will use continuous mode and not return to standby
+  bool continuousSetup_;
+	unsigned preamble_;
 };
 
 #endif // SX1276_HPP__

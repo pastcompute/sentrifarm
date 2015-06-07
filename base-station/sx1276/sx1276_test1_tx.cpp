@@ -75,7 +75,7 @@ int main(int argc, char* argv[])
     total++;
     snprintf(msg, sizeof(msg), "Hello, World! %6d\n", total);
 	
-    if (radio.SendSimpleMessage(msg)) { printf("."); fflush(stdout); radio.Standby(); usleep(inter_msg_delay_us); continue; }
+    if (radio.SendSimpleMessage(msg)) { printf("%d ", total); fflush(stdout); radio.Standby(); usleep(inter_msg_delay_us); continue; }
     radio.Standby();
     printf("\n");
     faultCount++;

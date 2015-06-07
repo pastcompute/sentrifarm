@@ -4,3 +4,7 @@
 [submodule "base-station/libsocket"]
 	path = base-station/libsocket
 	url = https://github.com/pastcompute/libsocket.git
+[submodule "base-station/org.eclipse.mosquitto.rsmb"]
+	path = base-station/org.eclipse.mosquitto.rsmb
+	url = https://github.com/pastcompute/rsmb.git
+	branch = my_fixes

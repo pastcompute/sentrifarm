@@ -68,6 +68,10 @@ int main(int argc, char* argv[])
 
   if (radio.fault()) return 1;
 
+  unsigned timeout_ms = 2000;
+  if (getenv("TIMEOUT")) { timeout_ms = atoi(getenv("TIMEOUT")); }
+
+
   long total = 0;
   long faultCount = 0;
   while (true) {
@@ -77,7 +81,7 @@ int main(int argc, char* argv[])
     uint8_t buffer[128]; memset(buffer, 0, 128);
     bool timeout = false;
     int size = 127;
-    bool error = !radio.ReceiveSimpleMessage(buffer, size, 10000, timeout, crc);
+    bool error = !radio.ReceiveSimpleMessage(buffer, size, timeout_ms, timeout, crc);
 
     if (crc || error) {
       radio.Standby();
