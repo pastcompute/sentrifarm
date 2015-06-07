@@ -3,21 +3,35 @@
 # TODO: add code to auto git clone etc. later
 
 # This could be a symlink to somewhere else, not tracked in git, or, to a submodule here...
+TOP:=$(shell pwd)
 TREE=openwrt
 CONF=openwrt.config
 OWRT_TOOLCHAIN=toolchain-mips_34kc_gcc-4.8-linaro_uClibc-0.9.33.2
 OWRT_TARGET=target-mips_34kc_uClibc-0.9.33.2
 OWRT_GCC_PFX=mips-openwrt-linux-uclibc
-OWRT_STAGING=$(shell pwd)/openwrt/staging_dir
+OWRT_STAGING=$(TOP)/openwrt/staging_dir
 OWRT_TUPLE=mips-openwrt-linux-uclibc
 
 # FIXME: query root-ar71xx from openwrt/ build
 STAGING_DESTDIR=$(OWRT_STAGING)/$(OWRT_TARGET)
 
-MY_CMAKE_OPTS=-DOPENWRT=yes -DCMAKE_TOOLCHAIN_FILE=../carambola2/toolchain.cmake -DCMAKE_INSTALL_PREFIX=/usr
+MY_CMAKE_OPTS=-DOPENWRT=yes -DCMAKE_TOOLCHAIN_FILE=$(TOP)/toolchain.cmake -DCMAKE_INSTALL_PREFIX=/usr
 #-DCMAKE_SKIP_RPATH=TRUE
 
 all: prereq build
+
+# This is annoying because there is no out of tree automake or cmake
+# Then again I fixed it by adding one...
+$(STAGING_DESTDIR)/usr/bin/broker_mqtts rsmb: build.rsmb/Makefile
+	@echo [BUILD] rsmb...
+	@cd build.rsmb && export STAGING_DIR=$(OWRT_STAGING) && PATH=$(OWRT_STAGING)/$(OWRT_TOOLCHAIN)/bin:$$PATH $(MAKE)
+	@cd build.rsmb && export STAGING_DIR=$(OWRT_STAGING) && PATH=$(OWRT_STAGING)/$(OWRT_TOOLCHAIN)/bin:$$PATH $(MAKE) install DESTDIR=$(STAGING_DESTDIR)
+
+build.rsmb/Makefile: | ../org.eclipse.mosquitto.rsmb
+	@echo [PREP] rsmb...
+	@mkdir -p build.rsmb
+	@cd build.rsmb && export OWRT_STAGING=$(OWRT_STAGING) OWRT_GCC_PFX=$(OWRT_GCC_PFX) OWRT_TARGET=$(OWRT_TARGET) OWRT_TOOLCHAIN=$(OWRT_TOOLCHAIN) && \
+											cmake $(MY_CMAKE_OPTS) ../../org.eclipse.mosquitto.rsmb/rsmb/src
 
 sx1276-clean:
 	@rm -rf build.sx1276
