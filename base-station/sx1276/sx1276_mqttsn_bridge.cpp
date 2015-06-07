@@ -81,7 +81,7 @@ struct Shared
       // allow pending tx...
       lock.unlock();
       usleep(100); // there must be a better way to do this...
-      lock.unlock();
+      lock.lock();
     } while (timeout || crc_error);
     rx = received;
     return true;
