@@ -18,7 +18,7 @@ STAGING_DESTDIR=$(OWRT_STAGING)/$(OWRT_TARGET)
 MY_CMAKE_OPTS=-DOPENWRT=yes -DCMAKE_TOOLCHAIN_FILE=$(TOP)/toolchain.cmake -DCMAKE_INSTALL_PREFIX=/usr
 #-DCMAKE_SKIP_RPATH=TRUE
 
-all: prereq build
+all: prereq build sx1276 rsmb mqtt-sn
 
 # This is annoying because there is no out of tree automake or cmake
 # Then again I fixed it by adding one...
@@ -26,6 +26,17 @@ $(STAGING_DESTDIR)/usr/bin/broker_mqtts rsmb: build.rsmb/Makefile
 	@echo [BUILD] rsmb...
 	@cd build.rsmb && export STAGING_DIR=$(OWRT_STAGING) && PATH=$(OWRT_STAGING)/$(OWRT_TOOLCHAIN)/bin:$$PATH $(MAKE)
 	@cd build.rsmb && export STAGING_DIR=$(OWRT_STAGING) && PATH=$(OWRT_STAGING)/$(OWRT_TOOLCHAIN)/bin:$$PATH $(MAKE) install DESTDIR=$(STAGING_DESTDIR)
+
+$(STAGING_DESTDIR)/usr/bin/mqtt-sn-pub $(STAGING_DESTDIR)/usr/bin/mqtt-sn-sub mqtt-sn: build.mqtt-sn/Makefile
+	@echo [BUILD] mqtt-sn...
+	@cd build.mqtt-sn && export STAGING_DIR=$(OWRT_STAGING) && PATH=$(OWRT_STAGING)/$(OWRT_TOOLCHAIN)/bin:$$PATH $(MAKE)
+	@cd build.mqtt-sn && export STAGING_DIR=$(OWRT_STAGING) && PATH=$(OWRT_STAGING)/$(OWRT_TOOLCHAIN)/bin:$$PATH $(MAKE) install DESTDIR=$(STAGING_DESTDIR)
+
+build.mqtt-sn/Makefile: | ../mqtt-sn-tools
+	@echo [PREP] mqtt-sn...
+	@mkdir -p build.mqtt-sn
+	@cd build.mqtt-sn && export OWRT_STAGING=$(OWRT_STAGING) OWRT_GCC_PFX=$(OWRT_GCC_PFX) OWRT_TARGET=$(OWRT_TARGET) OWRT_TOOLCHAIN=$(OWRT_TOOLCHAIN) && \
+											cmake $(MY_CMAKE_OPTS) ../../mqtt-sn-tools
 
 build.rsmb/Makefile: | ../org.eclipse.mosquitto.rsmb
 	@echo [PREP] rsmb...
@@ -82,6 +93,10 @@ build.c-ares/Makefile: ../c-ares/Makefile.in | ../c-ares
 
 ../c-ares:
 	(cd .. && git clone https://github.com/bagder/c-ares.git )
+
+
+../mqtt-sn-tools:
+	(cd .. && git clone git@github.com:pastcompute/mqtt-sn-tools.git )
 
 prebuild: $(TREE)/feeds.conf $(TREE)/.config patch $(TREE)/tmp/.kconfig-ar71xx_generic
 
