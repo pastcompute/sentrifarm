@@ -42,166 +42,129 @@ using boost::condition_variable;
 using boost::unique_lock;
 using boost::chrono::steady_clock;
 
-struct Shared
+class RadioManager
 {
-  mutable mutex mx;
-  string from_ip;
-  string from_port;
-	bool have_port;
-	uint8_t counter;
-	uint8_t global_counter;
-  Shared() : have_port(false), counter(0), global_counter(0) {}
-  bool Get(string& ip, string& port) const {
-    unique_lock<mutex> lock(mx);
-    ip = from_ip;
-    port = from_port;
-		return have_port;
+public:
+  RadioManager(shared_ptr<SX1276Radio>& radio, shared_ptr<SX1276Platform>& platform)
+	:	radio_(radio),
+    platform_(platform),
+    have_port_(false), rolling_counter_(0), rolling_counter_rx_(0xff), have_rx_(false)
+	{
+	}
+  void Restart() {
+    unique_lock<mutex> lock(radio_mutex_);
+    platform_->ResetSX1276();
+    radio_->ChangeCarrier(919000000);
+    radio_->ApplyDefaultLoraConfiguration();
   }
-  void Update(const string& ip, const string& port) {
-    unique_lock<mutex> lock(mx);
-		have_port = true;
-    if (from_ip != ip || from_port != port) { cout << format("Port change: %s %s\n") % ip % port; }
-    from_ip = ip;
-    from_port = port;
+  bool GetPort(string& ip, string& port) const {
+    unique_lock<mutex> lock(port_mutex_);
+    if (have_port_) {
+      ip = from_ip_;
+      port = from_port_;
+    }
+    return have_port_;
+  }
+  void SetPort(const string& ip, const string& port) {
+    unique_lock<mutex> lock(port_mutex_);
+    if (from_ip_ != ip || from_port_ != port) {
+      cout << format("Port change: %s %s\n") % ip % port;
+      // TODO: break out of receive early?
+    }
+    have_port_ = true;
+    from_ip_ = ip;
+    from_port_ = port;
   }
 
-  shared_ptr<SX1276Radio> radio;
-  shared_ptr<SX1276Platform> platform;
-  mutex radio_mx;
-
-	bool TransmitHello() {
-		// radio->SetPreamble(0x80);
-		for (int i=0; i < 5; i++) {
-			uint8_t buffer[9] = { 0x02, 0x02, (global_counter++) & 0xff, 'h', 'e', 'l', 'l', 'o', 0x30+i};
-	    radio->SendSimpleMessage(buffer, 9);
-			usleep(100000); // Not too close, we do miss them (maybe still a bug in rx)
-		}
-	}
-
-	bool TransmitAck(uint8_t counter) {
-		cerr << format("Send ACK %d\n") % (int)counter;
-		// radio->SetPreamble(0x80);
-		// FIXME radio->SetSymbolTimeout(0x80);
-		int i=0;
-		uint8_t buffer[9] = { 0x01, counter, (global_counter++) & 0xff, 1, 2, 3, 4, 5, i+0x30 };
-    radio->SendSimpleMessage(buffer, 9);
-	}
-
-	void Init() {
-    platform->ResetSX1276();
-    radio->ChangeCarrier(919000000);
-    radio->ApplyDefaultLoraConfiguration();
-	}
-
-	void Restart() {
-    radio->Standby();
-    Init();
-	}
-
-  // This stuff is a hack   :needs to be abstracted into a thread safe radio instance
+  // Very dumb layer 2 protocol
+  // Byte 0 : 0x00 == MQTT-SN data, 0x02 == HELLO message
+  // Byte 1 : Rolling counter (for debug purposes)
+  // Byte 2 : Rolling counter last received from other side, for debug purposes
+  bool TransmitHello() {
+    unique_lock<mutex> lock(radio_mutex_);
+    for (int i=0; i < 5; i++) {
+      uint8_t buffer[9] = { 0x02, rolling_counter_, rolling_counter_rx_, 'h', 'e', 'l', 'l', 'o', 0x30+i};
+      rolling_counter_ ++;
+      radio_->SendSimpleMessage(buffer, 9);
+      usleep(100000); // Not too close, sometimes they dont all get received
+    }
+  }
   bool Transmit(const void* payload, unsigned len) {
-    unique_lock<mutex> lock(radio_mx);
 
-		uint8_t buffer[len+3]; // first byte: 00 = MQTT-SN, 01 = ACK second byte: counter; 02 = HELLO, 3rd = global counter
-		buffer[0] = 0;
-		buffer[1] = counter & 0xff;
-		memcpy(buffer+3, payload, len);
+    uint8_t buffer[len+3];
+    buffer[0] = 0x0;
+    buffer[1] = rolling_counter_;
+    memcpy(buffer+3, payload, len);
+    rolling_counter_ ++;
 
-		// So first problem: message not getting through when only sent once.
-		// Needs further investigation, there is a lot of stuff in the PDF I still havent addressed yet
-		// So lets put a layer over the top: very Dodgy Bros ACK / timeout thing
-	  steady_clock::time_point t0 = steady_clock::now();
-	  steady_clock::time_point t1 = t0 + boost::chrono::milliseconds(15000);
-		int tries = 0;
-		// radio->SetPreamble(0x50); // probably a red herring now I found the RX bug
-		for (; steady_clock::now() <= t1; ) {
-			buffer[2] = (global_counter++) & 0xff;
+    unique_lock<mutex> lock(radio_mutex_);
+    buffer[2] = rolling_counter_rx_;
 
-			if (tries % 15 == 0) { // resend every 5 missed ack for the moiment
-			  if (!radio->SendSimpleMessage(buffer, len+3)) {
-					break;
-				}
-			}
-			// Wait for an ack then try again
-
-			uint8_t ack_buffer[256];
-			bool rx_timeout = false;
-			bool rx_crc_error = false;
-			int received = 255;
-      if (radio->ReceiveSimpleMessage(ack_buffer, received, 3000, rx_timeout, rx_crc_error)) {
-				// ACK packet: 01 + counter echo
-				if (!rx_timeout && !rx_crc_error) {
-					if (received == 10 && ack_buffer[0] == 1 && ack_buffer[1] == counter) {
-						cerr << format("ACK OK %d\n") % (int)counter;
-						counter ++;
-						return true;
-					}
-					cerr << format("Waiting for ACK; got other data: %.2x %.2x\n") % int(ack_buffer[0]) % int(ack_buffer[1]);
-
-					// This is where it gets really really dodgy
-					// we get a 'deadlock' unless we ack this message
-					// for now then, though, discard it after acking
-					// and let MQTT-SN sort out the mess
-					if (ack_buffer[0] == 0) {
-						TransmitAck(ack_buffer[1]);
-					}
-				}
-				else {
-				  //if (rx_timeout) { cerr << "to "; }
-					if (rx_crc_error) { cerr << "crc\n"; }
-				}
-				tries++;
-			}
-		}
-		cerr << format("Failed to send msg and get ack, counter = %u tried %d times\n") % (unsigned)counter % tries;
-    counter ++;
+    if (!radio_->SendSimpleMessage(buffer, len+3)) {
+      // SPI error
+      return false;
+    }
+    return true;
   }
-  bool TryReceive(uint8_t* payload, unsigned len, unsigned& rx) {
 
+  bool TryReceive(uint8_t* payload, unsigned len, unsigned& rx)
+  {
     // Do a blocking receive, but in such a way we can break it out if Transmit needs to do its thing
     // OTOH dont let a high rate of TX starve receiving
-
     bool crc_error = false;
     bool timeout = false;
-    unsigned timeout_ms = 20000; // This timeout is a safety sanity check; ReceiveSimpleMessage returns on a symbol timeout without retrying
+    unsigned timeout_ms = 20000; // This timeout is a safety sanity check; normally, ReceiveSimpleMessage returns on a symbol timeout without retrying
 
-    unique_lock<mutex> lock(radio_mx);
+    unique_lock<mutex> lock(radio_mutex_);
     int received = 0;
-		uint8_t buffer[len+3];
+    uint8_t buffer[len+3];
     do {
-      received = len+3;
-      if (!radio->ReceiveSimpleMessage(buffer, received, timeout_ms, timeout, crc_error)) { return false; }
-
-			if (!timeout && !crc_error) {
-
-//	      FILE* f = popen("od -Ax -tx1z -v -w16", "w");
-//	      if (f) { fwrite(buffer, received, 1, f); pclose(f); }
-
-				if (buffer[0] == 2) { cout << "[RX Hello]\n"; continue; } // hello msg, ignore
-				if (buffer[0] == 1) { cout << "[RX ACK]\n"; continue; } // ack, ignore (for the moment)
-				if (buffer[0] == 0) {
-					TransmitAck(buffer[1]);
-					memcpy(payload, buffer+3, received-3);
-					rx = received-3;
-					return true;
-				}
-			}
+      received = sizeof(buffer);
+      if (!radio_->ReceiveSimpleMessage(buffer, received, timeout_ms, timeout, crc_error)) {
+        // SPI error
+        return false;
+      }
+      if (!timeout && !crc_error) {
+        if (buffer[0] == 2) {
+          rolling_counter_rx_ = buffer[1];
+          cout << format("[RX Hello] cntr=%d\n") % (int)rolling_counter_rx_;
+          continue;
+        }
+        else if (buffer[0] == 0) {
+          rolling_counter_rx_ = buffer[1];
+          memcpy(payload, buffer+3, received-3);
+          rx = received-3;
+          return true;
+        } else {
+          cerr << format("Junk? type=%.2x cntr=%d\n") % (int)buffer[0] % (int)buffer[1];
+        }
+      } else if (crc_error) {
+        cerr << "CRC error\n";
+      }
 
       // allow pending tx...
       lock.unlock();
       usleep(50); // there must be a better way to do this...
       lock.lock();
     } while (true); // DODGY: we need a higher level time timeout for O/S servicing
-		cerr << format("Junk? %.2x\n") % buffer[0];
-    rx = received;
-    return true;
   }
+private:
+  shared_ptr<SX1276Radio> radio_;
+  shared_ptr<SX1276Platform> platform_;
+  mutex radio_mutex_;          ///< Protect access to the radio
+  string from_ip_;             ///< IP last UDP packet was received from
+  string from_port_;           ///< port last UDP packet was received from
+  mutable mutex port_mutex_;   ///< Protection for from_ip_, from_port_
+  bool have_port_;             ///< false until from_port_ set for the first time
+  uint8_t rolling_counter_;    ///< Rolling message counter
+  uint8_t rolling_counter_rx_; ///< Rolling message counter last received
+  bool have_rx_;               ///< false until first message received successfully
 };
 
 class WorkerThread
 {
   libsocket::inet_dgram_server& srv_;
-  Shared& shared_;
+  RadioManager& radio_;
   bool outward_;
   void OutLoop() {
     for (;;) {
@@ -209,16 +172,16 @@ class WorkerThread
       string from, fromport;
       int n = srv_.rcvfrom(buffer, sizeof(buffer), from, fromport);
       if (n > 0) {
+        { radio_.SetPort(from, fromport); }
         cerr << format("[UDP RX] %s:%d : %d:%s\n") % from % fromport % n % util::buf2str(buffer,n);
 
-	      FILE* f = popen("od -Ax -tx1z -v -w16", "w");
-	      if (f) { fwrite(buffer, n, 1, f); pclose(f); }
+        FILE* f = popen("od -Ax -tx1z -v -w16", "w");
+        if (f) { fwrite(buffer, n, 1, f); pclose(f); }
 
-        { shared_.Update(from, fromport); }
 
-        if (!shared_.Transmit(buffer, n)) {
-	        cerr << "TX error!\n";
-				}
+        if (!radio_.Transmit(buffer, n)) {
+          cerr << "TX error!\n";
+        }
         cerr << format("[UDP RX] FIN\n");
 
       }
@@ -235,30 +198,30 @@ class WorkerThread
       // The SX1276 supports all sorts of nice stuff, like CAD but we havent gotten into that yet
       // For the moment we need to sit here and wait (receive with block)
       // but with a way of falling out to allow transmits to happen...
-      bool ok = shared_.TryReceive(buffer, 256, r);
+      bool ok = radio_.TryReceive(buffer, 256, r);
 
       if (ok) { // FIXME
         string ip; string port;
-        bool have_port = shared_.Get(ip, port);
-				if (!have_port) { cerr << format("[Radio RX -> NOWHERE] %d:%s\n") % r % util::buf2str(buffer,r); }
-				else {
+        bool have_port = radio_.GetPort(ip, port);
+        if (!have_port) { cerr << format("[Radio RX -> NOWHERE] %d:%s\n") % r % util::buf2str(buffer,r); }
+        else {
         cerr << format("[Radio RX -> %s:%s] %d:%s\n") % ip % port % r % util::buf2str(buffer,r);
-	      FILE* f = popen("od -Ax -tx1z -v -w16", "w");
-	      if (f) { fwrite(buffer, r, 1, f); pclose(f); }
+        FILE* f = popen("od -Ax -tx1z -v -w16", "w");
+        if (f) { fwrite(buffer, r, 1, f); pclose(f); }
         try {
           srv_.sndto(buffer, r, ip, port);
         } catch (libsocket::socket_exception& e) { cerr << e.mesg<< "\n"; }
-				}
+        }
       } else {
-		    shared_.Restart();
+        radio_.Restart();
       }
     }
   }
 public:
   // TODO: abstrfact SX1276 RADIo to Radio, etc
-  WorkerThread(libsocket::inet_dgram_server& srv, Shared& shared, bool outward)
+  WorkerThread(libsocket::inet_dgram_server& srv, RadioManager& radio, bool outward)
   : srv_(srv),
-    shared_(shared),
+    radio_(radio),
     outward_(outward)
   {}
   void Run() {
@@ -294,18 +257,15 @@ int main(int argc, char *argv[])
 
   radio->SetPreamble(0x50); // probably a red herring now I found the RX bug
 
-  Shared shared;
-  shared.radio = radio;
-  shared.platform = platform;
-
-	shared.Init();
+  RadioManager radio_manager(radio, platform);
+  radio_manager.Restart();
   cout << format("Carrier Frequency: %uHz\n") % radio->carrier();
-  if (shared.radio->fault()) { PR_ERROR("Radio Fault\n"); return 1; }
+  if (radio->fault()) { PR_ERROR("Radio Fault\n"); return 1; }
 
-  WorkerThread outThread(srv, shared, true);
-  WorkerThread inThread(srv, shared, false);
+  WorkerThread outThread(srv, radio_manager, true);
+  WorkerThread inThread(srv, radio_manager, false);
 
-	shared.TransmitHello();
+  radio_manager.TransmitHello();
 
   thread outInstance(boost::bind(&WorkerThread::Run, &outThread));
   thread inInstance(boost::bind(&WorkerThread::Run, &inThread));
