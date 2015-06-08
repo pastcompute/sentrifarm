@@ -2,7 +2,8 @@ trace_output protocol
 log_level detail
 listener 1883 INADDR_ANY mqtts
 listener 1883 INADDR_ANY
-connection BRIDGE_BUSPIRATE
+autosave_interval 0
+connection CARAMB2
   address 127.0.0.1:1885
   protocol mqtts
-
+  topic #
