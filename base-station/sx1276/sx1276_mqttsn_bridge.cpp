@@ -46,11 +46,13 @@ class RadioManager
 {
 public:
   RadioManager(shared_ptr<SX1276Radio>& radio, shared_ptr<SX1276Platform>& platform)
-	:	radio_(radio),
+  :  radio_(radio),
     platform_(platform),
-    have_port_(false), rolling_counter_(0), rolling_counter_rx_(0xff), have_rx_(false)
-	{
-	}
+    have_port_(false), rolling_counter_(0), rolling_counter_rx_(0xff),
+    num_tx_(0), num_valid_received_(0), num_crc_errors_(0), num_junk_(0), num_xorv_(0), dropped_(0),
+    have_rx_(false)
+  {
+  }
   void Restart() {
     unique_lock<mutex> lock(radio_mutex_);
     platform_->ResetSX1276();
@@ -80,33 +82,47 @@ public:
   // Byte 0 : 0x00 == MQTT-SN data, 0x02 == HELLO message
   // Byte 1 : Rolling counter (for debug purposes)
   // Byte 2 : Rolling counter last received from other side, for debug purposes
+  // Byte N : xor of rest of buffer - because CRC can pass but data get corrupted by BusPirate serial it seems
   bool TransmitHello() {
     unique_lock<mutex> lock(radio_mutex_);
     for (int i=0; i < 5; i++) {
-      uint8_t buffer[9] = { 0x02, rolling_counter_, rolling_counter_rx_, 'h', 'e', 'l', 'l', 'o', 0x30+i};
+      uint8_t buffer[10] = { 0x02, rolling_counter_, 0xff, 'h', 'e', 'l', 'l', 'o', '0'+i, 0};
+      uint8_t xorv = 0;
+      for (unsigned j=0; j < 9; j++) {
+        xorv = xorv ^ buffer[j];
+      }
+      buffer[9] = xorv;
       rolling_counter_ ++;
-      radio_->SendSimpleMessage(buffer, 9);
+      radio_->SendSimpleMessage(buffer, sizeof(buffer));
       usleep(100000); // Not too close, sometimes they dont all get received
     }
   }
   bool Transmit(const void* payload, unsigned len) {
 
-    uint8_t buffer[len+3];
+    uint8_t buffer[len+4];
     buffer[0] = 0x0;
     buffer[1] = rolling_counter_;
     memcpy(buffer+3, payload, len);
-    rolling_counter_ ++;
+    rolling_counter_ = (rolling_counter_==0xff ? 0 : rolling_counter_+1);
 
     unique_lock<mutex> lock(radio_mutex_);
     buffer[2] = rolling_counter_rx_;
 
-    if (!radio_->SendSimpleMessage(buffer, len+3)) {
+    uint8_t xorv = 0;
+    for (unsigned j=0; j < len+3; j++) {
+      xorv = xorv ^ buffer[j];
+    }
+    buffer[len+3] = xorv;
+    if (!radio_->SendSimpleMessage(buffer, sizeof(buffer))) {
       // SPI error
       return false;
     }
+    num_tx_++;
     return true;
   }
-
+  void PrintStats() {
+    cout << format("TX=%4u RX=%4u CRC=%4u JUNK=%4u DROPPED=%d\n") % num_tx_ % num_valid_received_ % num_crc_errors_ % num_junk_ % dropped_;
+  }
   bool TryReceive(uint8_t* payload, unsigned len, unsigned& rx)
   {
     // Do a blocking receive, but in such a way we can break it out if Transmit needs to do its thing
@@ -117,7 +133,7 @@ public:
 
     unique_lock<mutex> lock(radio_mutex_);
     int received = 0;
-    uint8_t buffer[len+3];
+    uint8_t buffer[len+4];
     do {
       received = sizeof(buffer);
       if (!radio_->ReceiveSimpleMessage(buffer, received, timeout_ms, timeout, crc_error)) {
@@ -125,20 +141,45 @@ public:
         return false;
       }
       if (!timeout && !crc_error) {
-        if (buffer[0] == 2) {
+        uint8_t xorv = 0;
+        for (unsigned j=0; j < received - 1; j++) {
+          xorv = xorv ^ buffer[j];
+        }
+        if (xorv != buffer[received-1]) {
+          cerr << format("XOR checksum error! %.2x != %.2x\n") % (int)xorv % (int)buffer[received-1];
+          num_xorv_ ++;
+        }
+        else if (buffer[0] == 2) {
           rolling_counter_rx_ = buffer[1];
-          cout << format("[RX Hello] cntr=%d\n") % (int)rolling_counter_rx_;
+          have_rx_ = false;
+          cout << format("[RX Hello] cntr=%d\n") % (int)buffer[1];
           continue;
         }
         else if (buffer[0] == 0) {
+          num_valid_received_ ++;
+          PrintStats();
+          uint8_t received_counter = buffer[1];
+          uint8_t expected_counter = (rolling_counter_rx_ == 0xff ? 0 : rolling_counter_rx_+1);
+          if (!have_rx_) {
+            have_rx_ = true;
+          }
+          else if (received_counter != expected_counter) {
+            // if received > expected then a message got lost
+            int skipped = (int)received_counter - (int)expected_counter;
+            if (skipped < 1) { skipped += 256; }
+            cerr << format("Dropped %d messages? cntr.xpt=%d cntr.rxd=%d othr.rxd=%d\n") % skipped % (int)expected_counter % (int)buffer[1] % (int)buffer[2];
+            dropped_ += skipped;
+          }
           rolling_counter_rx_ = buffer[1];
-          memcpy(payload, buffer+3, received-3);
-          rx = received-3;
+          memcpy(payload, buffer+3, received-4);
+          rx = received-4;
           return true;
         } else {
+          num_junk_ ++;
           cerr << format("Junk? type=%.2x cntr=%d\n") % (int)buffer[0] % (int)buffer[1];
         }
       } else if (crc_error) {
+        num_crc_errors_ ++;
         cerr << "CRC error\n";
       }
 
@@ -156,8 +197,14 @@ private:
   string from_port_;           ///< port last UDP packet was received from
   mutable mutex port_mutex_;   ///< Protection for from_ip_, from_port_
   bool have_port_;             ///< false until from_port_ set for the first time
-  uint8_t rolling_counter_;    ///< Rolling message counter
+  uint8_t rolling_counter_;    ///< Rolling message counter output
   uint8_t rolling_counter_rx_; ///< Rolling message counter last received
+  int num_tx_;                 ///< Number of transmitted MQTT-SN messages
+  int num_valid_received_;     ///< Number of valid received MQTT-SN messages
+  int num_crc_errors_;         ///< Number of crc errors
+  int num_junk_;               ///< Number of junk messages
+  int num_xorv_;               ///< Number of junk XOR messages
+  int dropped_;                ///< Estimated number of lost messages in transit
   bool have_rx_;               ///< false until first message received successfully
 };
 
@@ -272,7 +319,5 @@ int main(int argc, char *argv[])
   outInstance.join();
   inInstance.join();
   cout << "DONE\n";
-
-
 }
 
