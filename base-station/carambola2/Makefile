@@ -96,7 +96,7 @@ build.c-ares/Makefile: ../c-ares/Makefile.in | ../c-ares
 
 
 ../mqtt-sn-tools:
-	(cd .. && git clone git@github.com:pastcompute/mqtt-sn-tools.git )
+	(cd .. && git clone git@github.com:pastcompute/mqtt-sn-tools.git sentrifarm )
 
 prebuild: $(TREE)/feeds.conf $(TREE)/.config patch $(TREE)/tmp/.kconfig-ar71xx_generic
 
