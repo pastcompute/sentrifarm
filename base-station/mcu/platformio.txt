@@ -1,0 +1,34 @@
+PlatformIO configuration
+========================
+
+```
+pip install platformio
+platformio platforms install atmelavr #note, default
+platformio platforms install espressif
+platformio platforms install teensy
+```
+
+Note that downloaded toolchains install into ~/.platformio/packages/...
+
+To make a new project:
+```
+cd projectdir
+platformio init --board=esp01 --board=teensylc
+```
+
+Build & Upload:
+
+```
+platformio run 
+platformio run --target clean
+platformio run --target upload -e esp01
+platformio run --target upload -e teensylc
+```
+
+Library Prerequisites
+=====================
+
+Note that downloaded toolchains install into ~/.platformio/lib/...
+
+platformio lib install 417 # SPI4Teensy3 - GPL3 - I suspect the platformIO people havent thought through licensing...
+
