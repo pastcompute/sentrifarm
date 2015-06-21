@@ -1,0 +1,6 @@
+OWRT_TOOLCHAIN=toolchain-arm_arm1176jzf-s+vfp_gcc-4.8-linaro_uClibc-0.9.33.2_eabi
+OWRT_TARGET=target-arm_arm1176jzf-s+vfp_uClibc-0.9.33.2_eabi
+OWRT_GCC_PFX=arm-openwrt-linux-uclibcgnueabi
+OWRT_TUPLE=arm-openwrt-linux-uclibcgnueabi
+
+

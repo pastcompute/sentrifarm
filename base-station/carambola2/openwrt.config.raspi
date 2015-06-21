@@ -1,0 +1,138 @@
+CONFIG_TARGET_brcm2708=y
+CONFIG_TARGET_brcm2708_brcm2708=y
+CONFIG_TARGET_brcm2708_brcm2708_RaspberryPi=y
+CONFIG_DEVEL=y
+CONFIG_DOWNLOAD_FOLDER="/scratch/DL/openwrt"
+CONFIG_BUILD_LOG=y
+CONFIG_CCACHE=y
+CONFIG_GDB=n
+CONFIG_TARGET_ROOTFS_TARGZ=y
+
+CONFIG_SDK=n
+CONFIG_MAKE_TOOLCHAIN=y
+
+CONFIG_PACKAGE_busybox=y
+CONFIG_BUSYBOX_CUSTOM=y
+CONFIG_BUSYBOX_CONFIG_LSUSB=y
+CONFIG_BUSYBOX_CONFIG_DIFF=y
+CONFIG_BUSYBOX_CONFIG_OD=y
+CONFIG_BUSYBOX_CONFIG_FEATURE_FIND_MTIME=y
+CONFIG_BUSYBOX_CONFIG_FEATURE_FIND_NEWER=y
+CONFIG_BUSYBOX_CONFIG_MODINFO=y
+CONFIG_PACKAGE_hwclock=y
+CONFIG_PACKAGE_kmod-usb-acm=y
+CONFIG_PACKAGE_kmod-usb-hid=y
+CONFIG_PACKAGE_kmod-usb-serial=y
+CONFIG_PACKAGE_kmod-usb-serial-cp210x=y
+CONFIG_PACKAGE_kmod-usb-serial-pl2303=y
+CONFIG_PACKAGE_kmod-usb-serial-ftdi=y
+CONFIG_PACKAGE_kmod-usb-storage=y
+CONFIG_PACKAGE_kmod-i2c-core=y
+CONFIG_PACKAGE_kmod-i2c-gpio=y
+CONFIG_PACKAGE_kmod-i2c-algo-pcf=y
+CONFIG_PACKAGE_kmod-i2c-gpio-custom=y
+CONFIG_PACKAGE_kmod-ledtrig-timer=y
+CONFIG_PACKAGE_kmod-ledtrig-transient=y
+CONFIG_PACKAGE_kmod-ledtrig-gpio=y
+CONFIG_PACKAGE_kmod-ledtrig-default-on=y
+CONFIG_PACKAGE_kmod-ledtrig-heartbeat=y
+CONFIG_PACKAGE_kmod-leds-gpio=y
+CONFIG_PACKAGE_kmod-fs-vfat=y
+CONFIG_PACKAGE_kmod-nls-p437=y
+CONFIG_PACKAGE_kmod-nls-iso8859-1=y
+CONFIG_PACKAGE_kmod-nls-utf8=y
+CONFIG_PACKAGE_kmod-w1=y
+CONFIG_PACKAGE_kmod-w1-master-gpio=y
+CONFIG_PACKAGE_kmod-w1-slave-therm=y
+CONFIG_PACKAGE_kmod-w1-gpio-custom=y  
+CONFIG_PACKAGE_kmod-ax25=m
+CONFIG_PACKAGE_kmod-hid=m
+CONFIG_PACKAGE_kmod-hid-generic=m
+CONFIG_PACKAGE_kmod-hid-gpio-keys=m
+CONFIG_PACKAGE_kmod-hid-gpio-keys-polled=m
+CONFIG_PACKAGE_kmod-eeprom-at24=y
+CONFIG_PACKAGE_kmod-eeprom-at25=m
+CONFIG_PACKAGE_kmod-eeprom-93cx6=m
+CONFIG_PACKAGE_kmod-gpio-beeper=y
+CONFIG_PACKAGE_kmod-gpio-button-hotplug=y
+CONFIG_PACKAGE_kmod-gpio-nxp-74hc164=m
+CONFIG_PACKAGE_kmod-softdog=y
+CONFIG_PACKAGE_kmod-spi-bitbang=y
+CONFIG_PACKAGE_kmod-spi-dev=y
+CONFIG_PACKAGE_kmod-spi-gpio=y
+CONFIG_PACKAGE_kmod-spi-gpio-custom=y
+CONFIG_PACKAGE_kmod-video-uvc=y
+CONFIG_PACKAGE_kmod-video-gspca-core=y
+# Several bazillian!
+CONFIG_PACKAGE_tcpdump=y
+CONFIG_PACKAGE_ppp=n
+CONFIG_PACKAGE_ppp-mod-pppoe=n
+CONFIG_PACKAGE_i2c-tools=y
+# scripts/feeds update
+# scripts/feeds install netcat socat nmap wavemon picocom ntpd ntp-utils ntpdate pps-tools i2c-tools
+# scripts/feeds install file htop less lsof patch coreutils micropython python
+# scripts/feeds install mjpeg-streamer  nfc-utils
+# scripts/feeds install irssi-nossl 
+# scripts/feeds install owfs owshell owhttpd owserver
+# scripts/feeds install luci
+# scripts/feeds install boost-chrono boost-date_time boost-regex boost-thread boost-timer
+# USB Webcam --> kmod-video-uvc mjpeg-streamer motion
+CONFIG_PACKAGE_netcat=y
+CONFIG_PACKAGE_socat=y
+CONFIG_PACKAGE_nmap=y
+CONFIG_PACKAGE_wavemon=y
+CONFIG_PACKAGE_ntpd=y
+CONFIG_PACKAGE_ntp-utils=y
+CONFIG_PACKAGE_ntpdate=m
+CONFIG_PACKAGE_picocom=y
+CONFIG_PACKAGE_file=y
+CONFIG_PACKAGE_less=y
+CONFIG_PACKAGE_htop=y
+CONFIG_PACKAGE_gdb=y
+CONFIG_PACKAGE_patch=y
+
+
+CONFIG_PACKAGE_logger=y
+CONFIG_PACKAGE_spipdev-test=y
+CONFIG_PACKAGE_strace=y
+CONFIG_PACKAGE_usbutils=y
+CONFIG_PACKAGE_coreutils=y
+CONFIG_PACKAGE_coreutils-od=y
+
+CONFIG_PACKAGE_micropython=y
+
+CONFIG_PACKAGE_kmod-bmp085-i2c=y
+
+# Add others later, when able to build overnight ...
+
+# Need to build pre-toolchain before the following can be done
+# make kernel_menuconfig :-->
+# CONFIG_RTC_CLASS=y
+
+# Remember to rm tmp/ when patching things
+
+CONFIG_RTC_SUPPORT=y
+CONFIG_DEFAULT_RTC_SUPPORT=y
+CONFIG_PACKAGE_kmod-rtc-ds1307=y
+
+CONFIG_PACKAGE_kmod-eeprom-at24=y
+
+CONFIG_PACKAGE_spidev-test=y
+
+CONFIG_PACKAGE_boost=y
+CONFIG_PACKAGE_boost-chrono=y
+CONFIG_PACKAGE_boost-thread=y
+CONFIG_PACKAGE_boost-system=y
+CONFIG_PACKAGE_boost-regex=y
+CONFIG_PACKAGE_boost-timer=y
+CONFIG_PACKAGE_libuuid=y   # needed for mosquitto
+
+
+
+# rm -rf tmp build_dir/target* staging_dir/target*
+# patch -p1 < $SENTRIFARM/base-station/carambola2/kernel.patch 
+# cp $SENTRIFARM/base-station/carambola2/feeds.conf .
+# cp $SENTRIFARM/base-station/carambola2/openwrt.config .config
+# make defconfig
+#
+
