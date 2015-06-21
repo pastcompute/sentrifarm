@@ -20,7 +20,8 @@
 //     LED4,5
 
 #if defined(ESP8266)
-#define PIN_LED4         2
+#include <Esp.h> // deep sleep
+#define PIN_LED4         4
 #define PIN_SX1276_RST   0
 #define PIN_SX1276_CS   15
 #define PIN_SX1276_MISO 12
@@ -55,16 +56,31 @@ void setup()
   SPI.setSCK(PIN_SX1276_SCK);
 #endif
 
+  digitalWrite(PIN_SX1276_CS, HIGH);
+  digitalWrite(PIN_SX1276_RST, HIGH);
+  digitalWrite(PIN_SX1276_MISO, HIGH);
+  digitalWrite(PIN_SX1276_MOSI, HIGH);
+  digitalWrite(PIN_SX1276_SCK,  HIGH);
+
+}
+
+
+void loop() {
+
+  digitalWrite(PIN_LED4, LOW);
+	SPI.begin();
+
   // Reset the sx1276
   digitalWrite(PIN_SX1276_RST, LOW);
-  delay(1); // spec states to pull low 100us then wait at least 5 ms
+  delay(10); // spec states to pull low 100us then wait at least 5 ms
   digitalWrite(PIN_SX1276_RST, HIGH);
-  delay(6);
+  delay(50);
 
+  char buf[4];
   for (byte r=0; r <= 0x70; r++) {
     if (r % 8 == 0) {
-      Serial.print(r, HEX);
-      Serial.print(" ");
+      snprintf(buf, sizeof(buf), "%02x ", r);
+      Serial.print(buf);
     }
     SPI.beginTransaction(spiSettings);
     digitalWrite(PIN_SX1276_CS, LOW);
@@ -72,14 +88,26 @@ void setup()
     byte value = SPI.transfer(0);
     digitalWrite(PIN_SX1276_CS, HIGH);
     SPI.endTransaction();
-    Serial.print(r, HEX);
-    Serial.print(" ");
+    snprintf(buf, sizeof(buf), "%02x ", value);
+    Serial.print(buf);
     if (r % 8 == 7) { Serial.println(); }
   }
   Serial.println();
-}
 
-void loop()
-{
+  delay(100);
+
+	SPI.end();
+  digitalWrite(PIN_LED4, HIGH);
+
+#if defined(ESP8266)
+  Serial.println("Request deep sleep");
+	// ESP.deepSleep(8000000, WAKE_RF_DEFAULT); // long enough to see current fall on the USB power meter
+	ESP.deepSleep(8000000, WAKE_RF_DISABLED); // long enough to see current fall on the USB power meter
+	delay(500);
+  Serial.println("Requested deep sleep"); // we should not ever see this
+#else
+	// FIXME
+	delay(7000);
+#endif
 }
 

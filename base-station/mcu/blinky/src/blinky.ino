@@ -17,8 +17,8 @@ void loop()
   Serial.print("Loop ");
   Serial.println(i);
   i++;
-  digitalWrite(14, HIGH);
+  digitalWrite(LED_PIN, HIGH);
   delay(500);
-  digitalWrite(14, LOW);
+  digitalWrite(LED_PIN, LOW);
   delay(500);
 }
