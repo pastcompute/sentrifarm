@@ -2,7 +2,8 @@ PlatformIO configuration
 ========================
 
 ```
-pip install platformio
+sudo apt-get install scons
+sudo pip install platformio
 platformio platforms install atmelavr #note, default
 platformio platforms install espressif
 platformio platforms install teensy
@@ -32,3 +33,18 @@ Note that downloaded toolchains install into ~/.platformio/lib/...
 
 platformio lib install 417 # SPI4Teensy3 - GPL3 - I suspect the platformIO people havent thought through licensing...
 
+PlatformIO Upload Notes
+=======================
+I dont know how it toggles reset / program etc. so need to do it manualluy
+
+
+
+Arduino IDE Notes
+=================
+
+We are not using this anymore but I used it to test the module worked.
+There is a known issue where the IDE leaves RTS(?) aka reset asserted, in some cases.
+Also, picocom also leaves RTS asserted even when run with -fn
+Picocom when run with -i may work if the IDE has not been used...
+Workaround is to disconnect the RTS wire from the CP2102
+The picocom problem may well occur with PlatformIO

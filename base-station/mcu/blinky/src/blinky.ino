@@ -8,12 +8,17 @@
 void setup()
 {
   pinMode(LED_PIN, OUTPUT);     // set pin as output
+  Serial.begin(115200);
+  Serial.println("Hello, World from PlatformIO");
 }
-
+int i=0;
 void loop()
 {
-  digitalWrite(LED_PIN, HIGH);  // set the LED on
-  delay(1000);                  // wait for a second
-  digitalWrite(LED_PIN, LOW);   // set the LED off
-  delay(1000);                  // wait for a second
+  Serial.print("Loop ");
+  Serial.println(i);
+  i++;
+  digitalWrite(14, HIGH);
+  delay(500);
+  digitalWrite(14, LOW);
+  delay(500);
 }
