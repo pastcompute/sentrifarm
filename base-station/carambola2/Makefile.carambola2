@@ -1,0 +1,5 @@
+OWRT_TOOLCHAIN=toolchain-mips_34kc_gcc-4.8-linaro_uClibc-0.9.33.2
+OWRT_TARGET=target-mips_34kc_uClibc-0.9.33.2
+OWRT_GCC_PFX=mips-openwrt-linux-uclibc
+OWRT_TUPLE=mips-openwrt-linux-uclibc
+

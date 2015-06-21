@@ -3,19 +3,19 @@
 # TODO: add code to auto git clone etc. later
 
 # This could be a symlink to somewhere else, not tracked in git, or, to a submodule here...
+
+# options: carambola2, raspberrypi
+DEVICE?=carambola2
 TOP:=$(shell pwd)
 TREE=openwrt
-CONF=openwrt.config
-OWRT_TOOLCHAIN=toolchain-mips_34kc_gcc-4.8-linaro_uClibc-0.9.33.2
-OWRT_TARGET=target-mips_34kc_uClibc-0.9.33.2
-OWRT_GCC_PFX=mips-openwrt-linux-uclibc
+CONF=openwrt.config.$(DEVICE)
 OWRT_STAGING=$(TOP)/openwrt/staging_dir
-OWRT_TUPLE=mips-openwrt-linux-uclibc
+include Makefile.$(DEVICE)
 
 # FIXME: query root-ar71xx from openwrt/ build
 STAGING_DESTDIR=$(OWRT_STAGING)/$(OWRT_TARGET)
 
-MY_CMAKE_OPTS=-DOPENWRT=yes -DCMAKE_TOOLCHAIN_FILE=$(TOP)/toolchain.cmake -DCMAKE_INSTALL_PREFIX=/usr
+MY_CMAKE_OPTS=-DOPENWRT=yes -DCMAKE_TOOLCHAIN_FILE=$(TOP)/toolchain.$(DEVICE).cmake -DCMAKE_INSTALL_PREFIX=/usr
 #-DCMAKE_SKIP_RPATH=TRUE
 
 all: prereq build sx1276 rsmb mqtt-sn
