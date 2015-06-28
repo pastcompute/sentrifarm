@@ -35,14 +35,16 @@ DEFINES += "ARDUINO=10601"
 
 OTHER_FILES += \
     platformio.ini \
-    ./lib/SX1272/examples/SX_01a_TX_LoRa/SX_01a_TX_LoRa.ino
+    ../../sx1276/sx1276.hpp \
+    ../../sx1276/sx1276.cpp
 
 SOURCES += \
     ./src/beacon.ino \
-    ./lib/SX1272/SX1272.cpp
+    ./lib/SX1276lib/sx1276.cpp
 
 HEADERS += \
-    ./lib/SX1272/SX1272.h
+    ./lib/SX1276lib/sx1276.h \
+    ./lib/SX1276lib/sx1276reg.h
 
 
 message("CONFIG=$$CONFIG")
