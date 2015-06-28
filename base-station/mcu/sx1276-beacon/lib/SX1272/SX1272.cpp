@@ -32,7 +32,7 @@
 // Public functions.
 //**********************************************************************
 
-SX1272::SX1272()
+ICACHE_FLASH_ATTR SX1272::SX1272()
 {
 		// Initialize class variables
 		_bandwidth = BW_125;
@@ -56,7 +56,7 @@ SX1272::SX1272()
  Function: Sets the module ON.
  Returns: uint8_t setLORA state
 */
-uint8_t SX1272::ON()
+ICACHE_FLASH_ATTR uint8_t SX1272::ON()
 {
 	
 	uint8_t state = 2;
@@ -165,7 +165,7 @@ uint8_t SX1272::ON()
  Function: Sets the module OFF.
  Returns: Nothing
 */
-void SX1272::OFF()
+ICACHE_FLASH_ATTR void SX1272::OFF()
 {
   #if (SX1272_debug_mode > 1)
 	  Serial.println();
@@ -315,6 +315,7 @@ uint8_t SX1272::setLORA()
 	return state;
 }
 
+#if SX127X_ENABLE_FSK
 /*
  Function: Sets the module in FSK mode.
  Returns:   Integer that determines if there has been any error
@@ -367,6 +368,7 @@ uint8_t SX1272::setFSK()
 	}
 	return state;
 }
+#endif
 
 /*
  Function: Gets the bandwidth, coding rate and spreading factor of the LoRa modulation.
@@ -438,7 +440,7 @@ uint8_t SX1272::getMode()
  Parameters:
    mode: mode number to set the required BW, SF and CR of LoRa modem.
 */
-int8_t SX1272::setMode(uint8_t mode)
+ICACHE_FLASH_ATTR int8_t SX1272::setMode(uint8_t mode)
 {
   int8_t state = 2;
   byte st0;
@@ -670,7 +672,7 @@ int8_t SX1272::setMode(uint8_t mode)
    state = 1  --> There has been an error while executing the command
    state = 0  --> The command has been executed with no errors
 */
-uint8_t	SX1272::getHeader()
+ICACHE_FLASH_ATTR uint8_t	SX1272::getHeader()
 {
 	int8_t state = 2;
 
@@ -726,7 +728,7 @@ uint8_t	SX1272::getHeader()
    state = 0  --> The command has been executed with no errors
    state = -1 --> Forbidden command for this protocol
 */
-int8_t	SX1272::setHeaderON()
+ICACHE_FLASH_ATTR int8_t	SX1272::setHeaderON()
 {
   int8_t state = 2;
   byte config1;
@@ -788,7 +790,7 @@ int8_t	SX1272::setHeaderON()
    state = 0  --> The command has been executed with no errors
    state = -1 --> Forbidden command for this protocol
 */
-int8_t	SX1272::setHeaderOFF()
+ICACHE_FLASH_ATTR int8_t	SX1272::setHeaderOFF()
 {
   uint8_t state = 2;
   byte config1;
@@ -842,7 +844,7 @@ int8_t	SX1272::setHeaderOFF()
    state = 1  --> There has been an error while executing the command
    state = 0  --> The command has been executed with no errors
 */
-uint8_t	SX1272::getCRC()
+ICACHE_FLASH_ATTR uint8_t	SX1272::getCRC()
 {
 	int8_t state = 2;
 	byte value;
@@ -918,7 +920,7 @@ uint8_t	SX1272::getCRC()
    state = 1  --> There has been an error while executing the command
    state = 0  --> The command has been executed with no errors
 */
-uint8_t	SX1272::setCRC_ON()
+ICACHE_FLASH_ATTR uint8_t	SX1272::setCRC_ON()
 {
   uint8_t state = 2;
   byte config1;
@@ -984,7 +986,7 @@ uint8_t	SX1272::setCRC_ON()
    state = 1  --> There has been an error while executing the command
    state = 0  --> The command has been executed with no errors
 */
-uint8_t	SX1272::setCRC_OFF()
+ICACHE_FLASH_ATTR uint8_t	SX1272::setCRC_OFF()
 {
   int8_t state = 2;
   byte config1;
@@ -1046,7 +1048,7 @@ uint8_t	SX1272::setCRC_OFF()
  Parameters:
    spr: spreading factor value to check.
 */
-boolean	SX1272::isSF(uint8_t spr)
+ICACHE_FLASH_ATTR boolean	SX1272::isSF(uint8_t spr)
 {
   #if (SX1272_debug_mode > 1)
 	  Serial.println();
@@ -1081,7 +1083,7 @@ boolean	SX1272::isSF(uint8_t spr)
    state = 0  --> The command has been executed with no errors
    state = -1 --> Forbidden command for this protocol
 */
-int8_t	SX1272::getSF()
+ICACHE_FLASH_ATTR int8_t	SX1272::getSF()
 {
   int8_t state = 2;
   byte config2;
@@ -1129,7 +1131,7 @@ int8_t	SX1272::getSF()
  Parameters:
    spr: spreading factor value to set in LoRa modem configuration.
 */
-uint8_t	SX1272::setSF(uint8_t spr)
+ICACHE_FLASH_ATTR uint8_t	SX1272::setSF(uint8_t spr)
 {
   byte st0;
   int8_t state = 2;
@@ -1313,7 +1315,7 @@ uint8_t	SX1272::setSF(uint8_t spr)
  Parameters:
    band: bandwidth value to check.
 */
-boolean	SX1272::isBW(uint16_t band)
+ICACHE_FLASH_ATTR boolean	SX1272::isBW(uint16_t band)
 {
   #if (SX1272_debug_mode > 1)
 	  Serial.println();
@@ -1344,7 +1346,7 @@ boolean	SX1272::isBW(uint16_t band)
    state = 0  --> The command has been executed with no errors
    state = -1 --> Forbidden command for this protocol
 */
-int8_t	SX1272::getBW()
+ICACHE_FLASH_ATTR int8_t	SX1272::getBW()
 {
   uint8_t state = 2;
   byte config1;
@@ -1399,7 +1401,7 @@ int8_t	SX1272::getBW()
  Parameters:
    band: bandwith value to set in LoRa modem configuration.
 */
-int8_t	SX1272::setBW(uint16_t band)
+ICACHE_FLASH_ATTR int8_t	SX1272::setBW(uint16_t band)
 {
   byte st0;
   int8_t state = 2;
@@ -1521,7 +1523,7 @@ int8_t	SX1272::setBW(uint16_t band)
  Parameters:
    cod: coding rate value to check.
 */
-boolean	SX1272::isCR(uint8_t cod)
+ICACHE_FLASH_ATTR boolean	SX1272::isCR(uint8_t cod)
 {
   #if (SX1272_debug_mode > 1)
 	  Serial.println();
@@ -1603,7 +1605,7 @@ int8_t	SX1272::getCR()
  Parameters:
    cod: coding rate value to set in LoRa modem configuration.
 */
-int8_t	SX1272::setCR(uint8_t cod)
+ICACHE_FLASH_ATTR int8_t	SX1272::setCR(uint8_t cod)
 {
   byte st0;
   int8_t state = 2;
@@ -1702,7 +1704,7 @@ int8_t	SX1272::setCR(uint8_t cod)
  Parameters:
    ch: frequency channel value to check.
 */
-boolean	SX1272::isChannel(uint32_t ch)
+ICACHE_FLASH_ATTR boolean	SX1272::isChannel(uint32_t ch)
 {
   #if (SX1272_debug_mode > 1)
 	  Serial.println();
@@ -1749,7 +1751,7 @@ boolean	SX1272::isChannel(uint32_t ch)
    state = 1  --> There has been an error while executing the command
    state = 0  --> The command has been executed with no errors
 */
-uint8_t SX1272::getChannel()
+ICACHE_FLASH_ATTR uint8_t SX1272::getChannel()
 {
   uint8_t state = 2;
   uint32_t ch;
@@ -1795,7 +1797,7 @@ uint8_t SX1272::getChannel()
  Parameters:
    ch: frequency channel value to set in configuration.
 */
-int8_t SX1272::setChannel(uint32_t ch)
+ICACHE_FLASH_ATTR int8_t SX1272::setChannel(uint32_t ch)
 {
   byte st0;
   int8_t state = 2;
@@ -1881,7 +1883,7 @@ int8_t SX1272::setChannel(uint32_t ch)
    state = 1  --> There has been an error while executing the command
    state = 0  --> The command has been executed with no errors
 */
-uint8_t SX1272::getPower()
+ICACHE_FLASH_ATTR uint8_t SX1272::getPower()
 {
   uint8_t state = 2;
   byte value = 0x00;
@@ -1919,7 +1921,7 @@ uint8_t SX1272::getPower()
  Parameters:
    p: power option to set in configuration.
 */
-int8_t SX1272::setPower(char p)
+ICACHE_FLASH_ATTR int8_t SX1272::setPower(char p)
 {
   byte st0;
   int8_t state = 2;
@@ -1990,7 +1992,7 @@ int8_t SX1272::setPower(char p)
  Parameters:
    p: power option to set in configuration.
 */
-int8_t SX1272::setPowerNum(uint8_t pow)
+ICACHE_FLASH_ATTR int8_t SX1272::setPowerNum(uint8_t pow)
 {
   byte st0;
   int8_t state = 2;
@@ -2053,7 +2055,7 @@ int8_t SX1272::setPowerNum(uint8_t pow)
    state = 1  --> There has been an error while executing the command
    state = 0  --> The command has been executed with no errors
 */
-uint8_t SX1272::getPreambleLength()
+ICACHE_FLASH_ATTR uint8_t SX1272::getPreambleLength()
 {
 	int8_t state = 2;
 	uint8_t p_length;
@@ -2107,7 +2109,7 @@ uint8_t SX1272::getPreambleLength()
  Parameters:
    l: length value to set as preamble length.
 */
-uint8_t SX1272::setPreambleLength(uint16_t l)
+ICACHE_FLASH_ATTR uint8_t SX1272::setPreambleLength(uint16_t l)
 {
 	byte st0;
 	uint8_t p_length;
@@ -2161,7 +2163,7 @@ uint8_t SX1272::setPreambleLength(uint16_t l)
    state = 1  --> There has been an error while executing the command
    state = 0  --> The command has been executed with no errors
 */
-uint8_t SX1272::getPayloadLength()
+ICACHE_FLASH_ATTR uint8_t SX1272::getPayloadLength()
 {
 	uint8_t state = 2;
 
@@ -2202,7 +2204,7 @@ uint8_t SX1272::getPayloadLength()
    state = 0  --> The command has been executed with no errors
    state = -1 --> Forbidden command for this protocol
 */
-int8_t SX1272::setPacketLength()
+ICACHE_FLASH_ATTR int8_t SX1272::setPacketLength()
 {
 	uint16_t length;
 
@@ -2220,7 +2222,7 @@ int8_t SX1272::setPacketLength()
  Parameters:
    l: length value to set as payload length.
 */
-int8_t SX1272::setPacketLength(uint8_t l)
+ICACHE_FLASH_ATTR int8_t SX1272::setPacketLength(uint8_t l)
 {
 	byte st0;
 	byte value = 0x00;
@@ -2276,7 +2278,7 @@ int8_t SX1272::setPacketLength(uint8_t l)
    state = 1  --> There has been an error while executing the command
    state = 0  --> The command has been executed with no errors
 */
-uint8_t SX1272::getNodeAddress()
+ICACHE_FLASH_ATTR uint8_t SX1272::getNodeAddress()
 {
 	byte st0 = 0;
 	uint8_t state = 2;
@@ -2322,7 +2324,7 @@ uint8_t SX1272::getNodeAddress()
  Parameters:
    addr: address value to set as node address.
 */
-int8_t SX1272::setNodeAddress(uint8_t addr)
+ICACHE_FLASH_ATTR int8_t SX1272::setNodeAddress(uint8_t addr)
 {
 	byte st0;
 	byte value;
@@ -2561,7 +2563,7 @@ int16_t SX1272::getRSSIpacket()
    state = 0  --> The command has been executed with no errors
    state = -1 -->
 */
-uint8_t SX1272::setRetries(uint8_t ret)
+ICACHE_FLASH_ATTR uint8_t SX1272::setRetries(uint8_t ret)
 {
 	uint8_t state = 2;
 
@@ -2604,7 +2606,7 @@ uint8_t SX1272::setRetries(uint8_t ret)
  Parameters:
    rate: value to compute the maximum current supply. Maximum current is 45+5*'rate' [mA]
 */
-uint8_t SX1272::getMaxCurrent()
+ICACHE_FLASH_ATTR uint8_t SX1272::getMaxCurrent()
 {
 	int8_t state = 2;
 	byte value;
@@ -2654,7 +2656,7 @@ uint8_t SX1272::getMaxCurrent()
  Parameters:
    rate: value to compute the maximum current supply. Maximum current is 45+5*'rate' [mA]
 */
-int8_t SX1272::setMaxCurrent(uint8_t rate)
+ICACHE_FLASH_ATTR int8_t SX1272::setMaxCurrent(uint8_t rate)
 {
 	int8_t state = 2;
 	byte st0;
@@ -2703,7 +2705,7 @@ int8_t SX1272::setMaxCurrent(uint8_t rate)
    state = 1  --> There has been an error while executing the command
    state = 0  --> The command has been executed with no errors
 */
-uint8_t SX1272::getRegs()
+ICACHE_FLASH_ATTR uint8_t SX1272::getRegs()
 {
 	int8_t state = 2;
 	uint8_t state_f = 2;
@@ -3571,7 +3573,7 @@ int8_t SX1272::getPacket(uint16_t wait)
  Parameters:
    dest: destination value of the packet sent.
 */
-int8_t SX1272::setDestination(uint8_t dest)
+ICACHE_FLASH_ATTR int8_t SX1272::setDestination(uint8_t dest)
 {
 	int8_t state = 2;
 
@@ -3610,7 +3612,7 @@ int8_t SX1272::setDestination(uint8_t dest)
    state = 1  --> There has been an error while executing the command
    state = 0  --> The command has been executed with no errors
 */
-uint8_t SX1272::setTimeout()
+ICACHE_FLASH_ATTR uint8_t SX1272::setTimeout()
 {
 	uint8_t state = 2;
 	uint16_t delay;
@@ -4969,7 +4971,7 @@ uint8_t SX1272::sendPacketTimeoutACKRetries(uint8_t dest, uint8_t *payload, uint
    state = 1  --> There has been an error while executing the command
    state = 0  --> The command has been executed with no errors
 */
-uint8_t SX1272::getTemp()
+ICACHE_FLASH_ATTR uint8_t SX1272::getTemp()
 {
 	byte st0;
 	uint8_t state = 2;

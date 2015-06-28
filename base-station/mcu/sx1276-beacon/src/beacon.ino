@@ -21,6 +21,7 @@
 //     LED4,5
 
 #if defined(ESP8266)
+#include <c_types.h>
 #include <Esp.h> // deep sleep
 #define PIN_LED4         4
 #define PIN_SX1276_RST   0
@@ -35,20 +36,21 @@
 #define PIN_SX1276_MISO 12
 #define PIN_SX1276_MOSI 11
 #define PIN_SX1276_SCK  14
+#define ICACHE_FLASH_ATTR
 #else
 #error "Unsupported configuration"
 #endif
 
 SPISettings spiSettings(1000000, MSBFIRST, SPI_MODE0); // double check
 
-void setup()
+ICACHE_FLASH_ATTR void setup()
 {
   Serial.begin(115200);
-  Serial.print("Sentrifarm : sx1276 beacon : ");
+  Serial.print(F("Sentrifarm : sx1276 beacon : "));
 #if defined(TEENSYDUINO)
-  Serial.println("TEENSY-LC");
+  Serial.println(F("TEENSY-LC"));
 #elif defined(ESP8266)
-  Serial.println("ESP8266 ESP-201");
+  Serial.println(F("ESP8266 ESP-201"));
 #endif
 
   pinMode(PIN_LED4,        OUTPUT);
@@ -67,8 +69,11 @@ void setup()
   digitalWrite(PIN_SX1276_MISO, HIGH);
   digitalWrite(PIN_SX1276_MOSI, HIGH);
   digitalWrite(PIN_SX1276_SCK,  HIGH);
+
+  sx1272.ON();
 }
 
 void loop() {
+  Serial.println(F("Test"));
+  delay(10000);
 }
-

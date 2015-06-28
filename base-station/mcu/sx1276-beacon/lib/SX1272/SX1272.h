@@ -344,12 +344,14 @@ public:
 	 */
 	uint8_t setLORA();
 
-	//! It sets the FSK mode on.
+#if SX127X_ENABLE_FSK
+    //! It sets the FSK mode on.
   	/*!
   	It stores in global '_FSK' variable '1' when success
 	\return '0' on success, '1' otherwise
 	 */
 	uint8_t setFSK();
+#endif
 
 	//! It gets the BW, SF and CR of the module.
   	/*!

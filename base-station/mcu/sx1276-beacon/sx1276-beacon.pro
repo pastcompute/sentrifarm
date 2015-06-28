@@ -16,11 +16,12 @@ PLATFORMIO = $(HOME)/.platformio
 INCLUDEPATH += "$${PLATFORMIO}/packages/framework-arduinoespressif/variants/generic"
 INCLUDEPATH += "$${PLATFORMIO}/packages/framework-arduinoespressif/cores/esp8266"
 INCLUDEPATH += "$${PLATFORMIO}/packages/framework-arduinoespressif/cores/esp8266/spiffs"
-INCLUDEPATH += "./src"
-INCLUDEPATH += "./lib/SX1272"
 INCLUDEPATH += "$${PLATFORMIO}/packages/framework-arduinoespressif/libraries/SPI"
 INCLUDEPATH += "$${PLATFORMIO}/packages/toolchain-xtensa/xtensa-lx106-elf/include"
 INCLUDEPATH += "$${PLATFORMIO}/packages/toolchain-xtensa/lib/gcc/xtensa-lx106-elf/4.8.2/include"
+INCLUDEPATH += "$${PLATFORMIO}/packages/toolchain-xtensa/lib/gcc/xtensa-lx106-elf/4.8.2/include"
+INCLUDEPATH += "$${PLATFORMIO}/packages/sdk-esp8266/include"
+INCLUDEPATH += "./lib/SX1272"
 
 win32:INCLUDEPATH ~= s,/,\\,g
 
