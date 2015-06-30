@@ -2,6 +2,11 @@
 #include "sx1276reg.h"
 #include <SPI.h>
 
+// Somewhat arbitrary starting point
+#define DEFAULT_BW_HZ 125000
+#define DEFAULT_SPREADING_FACTOR 9
+#define DEFAULT_CODING_RATE 6
+
 #define VERBOSE 1
 
 #if VERBOSE
@@ -11,18 +16,71 @@ char buf[128]; // dodgy: non-reentrant
 #define DEBUG(x ...)
 #endif
 
-SX1276Radio::SX1276Radio(int cs_pin)
-  : cs_pin_(cs_pin),
-    symbol_timeout_(0x8),
-    preamble_(0x8)
+#undef PASTE
+#define PASTE(x, y) x ## y
+#define BW_TO_SWITCH(number) case number : return PASTE(SX1276_LORA_BW_, number)
+#define BW_FR_SWITCH(number) case PASTE(SX1276_LORA_BW_, number) : return number;
+
+inline byte BandwidthToBitfield(unsigned bandwidth_hz)
 {
+  switch (bandwidth_hz) {
+    BW_TO_SWITCH(7800);
+    BW_TO_SWITCH(10400);
+    BW_TO_SWITCH(15600);
+    BW_TO_SWITCH(20800);
+    BW_TO_SWITCH(31250);
+    BW_TO_SWITCH(41700);
+    BW_TO_SWITCH(62500);
+    BW_TO_SWITCH(125000);
+    BW_TO_SWITCH(250000);
+    BW_TO_SWITCH(500000);
+    default:
+      // Error
+      // Note we try and avoid this by validating inputs to methods
+      return 0;
+  }
+}
+
+inline unsigned BitfieldToBandwidth(byte bitfield)
+{
+  switch (bitfield) {
+    BW_FR_SWITCH(7800);
+    BW_FR_SWITCH(10400);
+    BW_FR_SWITCH(15600);
+    BW_FR_SWITCH(20800);
+    BW_FR_SWITCH(31250);
+    BW_FR_SWITCH(41700);
+    BW_FR_SWITCH(62500);
+    BW_FR_SWITCH(125000);
+    BW_FR_SWITCH(250000);
+    BW_FR_SWITCH(500000);
+    return 0;
+  }
+}
+
+inline unsigned CodingRateToBitfield(byte coding_rate)
+{
+  switch(coding_rate) {
+    case 5: return SX1276_LORA_CODING_RATE_4_5;
+    case 6: return SX1276_LORA_CODING_RATE_4_6;
+    case 7: return SX1276_LORA_CODING_RATE_4_7;
+    case 8: return SX1276_LORA_CODING_RATE_4_8;
+    default:
+      // Error
+      // Note we try and avoid this by validating inputs to methods
+      return 0;
+  }
 }
 
 SX1276Radio::SX1276Radio(int cs_pin, const SPISettings& spi_settings)
   : cs_pin_(cs_pin),
     spi_settings_(spi_settings),
     symbol_timeout_(0x8),
-    preamble_(0x8)
+    preamble_(0x8),
+    max_tx_payload_bytes_(0x80),
+    bandwidth_hz_(DEFAULT_BW_HZ),
+    spreading_factor_(DEFAULT_SPREADING_FACTOR),
+    coding_rate_(DEFAULT_CODING_RATE)
 {
 }
 
@@ -77,12 +135,12 @@ bool SX1276Radio::Begin()
   }
 
   // 125kHz, 4/6, explicit header
-  v = (SX1276_LORA_BW_125000 << 4) | (SX1276_LORA_CODING_RATE_4_6) | 0x0;
+  v = (BandwidthToBitfield(bandwidth_hz_) << 4) | CodingRateToBitfield(coding_rate_) | 0x0;
   WriteRegister(SX1276REG_ModemConfig1, v);
 
   // SF9, normal (not continuous) mode, CRC, and upper 2 bits of symbol timeout (maximum i.e. 1023)
   // We use 255, or 255 x (2^9)/125000 or ~1 second
-  v = (0x9 << 4) | (0 << 3)| (1 << 2) | ((symbol_timeout_ >> 8) & 0x03);
+  v = (spreading_factor_ << 4) | (0 << 3)| (1 << 2) | ((symbol_timeout_ >> 8) & 0x03);
   WriteRegister(SX1276REG_ModemConfig2, v);
   v = symbol_timeout_ & 0xff;
   WriteRegister(SX1276REG_SymbTimeoutLsb, v);
@@ -133,12 +191,52 @@ void SX1276Radio::SetCarrier(uint32_t carrier_hz)
   WriteRegister(SX1276REG_FrfLsb, v);
 }
 
+/// Calcluates the estimated time on air for a given simple payload
+/// based on the formulae in the SX1276 datasheet
+// Initial enhancement:
+// * use BW & SF from last Begin() or last time they changed
+//   so would fail if user ever bypasses this class
+// Future enhancement:
+// * We could calculate 5 constants only when SF or BW changes
+//   Pro: reduces CPU cycles each call
+//   Con: need 5 extra fields
+// * We could cache past results keyed by length
+//   Pro: reduces CPU cycles
+//   Con: over time might grow up to 128 (or 255) results x (each time BW or SF changes unless invalidated)
+int SX1276Radio::PredictTimeOnAir(byte payload_len) const
+{
+  // TOA = (6.F+4.25F+8+ceil( (8*payload_len-4*SF+28+16)/(4*SF))*CR) * (1 << SF) / BW;
+
+  // Floating point in the ESP8266 is done in software and is thus expensive
+
+  int N = (payload_len << 3) - 4 * spreading_factor_ + 28 + 16;
+  // FUTURE : if header is disabled enabled, k = k - 20;
+  int D = 4 * spreading_factor_;
+  // FUTURE : if low data rate optimisation enabled, D = D - 2
+
+  // To avoid float, we need to add 1 if there was a remainder
+  N = N / D;  if (N % D) { N++; }
+
+  N = N * coding_rate_;
+  if (N<0) { N=0; }
+  N += 8;
+
+  // N is now set to the number of symbols
+  // Add the preamble (preamble + 4.25) then multiply by symbol time Tsym
+  // Rsym = BW / 2^Sf  Tsym = 2^sf / BW
+  // To avoid float we add them after converting to milliseconds
+  int Tpreamble = (1000 * preamble_ + 4250) * (1 << spreading_factor_) / bandwidth_hz_;
+  int Tpayload = 1000 * N * (1 << spreading_factor_) / bandwidth_hz_;
+
+  return Tpreamble + Tpayload;
+}
+
+
+
 bool SX1276Radio::SendMessage(const void *payload, byte len)
 {
-  int timeout_ms = 1000;
-  const byte max_tx_payload_bytes_ = 0x80;
-  byte v;
   if (len > max_tx_payload_bytes_) {
+    len = max_tx_payload_bytes_;
     DEBUG("MESSAGE TOO LONG! TRUNCATED\n");
   }
 
@@ -146,8 +244,8 @@ bool SX1276Radio::SendMessage(const void *payload, byte len)
   WriteRegister(SX1276REG_OpMode, 0x81);
   delay(10);
 
-  // Reset TX FIFO
-  const byte FIFO_START = 0x80;
+  // Reset TX FIFO.
+  const byte FIFO_START = 0xff - max_tx_payload_bytes_ + 1;
   WriteRegister(SX1276REG_FifoTxBaseAddr, FIFO_START);
   WriteRegister(SX1276REG_FifoAddrPtr, FIFO_START);
   WriteRegister(SX1276REG_MaxPayloadLength, max_tx_payload_bytes_);
@@ -155,12 +253,12 @@ bool SX1276Radio::SendMessage(const void *payload, byte len)
 
   // Write payload into FIFO
   // TODO: merge into one SPI transaction
-  if (len > max_tx_payload_bytes_) { len = max_tx_payload_bytes_; }
   const byte* p = (const byte*)payload;
   for (byte b=0; b < len; b++) {
     WriteRegister(SX1276REG_Fifo, *p++);
   }
 
+  byte v;
   ReadRegister(SX1276REG_FifoAddrPtr, v);
   if (v != FIFO_START + len) {
     DEBUG("FIFO write pointer mismatch, expected %.2x got %.2x\n", FIFO_START + len, v);
@@ -172,9 +270,10 @@ bool SX1276Radio::SendMessage(const void *payload, byte len)
   WriteRegister(SX1276REG_OpMode, 0x83);
 
   // Wait until TX DONE, or timeout
-  // We should calculate it based on predicted TOA; for the moment just wait 1 second
+  // We make the timeout an estimate based on predicted TOA
   bool ok = false;
-  int ticks = timeout_ms  / 10;
+  int ticks = PredictTimeOnAir(len)  / 10;
+  DEBUG("TX TOA TICKS %d\n", ticks);
   do {
     ReadRegister(SX1276REG_IrqFlags, v);
     if (v & (1<<3)) {
@@ -190,10 +289,12 @@ bool SX1276Radio::SendMessage(const void *payload, byte len)
     DEBUG("TX TIMEOUT!");
     return false;
   }
+  // On the way out, we default to staying in LoRa mode
+  // the caller can the choose to return to standby
   return true;
 }
 
-bool SX1276Radio::ReceiveMessage(uint8_t buffer[], int& size, int timeout_ms, bool& timeout, bool& crc_error)
+bool SX1276Radio::ReceiveMessage(byte buffer[], byte& size, int timeout_ms, bool& crc_error)
 {
 
 }
