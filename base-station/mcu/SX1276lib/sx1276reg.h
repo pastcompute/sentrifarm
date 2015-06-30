@@ -36,6 +36,7 @@
 #define SX1276REG_FifoRxByteAddrPtr 0x25
 #define SX1276REG_DioMapping1       0x40
 #define SX1276REG_DioMapping2       0x41
+#define SX1276REG_Version           0x42
 
 // Bandwidth settings, for bits 4-7 of ModemConfig1
 #define SX1276_LORA_CODING_RATE_4_5 0x01

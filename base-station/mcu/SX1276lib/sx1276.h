@@ -20,6 +20,8 @@ public:
   /// to values useful to the authors use case!
   bool Begin();
 
+	byte GetVersion();
+
   /// Get the currently tuned carrier frequency
   void GetCarrier(uint32_t& carrier_hz);
 
@@ -56,8 +58,9 @@ public:
 
 private:
   void ReadRegister(byte reg, byte& result);
-  void WriteRegister(byte reg, byte val, byte& result);
-  inline void WriteRegister(byte reg, byte val) { byte unused; WriteRegister(reg, val, unused); }
+
+  void WriteRegister(byte reg, byte val, byte& result, bool verify);
+  inline void WriteRegister(byte reg, byte val, bool verify = false) { byte unused; WriteRegister(reg, val, unused, verify); }
 
   int cs_pin_;
   SPISettings spi_settings_;

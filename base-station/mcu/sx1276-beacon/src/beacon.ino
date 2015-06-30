@@ -45,11 +45,16 @@ SPISettings spiSettings(1000000, MSBFIRST, SPI_MODE0); // double check
 
 SX1276Radio radio(PIN_SX1276_CS, spiSettings);
 
+bool started_ok = false;
+
 ICACHE_FLASH_ATTR
 void setup()
 {
+  delay(1000); // let last of ESP8266 junk get past
   Serial.begin(115200);
-  Serial.print(F("Sentrifarm : sx1276 beacon : "));
+  Serial.println();
+
+  Serial.print(F("\n\n\nSentrifarm : sx1276 beacon : "));
 #if defined(TEENSYDUINO)
   Serial.println(F("TEENSY-LC"));
 #elif defined(ESP8266)
@@ -81,26 +86,45 @@ void setup()
 
   // init SPI and then program the chip to LoRa mode
   SPI.begin();
+  Serial.print(F("SX1276: version=")); Serial.println(radio.GetVersion());
   if (!radio.Begin()) {
     Serial.println(F("SX1276 init error"));
     // TODO: flash the LED
+  } else {
+    radio.SetCarrier(919000000);
+    uint32_t carrier_hz = 0;
+    radio.GetCarrier(carrier_hz);
+    Serial.print(F("Carrier: ")); Serial.println(carrier_hz);
+    started_ok = true;
   }
-  radio.SetCarrier(919000000);
-  uint32_t carrier_hz = 0;
-  radio.GetCarrier(carrier_hz);
-  Serial.println("Carrier: " + carrier_hz);
+  SPI.end();
+  delay(500);
+}
+
+void go_to_sleep(int ms)
+{
+#if defined(ESP8266)
+  ESP.deepSleep(ms * 1000, WAKE_RF_DISABLED); // long enough to see current fall on the USB power meter
+	delay(500); // Note, deep sleep actually takes a bit to activate, so we want to make sure loop doesnt do anything...
+#else
+  delay(ms);
+#endif
 }
 
 void loop() {
+  const char BEACON_MSG[] = "Hello, World! Hello, World!";
+
   digitalWrite(PIN_LED4, LOW);
-  const char BEACON_MSG[] = "Hello, World";
-  radio.SendMessage(BEACON_MSG, sizeof(BEACON_MSG));
-  delay(500);
-  digitalWrite(PIN_LED4, HIGH);
-#if defined(ESP8266)
-  Serial.println("Request deep sleep");
-  ESP.deepSleep(7500000, WAKE_RF_DISABLED); // long enough to see current fall on the USB power meter
-#else
-  delay(7500);
-#endif
+	if (started_ok) {
+		SPI.begin();
+		radio.SendMessage(BEACON_MSG, sizeof(BEACON_MSG));
+		SPI.end();
+		delay(500);
+	  digitalWrite(PIN_LED4, HIGH);
+	  go_to_sleep(7500);
+	} else {
+		delay(500);
+	  digitalWrite(PIN_LED4, HIGH);
+		delay(500);
+	}
 }

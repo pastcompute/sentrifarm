@@ -8,10 +8,12 @@
 #define DEFAULT_CODING_RATE 6
 
 #define VERBOSE 1
+#define VERBOSE_W 0
+#define VERBOSE_R 0
 
 #if VERBOSE
-char buf[128]; // dodgy: non-reentrant
-#define DEBUG(x ...) { snprintf(buf, sizeof(buf), x); Serial.print(buf); }
+#include <stdio.h>
+#define DEBUG(x ...) { char buf[128]; snprintf(buf, sizeof(buf), x); Serial.print(buf); }
 #else
 #define DEBUG(x ...)
 #endif
@@ -82,6 +84,7 @@ SX1276Radio::SX1276Radio(int cs_pin, const SPISettings& spi_settings)
     spreading_factor_(DEFAULT_SPREADING_FACTOR),
     coding_rate_(DEFAULT_CODING_RATE)
 {
+  // DEBUG("SX1276: CS pin=%d\n", cs_pin_);
 }
 
 void SX1276Radio::ReadRegister(byte reg, byte& result)
@@ -92,18 +95,38 @@ void SX1276Radio::ReadRegister(byte reg, byte& result)
   result = SPI.transfer(0);
   digitalWrite(cs_pin_, HIGH);
   SPI.endTransaction();
+#if VERBOSE_R
+  DEBUG("[R] %02x --> %02x\n\r", reg, result);
+#endif
 }
 
 // TODO: add a verify version if required (if things dont work)
-void SX1276Radio::WriteRegister(byte reg, byte val, byte& result)
+void SX1276Radio::WriteRegister(byte reg, byte val, byte& result, bool verify)
 {
   SPI.beginTransaction(spi_settings_);
   digitalWrite(cs_pin_, LOW);
-  SPI.transfer(reg);
+  SPI.transfer(reg + 0x80);  // Dont forget to set the high bit!
   result = SPI.transfer(val);
   digitalWrite(cs_pin_, HIGH);
   SPI.endTransaction();
-  // Needed? delay(10);
+#if VERBOSE_W
+  DEBUG("[W] %02x <-- %02x --> %02x\n\r", reg, val, result);
+#endif
+  if (verify) {
+    delay(10);
+    byte newval = 0;
+    ReadRegister(reg, newval);
+    if (newval != val) {
+      DEBUG("[W] %02x <- %02x failed, got %02x\n\r", reg, val, newval);
+    }
+  }
+}
+
+byte SX1276Radio::GetVersion()
+{
+  byte v;
+  ReadRegister(SX1276REG_Version, v);
+  return v;
 }
 
 
@@ -113,16 +136,13 @@ bool SX1276Radio::Begin()
 
   // Sleep Mode from any unkown mode: clear lower bits
   ReadRegister(SX1276REG_OpMode, v);
-  WriteRegister(SX1276REG_OpMode, v & 0xf8);
-  delay(10);
+  WriteRegister(SX1276REG_OpMode, v & 0xf8, true);
 
   // Sleep
-  WriteRegister(SX1276REG_OpMode, 0x80);
-  delay(10);
+  WriteRegister(SX1276REG_OpMode, 0x80, true);
 
   // LoRa, Standby
-  WriteRegister(SX1276REG_OpMode, 0x81);
-  delay(10);
+  WriteRegister(SX1276REG_OpMode, 0x81, true);
 
   // Switch to maximum current mode (0x1B == 240mA), and enable overcurrent protection
   WriteRegister(SX1276REG_Ocp, (1<<5) | 0x0B); // 0b is default, 1b max
@@ -130,7 +150,7 @@ bool SX1276Radio::Begin()
   // Verify operating mode
   ReadRegister(SX1276REG_OpMode, v);
   if (v != 0x81) {
-    DEBUG("Unable to enter LoRa mode. v=%.2x\n", v);
+    DEBUG("Unable to enter LoRa mode. v=0x%02x\n", v);
     return false;
   }
 
@@ -261,7 +281,7 @@ bool SX1276Radio::SendMessage(const void *payload, byte len)
   byte v;
   ReadRegister(SX1276REG_FifoAddrPtr, v);
   if (v != FIFO_START + len) {
-    DEBUG("FIFO write pointer mismatch, expected %.2x got %.2x\n", FIFO_START + len, v);
+    DEBUG("FIFO write pointer mismatch, expected %02x got %02x\n", FIFO_START + len, v);
   }
 
   // TX mode
