@@ -137,7 +137,7 @@ SX1276Radio::SX1276Radio(const boost::shared_ptr<SPI>& spi)
   continuousMode_(false),
   continuousSetup_(false),
   preamble_(0x8),
-	symbolTimeout_(0x08)
+  symbolTimeout_(0x08)
 {
   fault_ = !spi_->ReadRegister(0x42, version_);
   ReadCarrier();
@@ -523,7 +523,7 @@ bool SX1276Radio::ReceiveSimpleMessage(uint8_t buffer[], int& size, int timeout_
   //old_stat = stat;
 #endif
   bool done = false;
-	bool have_header = false;
+  bool have_header = false;
   do {
     if (!ReadRegisterHarder(SX1276REG_IrqFlags, flags)) {
       PR_ERROR("SPI fault waiting for packet reading flags.\n");
@@ -541,18 +541,18 @@ bool SX1276Radio::ReceiveSimpleMessage(uint8_t buffer[], int& size, int timeout_
       old_stat = stat;
     }
 #endif
-		if (flags & (1<<4)) { // valid header
-			// dodgy hack : once we started getting a message we rely on the symbol timeout to exit
-			have_header = true;
-		}
+    if (flags & (1<<4)) { // valid header
+      // dodgy hack : once we started getting a message we rely on the symbol timeout to exit
+      have_header = true;
+    }
     if (flags & (1 << 6)) { // rx done
       done = true;
       break;
     } else if (flags & (1 << 7)) {
-			// symbol timeout: finish
-			timeout = true;
-			break;
-		}
+      // symbol timeout: finish
+      timeout = true;
+      break;
+    }
     // still waiting...
 #if TRACE_STATE_CHANGE
     usleep(5);
@@ -567,7 +567,7 @@ bool SX1276Radio::ReceiveSimpleMessage(uint8_t buffer[], int& size, int timeout_
   if (ReadRegisterHarder(SX1276REG_Rssi, v)) { last_rssi_dbm_ = -137 + v; }
 
   if (!done) {
-	  // DEBUG("[DBUG] RX fin flags=%.2x stat=%.2x rssi=%d\n", flags, (int)stat, last_rssi_dbm_);
+    // DEBUG("[DBUG] RX fin flags=%.2x stat=%.2x rssi=%d\n", flags, (int)stat, last_rssi_dbm_);
     return true; // no error, only a timeout or crc
   }
 
@@ -599,7 +599,7 @@ bool SX1276Radio::ReceiveSimpleMessage(uint8_t buffer[], int& size, int timeout_
   // Note: SX1276REG_FifoRxByteAddrPtr == last addr written by modem
   ReadRegisterHarder(SX1276REG_FifoRxByteAddrPtr, byptr);
 
-	payloadSizeBytes--; // DONT KNOW WHY, I THINK FifoRxNbBytes points 1 down
+  payloadSizeBytes--; // DONT KNOW WHY, I THINK FifoRxNbBytes points 1 down
 
   DEBUG("[DBUG] ");
   DEBUG("RX rssi_pkt=%d ", rssi_packet);
