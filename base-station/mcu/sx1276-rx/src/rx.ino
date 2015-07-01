@@ -1,5 +1,6 @@
 #include "Arduino.h"
 #include <SPI.h>
+#include <elapsedMillis.h>
 #include "sx1276.h"
 
 // Supports the following configurations:
@@ -105,7 +106,7 @@ void go_to_sleep(int ms)
 {
 #if defined(ESP8266)
   ESP.deepSleep(ms * 1000, WAKE_RF_DISABLED); // long enough to see current fall on the USB power meter
-	delay(500); // Note, deep sleep actually takes a bit to activate, so we want to make sure loop doesnt do anything...
+  delay(500); // Note, deep sleep actually takes a bit to activate, so we want to make sure loop doesnt do anything...
 #else
   delay(ms);
 #endif
@@ -126,6 +127,12 @@ void double_short()
 
 bool got_message = false;
 
+int rx_count = 0;
+int crc_count = 0;
+int timeout_count = 0;
+
+elapsedMillis timeElapsed;
+
 void loop() {
   if (!started_ok) {
     digitalWrite(PIN_LED4, LOW);
@@ -145,6 +152,7 @@ void loop() {
   byte buffer[128];
   bool crc_error = false;
   byte received = 0;
+  elapsedMillis trx;
   if (radio.ReceiveMessage(buffer, sizeof(buffer), received, crc_error))
   {
     const int N=16;
@@ -166,13 +174,25 @@ void loop() {
       Serial.println();
     }
     got_message = true;
+    rx_count ++;
     digitalWrite(PIN_LED4, LOW);
   } else if (crc_error) {
+    crc_count ++;
     Serial.println("CRC\n");
     digitalWrite(PIN_LED4, HIGH);
     delay(600);
     digitalWrite(PIN_LED4, LOW);
     delay(600);
     digitalWrite(PIN_LED4, HIGH);
+  } else {
+    // Serial.println("timeout"); Serial.println(trx); Serial.println();
+    timeout_count ++;
+  }
+  if (timeElapsed > 60000)  {
+    Serial.print("Received message count: "); Serial.print(rx_count);
+    Serial.print(" Timeout count: "); Serial.print(timeout_count);
+    Serial.print(" CRC count: "); Serial.print(crc_count);
+    Serial.println();
+    timeElapsed = 0;
   }
 }

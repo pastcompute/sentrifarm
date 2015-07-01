@@ -77,7 +77,7 @@ inline unsigned CodingRateToBitfield(byte coding_rate)
 SX1276Radio::SX1276Radio(int cs_pin, const SPISettings& spi_settings)
   : cs_pin_(cs_pin),
     spi_settings_(spi_settings),
-    symbol_timeout_(0x8),
+    symbol_timeout_(366), // in theory 3s, empirically 1.51s @ sf9 and bw 125000 although often, shorter maybe due to esp8266 timekeeping wierdness not accurately recording elapased time
     preamble_(0x8),
     max_tx_payload_bytes_(0x80),
     max_rx_payload_bytes_(0x80),
@@ -152,7 +152,7 @@ bool SX1276Radio::Begin()
   // Verify operating mode
   ReadRegister(SX1276REG_OpMode, v);
   if (v != 0x81) {
-    DEBUG("Unable to enter LoRa mode. v=0x%02x\n", v);
+    DEBUG("Unable to enter LoRa mode. v=0x%02x\n\r", v);
     return false;
   }
 
@@ -263,7 +263,7 @@ bool SX1276Radio::SendMessage(const void *payload, byte len)
 {
   if (len > max_tx_payload_bytes_) {
     len = max_tx_payload_bytes_;
-    DEBUG("MESSAGE TOO LONG! TRUNCATED\n");
+    DEBUG("MESSAGE TOO LONG! TRUNCATED\n\r");
   }
 
   // LoRa, Standby
@@ -287,7 +287,7 @@ bool SX1276Radio::SendMessage(const void *payload, byte len)
   byte v;
   ReadRegister(SX1276REG_FifoAddrPtr, v);
   if (v != FIFO_START + len) {
-    DEBUG("FIFO write pointer mismatch, expected %02x got %02x\n", FIFO_START + len, v);
+    DEBUG("FIFO write pointer mismatch, expected %02x got %02x\n\r", FIFO_START + len, v);
   }
 
   // TX mode
@@ -299,7 +299,7 @@ bool SX1276Radio::SendMessage(const void *payload, byte len)
   // We make the timeout an estimate based on predicted TOA
   bool ok = false;
   int ticks = PredictTimeOnAir(len)  / 10;
-  DEBUG("TX TOA TICKS %d\n", ticks);
+  DEBUG("TX TOA TICKS %d\n\r", ticks);
   do {
     ReadRegister(SX1276REG_IrqFlags, v);
     if (v & (1<<3)) {
@@ -348,7 +348,7 @@ bool SX1276Radio::ReceiveMessage(byte buffer[], byte size, byte& received, bool&
 {
   if (size < 1) { return false; }
   if (size < max_rx_payload_bytes_) {
-    //DEBUG("BUFFER MAYBE TOO SHORT! DATA POTENTIALLY MAY BE LOST!\n");
+    //DEBUG("BUFFER MAYBE TOO SHORT! DATA POTENTIALLY MAY BE LOST!\n\r");
   }
 
   // In most use cases we probably want to to this once then stay 'warm'
@@ -423,17 +423,17 @@ bool SX1276Radio::ReceiveMessage(byte buffer[], byte size, byte& received, bool&
   DEBUG("stat=%02x ", (unsigned)stat);
   DEBUG("sz=%d ", (unsigned)payloadSizeBytes);
   DEBUG("ptr=%d ", (unsigned)byptr);
-  DEBUG("hdrcnt=%d pktcnt=%d\n", (unsigned)headerCount, (unsigned)packetCount);
+  DEBUG("hdrcnt=%d pktcnt=%d\n\r", (unsigned)headerCount, (unsigned)packetCount);
 
   // check CRC ...
   if ((flags & (1 << 5)) == 1) {
-    DEBUG("CRC Error. Packet rssi=%ddBm snr=%d cr=4/%d\n", rssi_packet, snr_packet, coding_rate);
+    DEBUG("CRC Error. Packet rssi=%ddBm snr=%d cr=4/%d\n\r", rssi_packet, snr_packet, coding_rate);
     crc_error = true;
     return false;
   }
 
   if ((int)payloadSizeBytes > size) {
-    DEBUG("Buffer size %d not large enough for packet size %d!\n", size, (int)payloadSizeBytes);
+    DEBUG("Buffer size %d not large enough for packet size %d!\n\r", size, (int)payloadSizeBytes);
     return false;
   }
 
