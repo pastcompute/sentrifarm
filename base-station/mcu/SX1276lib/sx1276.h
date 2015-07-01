@@ -46,15 +46,14 @@ public:
   /// @return false if retry timeout exceeded. Presently internally set to predicted TOA + a fudge factor
   bool SendMessage(const void *payload, byte len);
 
-  /// Wait for a message, bluck until one is received or a timeout occurs
+  /// Wait for a message, bluck until one is received or a symbol timeout occurs
   /// Useful in simple circumstances; may not perform well in high traffic scenarios
   /// @param buffer Buffer large enough to hold largest expected message
   /// @param size Size of buffer
-  /// @param timeout_ms If message not started by this time then return and set timeout to true
   /// @note Assumes device properly configured, i.e. doesnt sanity check other registers
   /// @param crc_error Set to true if returned false because of crc not timeout
   /// @return false if timeout or crc error
-  bool ReceiveMessage(byte buffer[], byte& size, int timeout_ms, bool& crc_error);
+  bool ReceiveMessage(byte buffer[], byte size, byte& received, bool& crc_error);
 
 private:
   void ReadRegister(byte reg, byte& result);
@@ -62,13 +61,21 @@ private:
   void WriteRegister(byte reg, byte val, byte& result, bool verify);
   inline void WriteRegister(byte reg, byte val, bool verify = false) { byte unused; WriteRegister(reg, val, unused, verify); }
 
+  void ReceiveInit();
+
+  // module settings
   int cs_pin_;
   SPISettings spi_settings_;
 
+  // radio settings
   uint16_t symbol_timeout_;      // In datasheet units
   uint16_t preamble_;            // In datasheet units
   uint8_t max_tx_payload_bytes_;
+  uint8_t max_rx_payload_bytes_;
   uint32_t bandwidth_hz_;        // calculated
   byte spreading_factor_;        // datasheet units: 6,7,8,9,10,11,12
   byte coding_rate_;             // datasheet units: 5,6,7,8
+
+  // radio status
+  int rssi_dbm_;
 };

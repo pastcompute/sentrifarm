@@ -80,9 +80,11 @@ SX1276Radio::SX1276Radio(int cs_pin, const SPISettings& spi_settings)
     symbol_timeout_(0x8),
     preamble_(0x8),
     max_tx_payload_bytes_(0x80),
+    max_rx_payload_bytes_(0x80),
     bandwidth_hz_(DEFAULT_BW_HZ),
     spreading_factor_(DEFAULT_SPREADING_FACTOR),
-    coding_rate_(DEFAULT_CODING_RATE)
+    coding_rate_(DEFAULT_CODING_RATE),
+    rssi_dbm_(-255)
 {
   // DEBUG("SX1276: CS pin=%d\n", cs_pin_);
 }
@@ -251,7 +253,11 @@ int SX1276Radio::PredictTimeOnAir(byte payload_len) const
   return Tpreamble + Tpayload;
 }
 
-
+void SX1276Radio::Standby()
+{
+  WriteRegister(SX1276REG_OpMode, 0x81);
+  delay(10);
+}
 
 bool SX1276Radio::SendMessage(const void *payload, byte len)
 {
@@ -314,7 +320,127 @@ bool SX1276Radio::SendMessage(const void *payload, byte len)
   return true;
 }
 
-bool SX1276Radio::ReceiveMessage(byte buffer[], byte& size, int timeout_ms, bool& crc_error)
-{
+const uint8_t RX_BASE_ADDR = 0x0;
 
+void SX1276Radio::ReceiveInit()
+{
+  // LoRa, Standby
+  WriteRegister(SX1276REG_OpMode, 0x81);
+  delay(10);
+
+  // Setup the LNA:
+  // To start with: midpoint gain (gain E G1 (max)..G6 (min)) bits 7-5 and no boost, while we are testing in the lab...
+  // Boost, bits 0..1 - 00 = default LNA current, 11 == 150% boost
+  WriteRegister(SX1276REG_FifoTxBaseAddr, (0x4 << 5) | (0x00));
+
+  WriteRegister(SX1276REG_MaxPayloadLength, max_rx_payload_bytes_);
+  WriteRegister(SX1276REG_PayloadLength, max_rx_payload_bytes_);
+
+  // Reset RX FIFO
+  WriteRegister(SX1276REG_FifoRxBaseAddr, RX_BASE_ADDR);
+  WriteRegister(SX1276REG_FifoAddrPtr, RX_BASE_ADDR);
+
+  // RX mode
+  WriteRegister(SX1276REG_IrqFlagsMask, 0x0f);
+}
+
+bool SX1276Radio::ReceiveMessage(byte buffer[], byte size, byte& received, bool& crc_error)
+{
+  if (size < 1) { return false; }
+  if (size < max_rx_payload_bytes_) {
+    //DEBUG("BUFFER MAYBE TOO SHORT! DATA POTENTIALLY MAY BE LOST!\n");
+  }
+
+  // In most use cases we probably want to to this once then stay 'warm'
+  ReceiveInit();
+
+  WriteRegister(SX1276REG_IrqFlags, 0xff); // note, this one cant be verified; clears on 0xff write
+
+  WriteRegister(SX1276REG_OpMode, 0x86); // RX Single mode
+
+  // Now we block, until symbol timeout or we get a message
+  // Which in practice means polling the IRQ flags
+  // and for the purpose of the ESP8266, we need to yield occasionally
+
+  bool done = false;
+  bool symbol_timeout = false;
+  crc_error = false;
+  byte flags = 0;
+  do {
+    flags = 0;
+    ReadRegister(SX1276REG_IrqFlags, flags);
+    if (flags & (1 << 4)) {
+      // valid header
+    }
+    if (flags & (1 << 6)) {
+      done = true;
+      break;
+    }
+    symbol_timeout = flags & (1 << 7);
+    if (!symbol_timeout) { yield(); }
+  } while (!symbol_timeout);
+
+  byte v = 0;
+  byte stat = 0;
+
+  rssi_dbm_ = -255;
+  ReadRegister(SX1276REG_Rssi, v); rssi_dbm_ = -137 + v;
+
+  if (!done) { return false; }
+
+  int rssi_packet = 255;
+  int snr_packet = -255;
+  int coding_rate = 0;
+  ReadRegister(SX1276REG_PacketRssi, v); rssi_packet = -137 + v;
+  ReadRegister(SX1276REG_PacketSnr, v); snr_packet = (v & 0x80 ? (~v + 1) : v) >> 4; // 2's comp
+  ReadRegister(SX1276REG_ModemStat, stat);
+  coding_rate = stat >> 5;
+  switch (coding_rate) {
+    case 0x1: coding_rate = 5;
+    case 0x2: coding_rate = 6;
+    case 0x3: coding_rate = 7;
+    case 0x4: coding_rate = 8;
+    default: coding_rate = 0;
+  }
+
+  byte payloadSizeBytes = 0xff;
+  uint16_t headerCount = 0;
+  uint16_t packetCount = 0;
+  uint8_t byptr = 0;
+  ReadRegister(SX1276REG_FifoRxNbBytes, payloadSizeBytes);
+  ReadRegister(SX1276REG_RxHeaderCntValueMsb, v); headerCount = (uint16_t)v << 8;
+  ReadRegister(SX1276REG_RxHeaderCntValueLsb, v); headerCount |= v;
+  ReadRegister(SX1276REG_RxPacketCntValueMsb, v); packetCount = (uint16_t)v << 8;
+  ReadRegister(SX1276REG_RxPacketCntValueLsb, v); packetCount |= v;
+  // Note: SX1276REG_FifoRxByteAddrPtr == last addr written by modem
+  ReadRegister(SX1276REG_FifoRxByteAddrPtr, byptr);
+
+  payloadSizeBytes--; // DONT KNOW WHY, I THINK FifoRxNbBytes points 1 down
+
+  DEBUG("[DBUG] ");
+  DEBUG("RX rssi_pkt=%d ", rssi_packet);
+  DEBUG("snr_pkt=%d ", snr_packet);
+  DEBUG("stat=%02x ", (unsigned)stat);
+  DEBUG("sz=%d ", (unsigned)payloadSizeBytes);
+  DEBUG("ptr=%d ", (unsigned)byptr);
+  DEBUG("hdrcnt=%d pktcnt=%d\n", (unsigned)headerCount, (unsigned)packetCount);
+
+  // check CRC ...
+  if ((flags & (1 << 5)) == 1) {
+    DEBUG("CRC Error. Packet rssi=%ddBm snr=%d cr=4/%d\n", rssi_packet, snr_packet, coding_rate);
+    crc_error = true;
+    return false;
+  }
+
+  if ((int)payloadSizeBytes > size) {
+    DEBUG("Buffer size %d not large enough for packet size %d!\n", size, (int)payloadSizeBytes);
+    return false;
+  }
+
+  for (unsigned n=0; n < payloadSizeBytes; n++) {
+    ReadRegister(SX1276REG_Fifo, v);
+    buffer[n] = v;
+  }
+  received = payloadSizeBytes;
+  return true;
 }
