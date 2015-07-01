@@ -105,7 +105,7 @@ void go_to_sleep(int ms)
 {
 #if defined(ESP8266)
   ESP.deepSleep(ms * 1000, WAKE_RF_DISABLED); // long enough to see current fall on the USB power meter
-	delay(500); // Note, deep sleep actually takes a bit to activate, so we want to make sure loop doesnt do anything...
+  delay(500); // Note, deep sleep actually takes a bit to activate, so we want to make sure loop doesnt do anything...
 #else
   delay(ms);
 #endif
@@ -113,18 +113,18 @@ void go_to_sleep(int ms)
 
 void loop() {
   const char BEACON_MSG[] = "Hello, World! Hello, World!";
-
   digitalWrite(PIN_LED4, LOW);
-	if (started_ok) {
-		SPI.begin();
-		radio.SendMessage(BEACON_MSG, sizeof(BEACON_MSG));
-		SPI.end();
-		delay(500);
-	  digitalWrite(PIN_LED4, HIGH);
-	  go_to_sleep(7500);
-	} else {
-		delay(500);
-	  digitalWrite(PIN_LED4, HIGH);
-		delay(500);
-	}
+  if (started_ok) {
+    SPI.begin();
+    radio.SendMessage(BEACON_MSG, sizeof(BEACON_MSG));
+    radio.Standby();
+    SPI.end();
+    delay(500);
+    digitalWrite(PIN_LED4, HIGH);
+    go_to_sleep(7500);
+  } else {
+    delay(500);
+    digitalWrite(PIN_LED4, HIGH);
+    delay(500);
+  }
 }

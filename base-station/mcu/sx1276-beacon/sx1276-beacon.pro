@@ -21,7 +21,7 @@ INCLUDEPATH += "$${PLATFORMIO}/packages/toolchain-xtensa/xtensa-lx106-elf/includ
 INCLUDEPATH += "$${PLATFORMIO}/packages/toolchain-xtensa/lib/gcc/xtensa-lx106-elf/4.8.2/include"
 INCLUDEPATH += "$${PLATFORMIO}/packages/toolchain-xtensa/lib/gcc/xtensa-lx106-elf/4.8.2/include"
 INCLUDEPATH += "$${PLATFORMIO}/packages/sdk-esp8266/include"
-INCLUDEPATH += "./lib/SX1272"
+INCLUDEPATH += "./lib/SX1276/lib"
 
 win32:INCLUDEPATH ~= s,/,\\,g
 
