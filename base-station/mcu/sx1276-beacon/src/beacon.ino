@@ -116,7 +116,7 @@ void loop() {
   digitalWrite(PIN_LED4, LOW);
   if (started_ok) {
     SPI.begin();
-    radio.SendMessage(BEACON_MSG, sizeof(BEACON_MSG));
+    radio.TransmitMessage(BEACON_MSG, sizeof(BEACON_MSG));
     radio.Standby();
     SPI.end();
     delay(500);

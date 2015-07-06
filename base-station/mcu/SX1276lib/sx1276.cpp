@@ -259,7 +259,7 @@ void SX1276Radio::Standby()
   delay(10);
 }
 
-bool SX1276Radio::SendMessage(const void *payload, byte len)
+bool SX1276Radio::TransmitMessage(const void *payload, byte len)
 {
   if (len > max_tx_payload_bytes_) {
     len = max_tx_payload_bytes_;

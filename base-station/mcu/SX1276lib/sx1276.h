@@ -45,7 +45,7 @@ public:
   /// @note Warning! if len > GetMaxPayload() then message is truncated!
   /// @note Assumes device properly configured, i.e. doesnt sanity check other registers
   /// @return false if retry timeout exceeded. Presently internally set to predicted TOA + a fudge factor
-  bool SendMessage(const void *payload, byte len);
+  bool TransmitMessage(const void *payload, byte len);
 
   /// Wait for a message, block until one is received or a symbol timeout occurs
   /// Useful in simple circumstances; may not perform well in high traffic scenarios
