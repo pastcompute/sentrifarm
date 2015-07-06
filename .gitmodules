@@ -8,3 +8,6 @@
 	path = base-station/org.eclipse.mosquitto.rsmb
 	url = https://github.com/pastcompute/rsmb.git
 	branch = my_fixes
+[submodule "base-station/mcu/AsyncMQTT-SN"]
+	path = base-station/mcu/AsyncMQTT-SN
+	url = https://github.com/pastcompute/AsyncMQTT-SN.git
