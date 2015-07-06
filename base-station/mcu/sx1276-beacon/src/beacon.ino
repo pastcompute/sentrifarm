@@ -86,14 +86,14 @@ void setup()
 
   // init SPI and then program the chip to LoRa mode
   SPI.begin();
-  Serial.print(F("SX1276: version=")); Serial.println(radio.GetVersion());
+  Serial.print(F("SX1276: version=")); Serial.println(radio.ReadVersion());
   if (!radio.Begin()) {
     Serial.println(F("SX1276 init error"));
     // TODO: flash the LED
   } else {
     radio.SetCarrier(919000000);
     uint32_t carrier_hz = 0;
-    radio.GetCarrier(carrier_hz);
+    radio.ReadCarrier(carrier_hz);
     Serial.print(F("Carrier: ")); Serial.println(carrier_hz);
     started_ok = true;
   }

@@ -124,7 +124,7 @@ void SX1276Radio::WriteRegister(byte reg, byte val, byte& result, bool verify)
   }
 }
 
-byte SX1276Radio::GetVersion()
+byte SX1276Radio::ReadVersion()
 {
   byte v;
   ReadRegister(SX1276REG_Version, v);
@@ -181,7 +181,7 @@ bool SX1276Radio::Begin()
   return true;
 }
 
-void SX1276Radio::GetCarrier(uint32_t& carrier_hz)
+void SX1276Radio::ReadCarrier(uint32_t& carrier_hz)
 {
   uint8_t v;
   uint64_t Frf = 0;

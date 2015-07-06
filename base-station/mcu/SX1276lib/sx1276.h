@@ -20,10 +20,11 @@ public:
   /// to values useful to the authors use case!
   bool Begin();
 
-	byte GetVersion();
+  /// Read chip version byte
+  byte ReadVersion();
 
   /// Get the currently tuned carrier frequency
-  void GetCarrier(uint32_t& carrier_hz);
+  void ReadCarrier(uint32_t& carrier_hz);
 
   /// Get the maximum allowed payload in bytes
   uint8_t GetMaxPayload() const { return max_tx_payload_bytes_; }
@@ -46,7 +47,7 @@ public:
   /// @return false if retry timeout exceeded. Presently internally set to predicted TOA + a fudge factor
   bool SendMessage(const void *payload, byte len);
 
-  /// Wait for a message, bluck until one is received or a symbol timeout occurs
+  /// Wait for a message, block until one is received or a symbol timeout occurs
   /// Useful in simple circumstances; may not perform well in high traffic scenarios
   /// @param buffer Buffer large enough to hold largest expected message
   /// @param size Size of buffer
