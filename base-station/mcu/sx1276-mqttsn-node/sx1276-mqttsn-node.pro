@@ -19,7 +19,7 @@ INCLUDEPATH += "$${PLATFORMIO}/packages/toolchain-xtensa/lib/gcc/xtensa-lx106-el
 INCLUDEPATH += "$${PLATFORMIO}/packages/toolchain-xtensa/lib/gcc/xtensa-lx106-elf/4.8.2/include"
 INCLUDEPATH += "$${PLATFORMIO}/packages/sdk-esp8266/include"
 INCLUDEPATH += "./lib/SX1276lib"
-INCLUDEPATH += "./lib/AsyncClient"
+INCLUDEPATH += "./lib/arduino-mqtt-sn"
 
 win32:INCLUDEPATH ~= s,/,\\,g
 
@@ -31,18 +31,21 @@ DEFINES += "ARDUINO_ARCH_ESP8266"
 DEFINES += "ESP8266"
 DEFINES += "ARDUINO=10601"
 
-OTHER_FILES += \
-    platformio.ini \
-    ../../sx1276/sx1276.hpp \
-    ../../sx1276/sx1276.cpp
+OTHER_FILES = \
+    ./lib/arduino-mqtt-sn/examples/mqttsn-serial-bridge.cpp \
+    platformio.ini
 
 SOURCES += \
-    ./src/rx.ino \
-    ./lib/SX1276lib/sx1276.cpp
+    ./src/node.ino \
+    ./src/sx1276mqttsn.cpp \
+    ./lib/SX1276lib/sx1276.cpp \
+    ./lib/arduino-mqtt-sn/mqttsn-messages.cpp
 
 HEADERS += \
+    ./src/sx1276mqttsn.h \
     ./lib/SX1276lib/sx1276.h \
-    ./lib/SX1276lib/sx1276reg.h
-
+    ./lib/SX1276lib/sx1276reg.h \
+    ./lib/arduino-mqtt-sn/mqttsn.h \
+    ./lib/arduino-mqtt-sn/mqttsn-messages.h
 
 message("CONFIG=$$CONFIG")

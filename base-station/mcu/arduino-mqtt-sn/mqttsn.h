@@ -87,10 +87,11 @@ enum __attribute__ ((__packed__)) message_type {
     WILLTOPICUPD = 0x1a,
     WILLTOPICRESP,
     WILLMSGUPD,
-    WILLMSGRESP
+    WILLMSGRESP,
+    MAX_MQTTSN_MSG_TYPE
 };
 
-#if DEBUG
+#if DEBUG_INL
 const char* message_names[] = {
     "ADVERTISE",
     "SEARCHGW",
@@ -123,6 +124,8 @@ const char* message_names[] = {
     "WILLMSGUPD",
     "WILLMSGRESP"
 };
+#else
+extern const char* message_names[];
 #endif
 
 struct __attribute__ ((__packed__)) message_header {

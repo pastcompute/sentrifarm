@@ -29,22 +29,19 @@ THE SOFTWARE.
 
 #include "mqttsn.h"
 
-#define MAX_TOPICS 10
-#define MAX_BUFFER_SIZE 66
 
 class MQTTSN {
 public:
+    enum { MAX_TOPICS = 10 } ;
+    enum { MAX_BUFFER_SIZE = 66 };
+
     MQTTSN();
     virtual ~MQTTSN();
 
     uint16_t find_topic_id(const char* name, uint8_t& index);
     bool wait_for_response();
-#ifdef USE_SERIAL
-    void parse_stream();
-#endif
-#ifdef USE_RF12
-    void parse_rf12();
-#endif
+
+    void parse();
 
     void searchgw(const uint8_t radius);
     void connect(const uint8_t flags, const uint16_t duration, const char* client_id);
@@ -68,6 +65,11 @@ public:
     virtual void timeout();
 
 protected:
+    // When data is received then copy it into response
+    // must not exceed MAX_BUFFER_SIZE
+    virtual bool parse_impl(uint8_t* response) = 0;
+    virtual void send_message_impl(const uint8_t* msg, uint8_t length) = 0;
+
     virtual void advertise_handler(const msg_advertise* msg);
     virtual void gwinfo_handler(const msg_gwinfo* msg);
     virtual void connack_handler(const msg_connack* msg);
@@ -93,13 +95,14 @@ protected:
     void regack(const uint16_t topic_id, const uint16_t message_id, const return_code_t return_code);
     void puback(const uint16_t topic_id, const uint16_t message_id, const return_code_t return_code);
 
+    void dispatch();
+
 private:
     struct topic {
         const char* name;
         uint16_t id;
     };
 
-    void dispatch();
     uint16_t bswap(const uint16_t val);
     void send_message();
 
@@ -117,6 +120,20 @@ private:
     uint8_t _gateway_id;
     uint32_t _response_timer;
     uint8_t _response_retries;
+};
+
+class MQTTSNSerial : public MQTTSN
+{
+public:
+  virtual bool parse_impl(uint8_t* response);
+  virtual void send_message_impl(const uint8_t* msg, uint8_t length);
+};
+
+class MQTTSNRF12 : public MQTTSN
+{
+public:
+  virtual bool parse_impl(uint8_t* response);
+  virtual void send_message_impl(const uint8_t* msg, uint8_t length);
 };
 
 #endif
