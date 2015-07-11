@@ -19,13 +19,21 @@ public:
   MQTTSX1276(SX1276Radio& radio);
   virtual ~MQTTSX1276();
 
+  static byte xorvbuf(const byte* buf, byte len);
+
+  bool IsMaybeConnected() const { return connack_possible_; }
+
   bool Begin(Stream* DEBUGV);
   bool TryReceive(bool &crc);
+  void ResetDisconnect() { got_disconnect_ = 0; }
+  bool DidDisconnect() const { return got_disconnect_ > 0; }
 
 protected:
   virtual bool parse_impl(uint8_t* response);
   virtual void send_message_impl(const uint8_t* msg, uint8_t length);
   virtual void willmsgreq_handler(const message_header* msg);
+  virtual void connack_handler(const msg_connack* msg);
+  virtual void disconnect_handler(const msg_disconnect* msg);
 #if 0
   virtual void advertise_handler(const msg_advertise* msg);
   virtual void gwinfo_handler(const msg_gwinfo* msg);
@@ -50,6 +58,9 @@ private:
   byte rx_buffer_len_;
   byte tx_buffer_[MAX_BUFFER_SIZE+4];
   byte tx_rolling_;
+  byte got_disconnect_;
+
+  bool connack_possible_;
 };
 
 #endif // SX1276MQTSN_H__

@@ -16,7 +16,8 @@
 
 ICACHE_FLASH_ATTR
 MQTTSX1276::MQTTSX1276(SX1276Radio& radio)
-  : radio_(radio), rx_buffer_len_(0), tx_rolling_(0)
+  : radio_(radio), rx_buffer_len_(0), tx_rolling_(0),
+    connack_possible_(false)
 {
 }
 
@@ -76,6 +77,16 @@ bool MQTTSX1276::parse_impl(uint8_t* response)
   return true; // <-- call dispatch()
 }
 
+byte MQTTSX1276::xorvbuf(const byte* buf, byte len)
+{
+  uint8_t xorv = 0;
+  for (unsigned j=0; j < len; j++) {
+    xorv = xorv ^ buf[j];
+  }
+  return xorv;
+}
+
+
 ICACHE_FLASH_ATTR
 void MQTTSX1276::send_message_impl(const uint8_t* msg, uint8_t length)
 {
@@ -83,10 +94,7 @@ void MQTTSX1276::send_message_impl(const uint8_t* msg, uint8_t length)
   tx_buffer_[1] = tx_rolling_;
   tx_buffer_[2] = 0; // echo counter
   memcpy(tx_buffer_+3, msg, length);
-  uint8_t xorv = 0;
-  for (unsigned j=0; j < length+3; j++) {
-    xorv = xorv ^ tx_buffer_[j];
-  }
+  byte xorv = xorvbuf(tx_buffer_, length+3);
   tx_buffer_[length + 3] = xorv;
 
   DEBUG("TX CNT=%d XOR=%02x payload=%d\n\r", tx_rolling_, xorv, length)
@@ -100,8 +108,24 @@ void MQTTSX1276::send_message_impl(const uint8_t* msg, uint8_t length)
 ICACHE_FLASH_ATTR
 void MQTTSX1276::willmsgreq_handler(const message_header* msg)
 {
-  // To keep the RSMB broker jahappy we need to reply to this
   willmsg("", 0);
+}
+
+
+ICACHE_FLASH_ATTR
+void MQTTSX1276::connack_handler(const msg_connack* msg)
+{
+  // So we have a conversation going?
+  // We only get here when we got a connack after _we_ sent a connect
+  // So I have no idea why RSMB sends _us_ a CONNACK!
+  // Perhaps it is the broker trying to 'connect' with another broker
+  connack_possible_ = true;
+}
+
+ICACHE_FLASH_ATTR
+void MQTTSX1276::disconnect_handler(const msg_disconnect* msg)
+{
+  got_disconnect_ ++;
 }
 
 #if 0
@@ -112,11 +136,6 @@ void MQTTSX1276::advertise_handler(const msg_advertise* msg)
 
 ICACHE_FLASH_ATTR
 void MQTTSX1276::gwinfo_handler(const msg_gwinfo* msg)
-{
-}
-
-ICACHE_FLASH_ATTR
-void MQTTSX1276::connack_handler(const msg_connack* msg)
 {
 }
 
@@ -162,11 +181,6 @@ void MQTTSX1276::pingreq_handler(const msg_pingreq* msg)
 
 ICACHE_FLASH_ATTR
 void MQTTSX1276::pingresp_handler()
-{
-}
-
-ICACHE_FLASH_ATTR
-void MQTTSX1276::disconnect_handler(const msg_disconnect* msg)
 {
 }
 

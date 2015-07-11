@@ -58,6 +58,29 @@ MQTTSX1276 MQTTHandler(radio);
 
 bool started_ok = false;
 
+void go_to_sleep(int ms)
+{
+#if defined(ESP8266)
+  ESP.deepSleep(ms * 1000, WAKE_RF_DISABLED); // long enough to see current fall on the USB power meter
+  delay(500); // Note, deep sleep actually takes a bit to activate, so we want to make sure loop doesnt do anything...
+#else
+  delay(ms);
+#endif
+}
+
+void double_short()
+{
+  digitalWrite(PIN_LED4, HIGH);
+  delay(250);
+  digitalWrite(PIN_LED4, LOW);
+  delay(250);
+  digitalWrite(PIN_LED4, HIGH);
+  delay(250);
+  digitalWrite(PIN_LED4, LOW);
+  delay(250);
+  digitalWrite(PIN_LED4, HIGH);
+}
+
 void setup()
 {
   delay(1000); // let last of ESP8266 junk get past
@@ -95,33 +118,22 @@ void setup()
 
   started_ok = MQTTHandler.Begin(&Serial);
 
-  byte hello_payload[6] = { 0, 0, 0, 0, 0, 0 };
-  radio.TransmitMessage(hello_payload, 6);
+  if (started_ok) {
+    // FIXME: do this on powerup but not deep sleep wake
+    byte hello_payload[6] = { 0, 0, 0, 0, 0, 0 };
+    SPI.begin();
+    for (byte x=0; x < 5; x++) {
+      hello_payload[1] = x;
+      hello_payload[5] = MQTTHandler.xorvbuf(hello_payload, 5);
 
-  delay(500);
-}
-
-void go_to_sleep(int ms)
-{
-#if defined(ESP8266)
-  ESP.deepSleep(ms * 1000, WAKE_RF_DISABLED); // long enough to see current fall on the USB power meter
-  delay(500); // Note, deep sleep actually takes a bit to activate, so we want to make sure loop doesnt do anything...
-#else
-  delay(ms);
-#endif
-}
-
-void double_short()
-{
-  digitalWrite(PIN_LED4, HIGH);
-  delay(250);
-  digitalWrite(PIN_LED4, LOW);
-  delay(250);
-  digitalWrite(PIN_LED4, HIGH);
-  delay(250);
-  digitalWrite(PIN_LED4, LOW);
-  delay(250);
-  digitalWrite(PIN_LED4, HIGH);
+      radio.TransmitMessage(hello_payload, 6);
+      double_short();
+      delay(500);
+    }
+    radio.Standby();
+    SPI.end();
+    delay(500);
+  }
 }
 
 bool got_message = false;
@@ -132,6 +144,12 @@ int timeout_count = 0;
 
 elapsedMillis timeElapsed;
 
+bool need_connect = true;
+bool sent_connect = false;
+bool need_rx = true;
+bool all_done_nearly = false;
+bool wait_regack = false;
+
 void loop() {
   if (!started_ok) {
     digitalWrite(PIN_LED4, LOW);
@@ -141,19 +159,22 @@ void loop() {
     return;
   }
 
-  // First draft.
-  // Wait for a message on the radio
-  // If there is one parse it using MQTTSN
-
-  bool crc;
-  if (MQTTHandler.TryReceive(crc)) {
-    digitalWrite(PIN_LED4, LOW);
-    rx_count++;
-    delay(150);
-    digitalWrite(PIN_LED4, HIGH);
+  if (need_connect && !sent_connect) {
+    MQTTHandler.connect(0, 30, "sfnode1"); // keep alive in seconds
+    sent_connect = true;
+    all_done_nearly = false;
   }
-  else if (crc) { crc_count++; } else { timeout_count++; }
-
+  bool crc;
+  bool ok = false;
+  if (need_rx) {
+    if (MQTTHandler.TryReceive(crc)) {
+      rx_count++;
+      ok = true;
+      digitalWrite(PIN_LED4, LOW);
+      delay(200);
+      digitalWrite(PIN_LED4, HIGH);
+    } else if (crc) { crc_count++; } else { timeout_count++; }
+  }
   if (timeElapsed > 6000)  {
     Serial.print("Received message count: "); Serial.print(rx_count);
     Serial.print(" Timeout count: "); Serial.print(timeout_count);
@@ -161,5 +182,48 @@ void loop() {
     Serial.println();
     timeElapsed = 0;
   }
+  if (!ok) return;
+  if (wait_regack) {
+    Serial.println("was waiting for regack");
+    wait_regack = false;
+  }
+  MQTTHandler.ResetDisconnect(); // dodgy thing
+  if (MQTTHandler.wait_for_response()) {
+    // if connect / register / needs response and havent got it yet
+    // try again
+    // the method will call disconnect if retry failed
+    if (MQTTHandler.DidDisconnect()) {
+      Serial.println("RESTART ON TIMEOUT DISCONNECT");
+      go_to_sleep(1000);
+      return;
+    }
+    return;
+  }
+  Serial.println("Got some kind of response");
+  need_connect = false;
+  // What happened when we got the _wrong_ response?
 
+  const char TOPIC[] = "sentrifarm/node/beacon";
+  uint16_t topic_id = 0xffff;
+  uint8_t idx = 0;
+  if (0xffff == (topic_id = MQTTHandler.find_topic_id(TOPIC, idx))) {
+    Serial.println("Try register");
+    if (!MQTTHandler.register_topic(TOPIC)) {
+      Serial.println("Register error");
+      go_to_sleep(1000);
+      return;
+    }
+    wait_regack = true;
+    // needs response, so loop around
+    return;
+  }
+  Serial.println("Try publish");
+
+  // we dont get back again until after the following publish gets a resopnse
+  if (all_done_nearly) {
+    // Deep sleep
+    go_to_sleep(10000);
+  }
+  MQTTHandler.publish(FLAG_QOS_1, topic_id, "hello", 5);
+  all_done_nearly = true;
 }
