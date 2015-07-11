@@ -2,8 +2,14 @@
 #include <SPI.h>
 #include <elapsedMillis.h>
 #include "sx1276.h"
-
-#include <TaskManager.h>
+#include "mqttsn.h"
+#include "mqttsn-messages.h"
+#include "sx1276mqttsn.h"
+#if defined(ESP8266)
+#include <ets_sys.h>
+#else
+#define ICACHE_FLASH_ATTR
+#endif
 
 // Supports the following configurations:
 //
@@ -48,9 +54,10 @@ SPISettings spiSettings(1000000, MSBFIRST, SPI_MODE0); // double check
 
 SX1276Radio radio(PIN_SX1276_CS, spiSettings);
 
+MQTTSX1276 MQTTHandler(radio);
+
 bool started_ok = false;
 
-ICACHE_FLASH_ATTR
 void setup()
 {
   delay(1000); // let last of ESP8266 junk get past
@@ -63,7 +70,6 @@ void setup()
 #elif defined(ESP8266)
   Serial.println(F("ESP8266 ESP-201"));
 #endif
-
   pinMode(PIN_LED4,        OUTPUT);
   pinMode(PIN_SX1276_RST,  OUTPUT);
   pinMode(PIN_SX1276_CS,   OUTPUT);
@@ -87,20 +93,11 @@ void setup()
   digitalWrite(PIN_SX1276_RST, HIGH);
   delay(50);
 
-  // init SPI and then program the chip to LoRa mode
-  SPI.begin();
-  Serial.print(F("SX1276: version=")); Serial.println(radio.ReadVersion());
-  if (!radio.Begin()) {
-    Serial.println(F("SX1276 init error"));
-    // TODO: flash the LED
-  } else {
-    radio.SetCarrier(919000000);
-    uint32_t carrier_hz = 0;
-    radio.ReadCarrier(carrier_hz);
-    Serial.print(F("Carrier: ")); Serial.println(carrier_hz);
-    started_ok = true;
-  }
-  SPI.end();
+  started_ok = MQTTHandler.Begin(&Serial);
+
+  byte hello_payload[6] = { 0, 0, 0, 0, 0, 0 };
+  radio.TransmitMessage(hello_payload, 6);
+
   delay(500);
 }
 
@@ -142,6 +139,27 @@ void loop() {
     digitalWrite(PIN_LED4, HIGH);
     delay(500);
     return;
+  }
+
+  // First draft.
+  // Wait for a message on the radio
+  // If there is one parse it using MQTTSN
+
+  bool crc;
+  if (MQTTHandler.TryReceive(crc)) {
+    digitalWrite(PIN_LED4, LOW);
+    rx_count++;
+    delay(150);
+    digitalWrite(PIN_LED4, HIGH);
+  }
+  else if (crc) { crc_count++; } else { timeout_count++; }
+
+  if (timeElapsed > 6000)  {
+    Serial.print("Received message count: "); Serial.print(rx_count);
+    Serial.print(" Timeout count: "); Serial.print(timeout_count);
+    Serial.print(" CRC count: "); Serial.print(crc_count);
+    Serial.println();
+    timeElapsed = 0;
   }
 
 }
