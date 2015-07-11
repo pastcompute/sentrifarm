@@ -116,7 +116,7 @@ void MQTTSN::dispatch() {
     bool handled = true;
 
     if (response_message->type < MAX_MQTTSN_MSG_TYPE) {
-      DEBUG("RX %s\n\r", message_names[response_message->type]);
+      DEBUG("RX %s wait=%02x\n\r", message_names[response_message->type], waiting_for_response ? response_to_wait_for : 0xff);
     } else {
       DEBUG("RX >UNKNOWN %02x\n\r", response_message->type);
     }
@@ -274,6 +274,7 @@ void MQTTSN::willmsgreq_handler(const message_header* msg) {
 
 ICACHE_FLASH_ATTR
 void MQTTSN::regack_handler(const msg_regack* msg) {
+  DEBUG("REGACK %d %d %d %d\n\r", (int)msg->return_code, topic_count, bswap(msg->message_id), _message_id);
     if (msg->return_code == 0 && topic_count < MAX_TOPICS && bswap(msg->message_id) == _message_id) {
         const uint16_t topic_id = bswap(msg->topic_id);
 
