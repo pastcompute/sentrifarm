@@ -53,7 +53,7 @@ THE SOFTWARE.
 #define T_RETRY 15
 #define N_RETRY 5
 
-enum return_code_t {
+enum __attribute__ ((__packed__)) return_code_t {
     ACCEPTED,
     REJECTED_CONGESTION,
     REJECTED_INVALID_TOPIC_ID,
