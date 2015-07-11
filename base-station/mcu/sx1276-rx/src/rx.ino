@@ -195,4 +195,5 @@ void loop() {
     Serial.println();
     timeElapsed = 0;
   }
+  SPI.end();
 }

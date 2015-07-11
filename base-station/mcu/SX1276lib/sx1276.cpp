@@ -1,6 +1,11 @@
 #include "sx1276.h"
 #include "sx1276reg.h"
 #include <SPI.h>
+#if defined(ESP8266)
+#include <ets_sys.h>
+#else
+#define ICACHE_FLASH_ATTR
+#endif
 
 // Somewhat arbitrary starting point
 #define DEFAULT_BW_HZ 125000
@@ -74,6 +79,7 @@ inline unsigned CodingRateToBitfield(byte coding_rate)
   }
 }
 
+ICACHE_FLASH_ATTR
 SX1276Radio::SX1276Radio(int cs_pin, const SPISettings& spi_settings)
   : cs_pin_(cs_pin),
     spi_settings_(spi_settings),
@@ -89,6 +95,7 @@ SX1276Radio::SX1276Radio(int cs_pin, const SPISettings& spi_settings)
   // DEBUG("SX1276: CS pin=%d\n", cs_pin_);
 }
 
+ICACHE_FLASH_ATTR
 void SX1276Radio::ReadRegister(byte reg, byte& result)
 {
   SPI.beginTransaction(spi_settings_);
@@ -103,6 +110,7 @@ void SX1276Radio::ReadRegister(byte reg, byte& result)
 }
 
 // TODO: add a verify version if required (if things dont work)
+ICACHE_FLASH_ATTR
 void SX1276Radio::WriteRegister(byte reg, byte val, byte& result, bool verify)
 {
   SPI.beginTransaction(spi_settings_);
@@ -124,6 +132,7 @@ void SX1276Radio::WriteRegister(byte reg, byte val, byte& result, bool verify)
   }
 }
 
+ICACHE_FLASH_ATTR
 byte SX1276Radio::ReadVersion()
 {
   byte v;
@@ -131,7 +140,7 @@ byte SX1276Radio::ReadVersion()
   return v;
 }
 
-
+ICACHE_FLASH_ATTR
 bool SX1276Radio::Begin()
 {
   byte v;
@@ -181,6 +190,7 @@ bool SX1276Radio::Begin()
   return true;
 }
 
+ICACHE_FLASH_ATTR
 void SX1276Radio::ReadCarrier(uint32_t& carrier_hz)
 {
   uint8_t v;
@@ -196,6 +206,7 @@ void SX1276Radio::ReadCarrier(uint32_t& carrier_hz)
   carrier_hz = actual_hz;
 }
 
+ICACHE_FLASH_ATTR
 void SX1276Radio::SetCarrier(uint32_t carrier_hz)
 {
   // Carrier frequency
@@ -225,6 +236,7 @@ void SX1276Radio::SetCarrier(uint32_t carrier_hz)
 // * We could cache past results keyed by length
 //   Pro: reduces CPU cycles
 //   Con: over time might grow up to 128 (or 255) results x (each time BW or SF changes unless invalidated)
+ICACHE_FLASH_ATTR
 int SX1276Radio::PredictTimeOnAir(byte payload_len) const
 {
   // TOA = (6.F+4.25F+8+ceil( (8*payload_len-4*SF+28+16)/(4*SF))*CR) * (1 << SF) / BW;
@@ -253,12 +265,14 @@ int SX1276Radio::PredictTimeOnAir(byte payload_len) const
   return Tpreamble + Tpayload;
 }
 
+ICACHE_FLASH_ATTR
 void SX1276Radio::Standby()
 {
   WriteRegister(SX1276REG_OpMode, 0x81);
   delay(10);
 }
 
+ICACHE_FLASH_ATTR
 bool SX1276Radio::TransmitMessage(const void *payload, byte len)
 {
   if (len > max_tx_payload_bytes_) {
@@ -322,6 +336,7 @@ bool SX1276Radio::TransmitMessage(const void *payload, byte len)
 
 const uint8_t RX_BASE_ADDR = 0x0;
 
+ICACHE_FLASH_ATTR
 void SX1276Radio::ReceiveInit()
 {
   // LoRa, Standby
@@ -344,6 +359,7 @@ void SX1276Radio::ReceiveInit()
   WriteRegister(SX1276REG_IrqFlagsMask, 0x0f);
 }
 
+ICACHE_FLASH_ATTR
 bool SX1276Radio::ReceiveMessage(byte buffer[], byte size, byte& received, bool& crc_error)
 {
   if (size < 1) { return false; }

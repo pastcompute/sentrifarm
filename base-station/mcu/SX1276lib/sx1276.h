@@ -1,3 +1,6 @@
+#ifndef SX1276_H__
+#define SX1276_H__
+
 #include <Arduino.h>
 #include <SPI.h>
 
@@ -80,3 +83,5 @@ private:
   // radio status
   int rssi_dbm_;
 };
+
+#endif //SX1276_H__
