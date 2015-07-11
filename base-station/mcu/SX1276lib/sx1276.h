@@ -82,6 +82,7 @@ private:
 
   // radio status
   int rssi_dbm_;
+  bool rx_warm_;
 };
 
 #endif //SX1276_H__

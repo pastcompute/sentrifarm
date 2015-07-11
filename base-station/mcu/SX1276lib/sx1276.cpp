@@ -90,7 +90,8 @@ SX1276Radio::SX1276Radio(int cs_pin, const SPISettings& spi_settings)
     bandwidth_hz_(DEFAULT_BW_HZ),
     spreading_factor_(DEFAULT_SPREADING_FACTOR),
     coding_rate_(DEFAULT_CODING_RATE),
-    rssi_dbm_(-255)
+    rssi_dbm_(-255),
+    rx_warm_(false)
 {
   // DEBUG("SX1276: CS pin=%d\n", cs_pin_);
 }
@@ -209,6 +210,7 @@ void SX1276Radio::ReadCarrier(uint32_t& carrier_hz)
 ICACHE_FLASH_ATTR
 void SX1276Radio::SetCarrier(uint32_t carrier_hz)
 {
+  rx_warm_ = false;
   // Carrier frequency
   // { F(Xosc) x F } / 2^19
   // Resolution is 61.035 Hz | Xosc=32MHz, default F=0x6c8000 --> 434 MHz
@@ -270,6 +272,7 @@ void SX1276Radio::Standby()
 {
   WriteRegister(SX1276REG_OpMode, 0x81);
   delay(10);
+  rx_warm_ = false;
 }
 
 ICACHE_FLASH_ATTR
@@ -280,6 +283,7 @@ bool SX1276Radio::TransmitMessage(const void *payload, byte len)
     DEBUG("MESSAGE TOO LONG! TRUNCATED\n\r");
   }
 
+  rx_warm_ = false;
   // LoRa, Standby
   WriteRegister(SX1276REG_OpMode, 0x81);
   delay(10);
@@ -339,6 +343,8 @@ const uint8_t RX_BASE_ADDR = 0x0;
 ICACHE_FLASH_ATTR
 void SX1276Radio::ReceiveInit()
 {
+  if (rx_warm_) return;
+
   // LoRa, Standby
   WriteRegister(SX1276REG_OpMode, 0x81);
   delay(10);
@@ -357,6 +363,8 @@ void SX1276Radio::ReceiveInit()
 
   // RX mode
   WriteRegister(SX1276REG_IrqFlagsMask, 0x0f);
+
+  rx_warm_ = true;
 }
 
 ICACHE_FLASH_ATTR
