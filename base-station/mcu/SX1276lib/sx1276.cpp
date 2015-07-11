@@ -316,7 +316,7 @@ bool SX1276Radio::TransmitMessage(const void *payload, byte len)
   // Wait until TX DONE, or timeout
   // We make the timeout an estimate based on predicted TOA
   bool ok = false;
-  int ticks = PredictTimeOnAir(len)  / 10;
+  int ticks = 1 + PredictTimeOnAir(len)  / 10;
   DEBUG("TX TOA TICKS %d\n\r", ticks);
   do {
     ReadRegister(SX1276REG_IrqFlags, v);
