@@ -599,7 +599,10 @@ bool SX1276Radio::ReceiveSimpleMessage(uint8_t buffer[], int& size, int timeout_
   // Note: SX1276REG_FifoRxByteAddrPtr == last addr written by modem
   ReadRegisterHarder(SX1276REG_FifoRxByteAddrPtr, byptr);
 
+#if LINUX_BEAON
+	// NOT WHEN SENT BY ESP8266 / teemnsy!
   payloadSizeBytes--; // DONT KNOW WHY, I THINK FifoRxNbBytes points 1 down
+#endif
 
   DEBUG("[DBUG] ");
   DEBUG("RX rssi_pkt=%d ", rssi_packet);

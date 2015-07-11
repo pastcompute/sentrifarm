@@ -148,6 +148,8 @@ public:
         if (xorv != buffer[received-1]) {
           cerr << format("XOR checksum error! %.2x != %.2x\n") % (int)xorv % (int)buffer[received-1];
           num_xorv_ ++;
+          FILE* f = popen("od -Ax -tx1z -v -w16", "w");
+          if (f) { fwrite(buffer, received, 1, f); pclose(f); }
         }
         else if (buffer[0] == 2) {
           rolling_counter_rx_ = buffer[1];
