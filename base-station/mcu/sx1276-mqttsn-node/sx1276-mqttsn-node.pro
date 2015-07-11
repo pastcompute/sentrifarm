@@ -19,6 +19,7 @@ INCLUDEPATH += "$${PLATFORMIO}/packages/toolchain-xtensa/lib/gcc/xtensa-lx106-el
 INCLUDEPATH += "$${PLATFORMIO}/packages/toolchain-xtensa/lib/gcc/xtensa-lx106-elf/4.8.2/include"
 INCLUDEPATH += "$${PLATFORMIO}/packages/sdk-esp8266/include"
 INCLUDEPATH += "./lib/SX1276lib"
+INCLUDEPATH += "./lib/AsyncClient"
 
 win32:INCLUDEPATH ~= s,/,\\,g
 
