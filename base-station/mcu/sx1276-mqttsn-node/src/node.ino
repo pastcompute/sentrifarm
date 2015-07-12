@@ -81,6 +81,26 @@ void double_short()
   digitalWrite(PIN_LED4, HIGH);
 }
 
+extern "C" uint16_t readvdd33(void);
+
+// Dodgy bros binary data for reducing transmission bandwidth
+struct __attribute__ ((__packed__)) my_data_t {
+  byte bootversion;
+  byte bootmode;
+  uint16_t vcc;
+  uint32_t cycles;
+};
+
+void pack_demo_data(struct my_data_t& data)
+{
+  data.bootversion = ESP.getBootVersion();
+  data.bootmode = ESP.getBootMode();
+  data.vcc = readvdd33(),
+  data.cycles = ESP.getCycleCount();
+}
+
+char tmp_buf[256];
+
 void setup()
 {
   delay(1000); // let last of ESP8266 junk get past
@@ -91,8 +111,20 @@ void setup()
 #if defined(TEENSYDUINO)
   Serial.println(F("TEENSY-LC"));
 #elif defined(ESP8266)
+  // ADC_MODE(ADC_VCC); // Unlike suggested by the doco, doesnt work
   Serial.println(F("ESP8266 ESP-201"));
 #endif
+
+#if defined(ESP8266)
+  my_data_t demo;
+  pack_demo_data(demo);
+  snprintf(tmp_buf, sizeof(tmp_buf), "%02x %02x %u %ld %s",
+                     demo.bootversion, demo.bootmode,
+                     (unsigned)demo.vcc, demo.cycles,
+                     ESP.getSdkVersion());
+  Serial.println(tmp_buf);
+#endif
+
   pinMode(PIN_LED4,        OUTPUT);
   pinMode(PIN_SX1276_RST,  OUTPUT);
   pinMode(PIN_SX1276_CS,   OUTPUT);
@@ -224,6 +256,20 @@ void loop() {
     // Deep sleep
     go_to_sleep(10000);
   }
-  MQTTHandler.publish(FLAG_QOS_1, topic_id, "hello", 5);
+  byte pub_buf[66];
+  byte pub_len = 0;
+  // ASCII would be nice but we only have 66 bytes to play with
+#if defined(ESP8266)
+  my_data_t demo;
+  pack_demo_data(demo);
+  pub_len = snprintf((char*)pub_buf, sizeof(pub_buf), "%02x %02x %u %lu %s",
+                     demo.bootversion, demo.bootmode,
+                     (unsigned)demo.vcc, demo.cycles,
+                     ESP.getSdkVersion());
+#else
+  pub_len = snprintf(pub_buf, sizeof(pub_buf), "Hello,World");
+#endif
+
+  MQTTHandler.publish(FLAG_QOS_1, topic_id, pub_buf, pub_len);
   all_done_nearly = true;
 }
