@@ -11,3 +11,9 @@
 [submodule "base-station/mcu/AsyncMQTT-SN"]
 	path = base-station/mcu/AsyncMQTT-SN
 	url = https://github.com/pastcompute/AsyncMQTT-SN.git
+[submodule "base-station/mcu/Adafruit_BMP085_Unified"]
+	path = base-station/mcu/Adafruit_BMP085_Unified
+	url = https://github.com/adafruit/Adafruit_BMP085_Unified
+[submodule "base-station/mcu/Adafruit_Sensor"]
+	path = base-station/mcu/Adafruit_Sensor
+	url = https://github.com/adafruit/Adafruit_Sensor.git

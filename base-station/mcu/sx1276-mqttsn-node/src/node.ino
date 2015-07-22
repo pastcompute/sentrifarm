@@ -11,6 +11,8 @@
 #define ICACHE_FLASH_ATTR
 #endif
 
+#include "Adafruit_BMP085_U.h"
+
 // Supports the following configurations:
 //
 // (1) ESP8266, using sentrifarm-shield-adaptor
@@ -81,6 +83,7 @@ void double_short()
   digitalWrite(PIN_LED4, HIGH);
 }
 
+#if defined(ESP8266)
 extern "C" uint16_t readvdd33(void);
 
 // Dodgy bros binary data for reducing transmission bandwidth
@@ -98,8 +101,64 @@ void pack_demo_data(struct my_data_t& data)
   data.vcc = readvdd33(),
   data.cycles = ESP.getCycleCount();
 }
+#endif
 
 char tmp_buf[256];
+
+Adafruit_BMP085_Unified bmp = Adafruit_BMP085_Unified(10085);
+
+bool bmp_good = false;
+
+byte bmp_buf[66] = { 0, };
+byte bmp_len = 0;
+
+void poll_bmp()
+{
+  sensors_event_t event;
+  bmp.getEvent(&event);
+  if (event.pressure) {
+    // How does this work with ESP8266 soft float?
+    // IDEA: use the 3-axis thing to get better SLP?
+    float pressure = event.pressure;
+    float temperature;
+    bmp.getTemperature(&temperature);
+    float seaLevelPressure = SENSORS_PRESSURE_SEALEVELHPA;
+    float altitude = bmp.pressureToAltitude(seaLevelPressure, event.pressure);
+
+    bmp_len = snprintf((char*)bmp_buf, sizeof(bmp_buf), "HPA=%d.%d DEGC=%d.%d ALT=%d.%d",
+                       (int)floorf(pressure), int((pressure - floorf(pressure)) * 10),
+                       (int)(temperature), int((temperature - floorf(temperature)) * 10),
+                       (int)(altitude), int((altitude - floorf(altitude)) * 10)
+                   );
+
+  }
+}
+
+#define PCF8591 (0x90 >> 1)
+
+byte adc_buf[66] = { 0, };
+byte adc_len = 0;
+
+byte adcValue0;
+byte adcValue1;
+byte adcValue2;
+byte adcValue3;
+
+void poll_adc()
+{
+  Wire.begin();
+  Wire.beginTransmission(PCF8591);
+  Wire.write(0x4); // Auto increment - request all 4 ADC channels
+  Wire.endTransmission();
+  Wire.requestFrom(PCF8591, 5);
+  Wire.read(); // dummy
+  adcValue0 = Wire.read();
+  adcValue1 = Wire.read();
+  adcValue2 = Wire.read();
+  adcValue3 = Wire.read();
+
+  adc_len = snprintf((char*)adc_buf, sizeof(adc_buf), "%02x %02x %02x %02x", adcValue0, adcValue1, adcValue2, adcValue3);
+}
 
 void setup()
 {
@@ -135,6 +194,38 @@ void setup()
 #if defined(TEENSYDUINO)
   SPI.setSCK(PIN_SX1276_SCK);
 #endif
+
+#if defined(ESP8266)
+  // Annoyingly this is using deprecated to set the static default because the adafruit library calls Wire.begin()
+  // what a clusterf**k
+  Wire.pins(5, 4); // Note this is backwards to the default (doh)
+#endif
+
+  // Luckily I went with the teensy default for I2c (18,19) on my shield
+
+
+  if(!bmp.begin(BMP085_MODE_STANDARD))
+  {
+    Serial.println("Error detecting BMP-085!");
+  } else {
+    sensor_t sensor;
+    bmp.getSensor(&sensor);
+    Serial.println("------------- BMP-085 --------------");
+    Serial.print  ("Sensor:       "); Serial.println(sensor.name);
+    Serial.print  ("Driver Ver:   "); Serial.println(sensor.version);
+    Serial.print  ("Unique ID:    "); Serial.println(sensor.sensor_id);
+    Serial.print  ("Max Value:    "); Serial.print(sensor.max_value); Serial.println(" hPa");
+    Serial.print  ("Min Value:    "); Serial.print(sensor.min_value); Serial.println(" hPa");
+    Serial.print  ("Resolution:   "); Serial.print(sensor.resolution); Serial.println(" hPa");
+    Serial.println("------------------------------------");
+    poll_bmp();
+    Serial.println((char*)bmp_buf);
+    bmp_good = true;
+  }
+
+  poll_adc();
+  Serial.println((char*)adc_buf);
+
 
   digitalWrite(PIN_SX1276_CS, HIGH);
   digitalWrite(PIN_SX1276_RST, HIGH);
@@ -183,6 +274,10 @@ bool all_done_nearly = false;
 bool wait_regack = false;
 
 void loop() {
+
+  if (bmp_good) {
+    poll_bmp();
+  }
   if (!started_ok) {
     digitalWrite(PIN_LED4, LOW);
     delay(500);
@@ -259,6 +354,15 @@ void loop() {
   byte pub_buf[66];
   byte pub_len = 0;
   // ASCII would be nice but we only have 66 bytes to play with
+
+  if (bmp_len > 0) {
+    MQTTHandler.publish(FLAG_QOS_1, topic_id, bmp_buf, bmp_len);
+  } else {
+    MQTTHandler.publish(FLAG_QOS_1, topic_id, "BMP_BAD", 7);
+  }
+
+  MQTTHandler.publish(FLAG_QOS_1, topic_id, adc_buf, adc_len);
+
 #if defined(ESP8266)
   my_data_t demo;
   pack_demo_data(demo);
@@ -267,7 +371,7 @@ void loop() {
                      (unsigned)demo.vcc, demo.cycles,
                      ESP.getSdkVersion());
 #else
-  pub_len = snprintf(pub_buf, sizeof(pub_buf), "Hello,World");
+  pub_len = snprintf((char*)pub_buf, sizeof(pub_buf), "Hello,World");
 #endif
 
   MQTTHandler.publish(FLAG_QOS_1, topic_id, pub_buf, pub_len);

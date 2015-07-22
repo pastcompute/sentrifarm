@@ -20,6 +20,8 @@ INCLUDEPATH += "$${PLATFORMIO}/packages/toolchain-xtensa/lib/gcc/xtensa-lx106-el
 INCLUDEPATH += "$${PLATFORMIO}/packages/sdk-esp8266/include"
 INCLUDEPATH += "./lib/SX1276lib"
 INCLUDEPATH += "./lib/arduino-mqtt-sn"
+INCLUDEPATH += "./lib/Adafruit_BMP085_Unified"
+INCLUDEPATH += "./lib/Adafruit_Sensor"
 
 win32:INCLUDEPATH ~= s,/,\\,g
 
