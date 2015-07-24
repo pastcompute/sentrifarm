@@ -2,10 +2,10 @@
 	path = ground-sensor/code/frankenstein
 	url = git@github.com:pastcompute/esp8266-frankenstein.git
 [submodule "base-station/libsocket"]
-	path = base-station/libsocket
+	path = software/ext/libsocket
 	url = https://github.com/pastcompute/libsocket.git
 [submodule "base-station/org.eclipse.mosquitto.rsmb"]
-	path = base-station/org.eclipse.mosquitto.rsmb
+	path = software/ext/org.eclipse.mosquitto.rsmb
 	url = https://github.com/pastcompute/rsmb.git
 	branch = my_fixes
 [submodule "base-station/mcu/AsyncMQTT-SN"]
