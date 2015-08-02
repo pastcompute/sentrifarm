@@ -37,6 +37,10 @@ The next step is to evaluate what we have learned and build more production orie
 
 See above
 
+## Implement NFC
+
+For the low power standard nodes, add an NFC module so that the farmer can tap to get recent sensor readings
+
 ## Improved microcontroller build
 
 Presently I have been using platformio to get moving quickly for building the software portably over the Teensy and the ESP201
