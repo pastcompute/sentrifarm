@@ -41,6 +41,6 @@ See above
 
 * Relay of barometer, temperature, smoke, rain and UV data from a nodes, via the farm station to the OpenHAB system,
 * Screenshots of OpenHAB output
-* Photos of working data
+* Photos of a protoype with a solar panel and sensors in a real paddock
 * Operating at a distance of a few hundred metres
 
