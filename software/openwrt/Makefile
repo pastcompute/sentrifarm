@@ -32,11 +32,11 @@ $(STAGING_DESTDIR)/usr/bin/mqtt-sn-pub $(STAGING_DESTDIR)/usr/bin/mqtt-sn-sub mq
 	@cd build.mqtt-sn && export STAGING_DIR=$(OWRT_STAGING) && PATH=$(OWRT_STAGING)/$(OWRT_TOOLCHAIN)/bin:$$PATH $(MAKE)
 	@cd build.mqtt-sn && export STAGING_DIR=$(OWRT_STAGING) && PATH=$(OWRT_STAGING)/$(OWRT_TOOLCHAIN)/bin:$$PATH $(MAKE) install DESTDIR=$(STAGING_DESTDIR)
 
-build.mqtt-sn/Makefile: | ../mqtt-sn-tools
+build.mqtt-sn/Makefile: | ../../ext/mqtt-sn-tools
 	@echo [PREP] mqtt-sn...
 	@mkdir -p build.mqtt-sn
 	@cd build.mqtt-sn && export OWRT_STAGING=$(OWRT_STAGING) OWRT_GCC_PFX=$(OWRT_GCC_PFX) OWRT_TARGET=$(OWRT_TARGET) OWRT_TOOLCHAIN=$(OWRT_TOOLCHAIN) && \
-											cmake $(MY_CMAKE_OPTS) ../../mqtt-sn-tools
+											cmake $(MY_CMAKE_OPTS) ../../../ext/mqtt-sn-tools
 
 build.rsmb/Makefile: | ../org.eclipse.mosquitto.rsmb
 	@echo [PREP] rsmb...
@@ -79,24 +79,24 @@ $(STAGING_DESTDIR)/usr/lib/libcares.so c-ares: build.c-ares/Makefile
 	@echo [BUILD] c-ares...
 	@cd build.c-ares && export STAGING_DIR=$(OWRT_STAGING) && PATH=$(OWRT_STAGING)/$(OWRT_TOOLCHAIN)/bin:$$PATH $(MAKE) install dist DESTDIR=$(STAGING_DESTDIR)
 
-build.c-ares/Makefile: ../c-ares/Makefile.in | ../c-ares
+build.c-ares/Makefile: ../ext/c-ares/Makefile.in | ../ext/c-ares
 	@echo [PREP] c-ares...
 	@mkdir -p build.c-ares
 	@cd build.c-ares && export OWRT_STAGING=$(OWRT_STAGING) OWRT_GCC_PFX=$(OWRT_GCC_PFX) OWRT_TARGET=$(OWRT_TARGET) OWRT_TOOLCHAIN=$(OWRT_TOOLCHAIN) && \
-											PATH=$(OWRT_STAGING)/$(OWRT_TOOLCHAIN)/bin:$$PATH ../../c-ares/configure --host=$(OWRT_TUPLE) --prefix=/usr
+											PATH=$(OWRT_STAGING)/$(OWRT_TOOLCHAIN)/bin:$$PATH ../../../ext/c-ares/configure --host=$(OWRT_TUPLE) --prefix=/usr
 
-../c-ares/Makefile.in:
+../ext/c-ares/Makefile.in: ../ext/c-ares
 	@cd ../c-ares && ./buildconf
 
 ../org.eclipse.mosquitto:
 	(cd .. && git clone git://git.eclipse.org/gitroot/mosquitto/org.eclipse.mosquitto.git )
 
-../c-ares:
-	(cd .. && git clone https://github.com/bagder/c-ares.git )
+../ext/c-ares:
+	(cd ../ext && git clone https://github.com/bagder/c-ares.git )
 
 
-../mqtt-sn-tools:
-	(cd .. && git clone git@github.com:pastcompute/mqtt-sn-tools.git sentrifarm )
+../ext/mqtt-sn-tools:
+	(cd ../ext && git clone git@github.com:pastcompute/mqtt-sn-tools.git sentrifarm )
 
 prebuild: $(TREE)/feeds.conf $(TREE)/.config patch $(TREE)/tmp/.kconfig-ar71xx_generic
 
@@ -139,5 +139,6 @@ openwrt/files:
 openwrt:
 	@echo [FETCH] $@
 	git clone https://github.com/openwrt-mirror/openwrt.git
+	cd openwrt && git checkout -b local-build ab5bd67652b940c8da4229c64eb0cdf09caf4034
 
 .PHONY: all prereq clean build patch feeds prebuild pre2
