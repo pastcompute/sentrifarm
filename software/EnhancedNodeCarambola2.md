@@ -1,10 +1,13 @@
 # Build instructions : Enhanced node
 
+0. Ensure git sumboudles are up to date
 1. Change to the openwrt/ directory
 2. Run the following
 ```
+make prereq
+rm openwrt/.config
 make build DEVICE=carambola2
-make sx1276
+make sx1276 DEVICE=carambola2
 ```
 The resulting firmware can be found in openwrt/openwrt/bin/ar71xx/
 3. Upload the firmware as per a normal OpenWRT upgrade.

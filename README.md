@@ -14,9 +14,31 @@ For background see [the Sentrifarm project page on hackaday.io](http://hackaday.
 * [System design - component assembly](ComponentsAndAssembly.md)
 * [TODO](TODO.md)
 
-
 ## Licenses
 
 * Hardware designs released under Creative Commons CC-BY-SA.
 * Source code released under GPL v3 except where existing imported components are otherwise identified as being used under other licenses such as MIT, BSD, etc.
 * We reserve the right to dual-license software that we developed under alternative licenses
+
+### Third party software components incorporated into the repository
+
+### Third party software components incorporated into the repository as a submodule
+
+* Adafruit arduino sensor library - Apache license
+* Adafruit BMP085 library - open source unspecified
+* Arduino MQTTSN library - MIT license
+* Frankenstein & Antares - GPL licensed ESP8266 framework. Note, not actively used at present tie but this may change.
+
+### Third party software components submodules or cloned and binaries cross-compiled during the build
+
+* openwrt - linux distribution - distribution is GPL, components are their respective open source licenses
+* c-ares - library used by mosquitto; MIT license
+* mosquitto - MQTT client tools and library; used under Eclipse Distribution License (not the EPL)
+* mqtt-sn-tools - MQTT-SN client tools; BSD-like license
+* RSMB - MQTT and MQTT-SN broker; Eclipse Distribution License
+* libsocket++ - C++ socket library; BSD license
+
+The following third party software components are then dynamically linked to sentrifarm software:
+
+libmosquitto - dynamically linked, thus used as allowed under the terms of the EDLv1.0
+

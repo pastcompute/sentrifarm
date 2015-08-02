@@ -37,6 +37,12 @@ The next step is to evaluate what we have learned and build more production orie
 
 See above
 
+## Improved microcontroller build
+
+Presently I have been using platformio to get moving quickly for building the software portably over the Teensy and the ESP201
+However I have realised that platformio is too opaque in how it discovers and downloads software, so I am intending to migrate to
+Cmake and a custom build script. I'll probably look at moving away from arduino tp native for the ESP modules as well.
+
 ## Things we hope to have TODO'ne by August 17
 
 * Relay of barometer, temperature, smoke, rain and UV data from a nodes, via the farm station to the OpenHAB system,

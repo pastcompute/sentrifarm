@@ -1,9 +1,13 @@
 # Build instructions : Farm Station
 
+0. Ensure git sumboudles are up to date
 1. Change to the openwrt/ directory
 2. Run the following
 ```
+make prereq
+rm openwrt/.config
 make build DEVICE=raspberrypi
+make sx1276 DEVICE=raspberrypi
 ```
 The resulting firmware can be found in openwrt/openwrt/bin/bcm2078
 3. Create the SD card image

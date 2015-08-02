@@ -13,9 +13,9 @@ SET(CMAKE_FIND_ROOT_PATH_MODE_PROGRAM NEVER)
 SET(CMAKE_FIND_ROOT_PATH_MODE_LIBRARY NEVER)
 SET(CMAKE_FIND_ROOT_PATH_MODE_INCLUDE NEVER)
 
-set(ENV{PKG_CONFIG_PATH} ${TOOLCHAIN_PREFIX}/lib/pkgconfig)
+set(ENV{PKG_CONFIG_PATH} ${OPENWRT_TARGET_DIR}/usr/lib/pkgconfig)
 message(STATUS "PATH=$ENV{PATH}")
-message(STATUS "PKG_CONFIG_PATH=$ENV{PATH}")
+message(STATUS "PKG_CONFIG_PATH=$ENV{PKG_CONFIG_PATH}")
 
 # Notes:
 # http://cpprocks.com/using-cmake-to-build-a-cross-platform-project-with-a-boost-dependency/
