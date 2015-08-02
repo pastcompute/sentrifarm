@@ -11,6 +11,8 @@ For background see [the Sentrifarm project page on hackaday.io](http://hackaday.
 * [Project logs](https://hackaday.io/project/4758)
 * [System design diagram](media/HighLevelDesignv0.png)
 * [System design - operational concept](OperationalConcept.md)
+* [System design - component assembly](ComponentsAndAssembly.md)
+* [TODO](TODO.md)
 
 
 ## Licenses
