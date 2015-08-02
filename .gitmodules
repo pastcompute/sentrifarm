@@ -1,19 +1,19 @@
-[submodule "ground-sensor/code/frankenstein"]
-	path = ground-sensor/code/frankenstein
+[submodule "frankenstein"]
+	path = attic/ground-sensor/code/frankenstein
 	url = git@github.com:pastcompute/esp8266-frankenstein.git
-[submodule "base-station/libsocket"]
+[submodule "libsocket"]
 	path = software/ext/libsocket
 	url = https://github.com/pastcompute/libsocket.git
-[submodule "base-station/org.eclipse.mosquitto.rsmb"]
+[submodule "org.eclipse.mosquitto.rsmb"]
 	path = software/ext/org.eclipse.mosquitto.rsmb
 	url = https://github.com/pastcompute/rsmb.git
 	branch = my_fixes
-[submodule "base-station/mcu/AsyncMQTT-SN"]
-	path = base-station/mcu/AsyncMQTT-SN
+[submodule "AsyncMQTT-SN"]
+	path = software/mcu/AsyncMQTT-SN
 	url = https://github.com/pastcompute/AsyncMQTT-SN.git
-[submodule "base-station/mcu/Adafruit_BMP085_Unified"]
-	path = base-station/mcu/Adafruit_BMP085_Unified
+[submodule "Adafruit_BMP085_Unified"]
+	path = software/mcu/Adafruit_BMP085_Unified
 	url = https://github.com/adafruit/Adafruit_BMP085_Unified
-[submodule "base-station/mcu/Adafruit_Sensor"]
-	path = base-station/mcu/Adafruit_Sensor
+[submodule "Adafruit_Sensor"]
+	path = software/mcu/Adafruit_Sensor
 	url = https://github.com/adafruit/Adafruit_Sensor.git
