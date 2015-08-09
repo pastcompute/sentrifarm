@@ -49,8 +49,9 @@ Cmake and a custom build script. I'll probably look at moving away from arduino 
 
 ## Things we hope to have TODO'ne by August 17
 
+## Things we hope to have TODO'ne by end of August
+
 * Relay of barometer, temperature, smoke, rain and UV data from a nodes, via the farm station to the OpenHAB system,
 * Screenshots of OpenHAB output
-* Photos of a protoype with a solar panel and sensors in a real paddock
 * Operating at a distance of a few hundred metres
 
