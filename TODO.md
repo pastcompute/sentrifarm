@@ -62,3 +62,6 @@ Cmake and a custom build script. I'll probably look at moving away from arduino 
 * Screenshots of OpenHAB output
 * Operating at a distance of a few hundred metres
 
+## Goals for end of September
+
+* Extend RF hop range out to 5km.  Antennas & radio tuning!
