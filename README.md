@@ -9,15 +9,17 @@ For background see [the Sentrifarm project page on hackaday.io](http://hackaday.
 * [User diagram](FIXME) _FIXME_
 * [2-minute Video](FIXME) _FIXME_
 * [Project logs](https://hackaday.io/project/4758)
-* [System design diagram](media/HighLevelDesignv0.png)
+* [System design diagram](media/architecturediagramv0.2.svg)
 * [System design - operational concept](OperationalConcept.md)
 * [System design - component assembly](ComponentsAndAssembly.md)
-* [TODO](TODO.md)
+* [TODO List](TODO.md)
 
 ## Licenses
 
 * Hardware designs released under Creative Commons CC-BY-SA.
 * Source code released under GPL v3 except where existing imported components are otherwise identified as being used under other licenses such as MIT, BSD, etc.
+* Clipart in diagrams obtained from open / CC license sources : open office gallery, openclipart.com
+* Our own photos under CC-BY-NC
 * We reserve the right to dual-license software that we developed under alternative licenses
 
 ### Third party software components incorporated into the repository
