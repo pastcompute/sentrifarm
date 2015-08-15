@@ -18,6 +18,10 @@ The first prototypes only have a few sensors. The critical path is really expand
 
 More sensors can be added relatively easily later.
 
+## investigate interoperability
+
+We have been provided with a different radio module to evaluate and would like to see how it works communicating with our existing kit
+
 ## Extend deployment range
 
 So far we have spent little time on understanding and tuning the radio links and antenna.
@@ -49,8 +53,15 @@ Cmake and a custom build script. I'll probably look at moving away from arduino 
 
 ## Things we hope to have TODO'ne by August 17
 
+* Photos of a protoype with a solar panel and sensors in a real paddock
+
+## Things we hope to have TODO'ne by end of August
+
+* Build two more nodes, using breadboard even if needed
 * Relay of barometer, temperature, smoke, rain and UV data from a nodes, via the farm station to the OpenHAB system,
 * Screenshots of OpenHAB output
-* Photos of a protoype with a solar panel and sensors in a real paddock
 * Operating at a distance of a few hundred metres
 
+## Goals for end of September
+
+* Extend RF hop range out to 5km.  Antennas & radio tuning!
