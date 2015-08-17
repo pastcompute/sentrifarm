@@ -86,7 +86,7 @@ public:
   bool TransmitHello() {
     unique_lock<mutex> lock(radio_mutex_);
     for (int i=0; i < 5; i++) {
-      uint8_t buffer[10] = { 0x02, rolling_counter_, 0xff, 'h', 'e', 'l', 'l', 'o', '0'+i, 0};
+      uint8_t buffer[10] = { 0x02, rolling_counter_, 0xff, 'h', 'e', 'l', 'l', 'o', (uint8_t)('0'+i), 0};
       uint8_t xorv = 0;
       for (unsigned j=0; j < 9; j++) {
         xorv = xorv ^ buffer[j];
@@ -113,6 +113,9 @@ public:
       xorv = xorv ^ buffer[j];
     }
     buffer[len+3] = xorv;
+#if 1
+	  cout << "Predicted time on air: " << radio_->PredictTimeOnAir(buffer, sizeof(buffer)) << "\n";
+#endif
     if (!radio_->SendSimpleMessage(buffer, sizeof(buffer))) {
       // SPI error
       return false;

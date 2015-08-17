@@ -372,6 +372,15 @@ float SX1276Radio::PredictTimeOnAir(const char *payload) const
   return toa;
 }
 
+float SX1276Radio::PredictTimeOnAir(const void *payload, unsigned len) const
+{
+  unsigned BW = 125000;
+  unsigned SF = 9;
+  float toa = (6.F+4.25F+8+ceil( (8*(len+1)-4*SF+28+16)/(4*SF))*6.F) * (1 << SF) / BW;
+  return toa;
+}
+
+
 bool SX1276Radio::SendSimpleMessage(const char *payload)
 {
   char buf[strlen(payload)+1];

@@ -102,6 +102,7 @@ public:
   /// @param Payload text
   /// @return Time on air, seconds.
   float PredictTimeOnAir(const char *payload) const;
+  float PredictTimeOnAir(const void *payload, unsigned len) const;
 
 private:
 
