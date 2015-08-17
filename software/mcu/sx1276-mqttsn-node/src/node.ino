@@ -378,12 +378,12 @@ void loop() {
   // ASCII would be nice but we only have 66 bytes to play with
 
   if (bmp_len > 0) {
-    MQTTHandler.publish(FLAG_QOS_1, topic_id, bmp_buf, bmp_len);
+    MQTTHandler.publish(FLAG_QOS_0, topic_id, bmp_buf, bmp_len);
   } else {
-    MQTTHandler.publish(FLAG_QOS_1, topic_id, "BMP_BAD", 7);
+    MQTTHandler.publish(FLAG_QOS_0, topic_id, "BMP_BAD", 7);
   }
 
-  MQTTHandler.publish(FLAG_QOS_1, topic_id, adc_buf, adc_len);
+  MQTTHandler.publish(FLAG_QOS_0, topic_id, adc_buf, adc_len);
 
 #if defined(ESP8266)
   my_data_t demo;
@@ -396,6 +396,6 @@ void loop() {
   pub_len = snprintf((char*)pub_buf, sizeof(pub_buf), "Hello,World");
 #endif
 
-  MQTTHandler.publish(FLAG_QOS_1, topic_id, pub_buf, pub_len);
+  MQTTHandler.publish(FLAG_QOS_0, topic_id, pub_buf, pub_len);
   all_done_nearly = true;
 }
