@@ -266,12 +266,16 @@ int crc_count = 0;
 int timeout_count = 0;
 
 elapsedMillis timeElapsed;
+elapsedMillis regackTimedown;
+elapsedMillis connectTimedown;
 
 bool need_connect = true;
 bool sent_connect = false;
 bool need_rx = true;
 bool all_done_nearly = false;
 bool wait_regack = false;
+
+int regack_ttl = 10;
 
 void loop() {
 
@@ -290,6 +294,7 @@ void loop() {
     MQTTHandler.connect(0, 30, "sfnode1"); // keep alive in seconds
     sent_connect = true;
     all_done_nearly = false;
+    connectTimedown = 0;
   }
   bool crc;
   bool ok = false;
@@ -304,12 +309,27 @@ void loop() {
   }
   if (timeElapsed > 6000)  {
     Serial.print("Received message count: "); Serial.print(rx_count);
+    Serial.print(" RX count: "); Serial.print(rx_count);
     Serial.print(" Timeout count: "); Serial.print(timeout_count);
     Serial.print(" CRC count: "); Serial.print(crc_count);
+    Serial.print(" State: ");
+    Serial.print(need_connect);
+    Serial.print(sent_connect);
+    Serial.print(need_rx);
+    Serial.print(wait_regack);
+    Serial.print(all_done_nearly);
     Serial.println();
     timeElapsed = 0;
+
+    if (all_done_nearly) {
+      // work around bug where response get very delayed
+      go_to_sleep(10000);
+      return;
+    }
   }
-  if (!ok) return;
+  if (!ok) {
+    return;
+  }
   if (wait_regack) {
     Serial.println("was waiting for regack");
     wait_regack = false;
@@ -341,16 +361,18 @@ void loop() {
       return;
     }
     wait_regack = true;
+    regackTimedown = 0;
     // needs response, so loop around
     return;
   }
-  Serial.println("Try publish");
 
   // we dont get back again until after the following publish gets a resopnse
   if (all_done_nearly) {
     // Deep sleep
+    Serial.println("Deep Sleep");
     go_to_sleep(10000);
   }
+  Serial.println("Try publish");
   byte pub_buf[66];
   byte pub_len = 0;
   // ASCII would be nice but we only have 66 bytes to play with

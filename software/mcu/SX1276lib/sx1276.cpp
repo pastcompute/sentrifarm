@@ -106,7 +106,9 @@ void SX1276Radio::ReadRegister(byte reg, byte& result)
   digitalWrite(cs_pin_, HIGH);
   SPI.endTransaction();
 #if VERBOSE_R
-  DEBUG("[R] %02x --> %02x\n\r", reg, result);
+  if (reg != SX1276REG_IrqFlags) {
+    DEBUG("[R] %02x --> %02x\n\r", reg, result);
+  }
 #endif
 }
 

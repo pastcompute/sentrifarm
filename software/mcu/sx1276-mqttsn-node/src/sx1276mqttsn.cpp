@@ -56,6 +56,7 @@ bool MQTTSX1276::TryReceive(bool& crc)
   if (radio_.ReceiveMessage(rx_buffer_, sizeof(rx_buffer_), rx_buffer_len_, crc))
   {
     SPI.end();
+    DEBUG("[RX] %d bytes, crc=%d\n\r", rx_buffer_len_, crc);
     parse(); // <-- calls parse_impl()
     return true;
   }

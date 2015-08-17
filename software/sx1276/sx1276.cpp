@@ -446,7 +446,7 @@ bool SX1276Radio::SendSimpleMessage(const void *payload, unsigned n)
     }
   } while (steady_clock::now() < t1);
   if (done) {
-    // DEBUG("[DBUG] TX fin %u\n", n);
+    DEBUG("[DBUG] TX fin %u\n", n);
     return true;
   } 
   if (fault_) { PR_ERROR("SPI fault reading IrqFlags register\n"); return false; }
