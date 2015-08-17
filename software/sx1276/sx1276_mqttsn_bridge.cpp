@@ -307,7 +307,7 @@ int main(int argc, char *argv[])
   shared_ptr<SX1276Radio> radio(new SX1276Radio(spi));
   cout << format("SX1276 Version: %.2x\n") % radio->version();
 
-  radio->SetPreamble(0x50); // probably a red herring now I found the RX bug
+  // radio->SetPreamble(0x50); // probably a red herring now I found the RX bug
 
   RadioManager radio_manager(radio, platform);
   radio_manager.Restart();
