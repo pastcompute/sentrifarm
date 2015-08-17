@@ -51,10 +51,6 @@ Presently I have been using platformio to get moving quickly for building the so
 However I have realised that platformio is too opaque in how it discovers and downloads software, so I am intending to migrate to
 Cmake and a custom build script. I'll probably look at moving away from arduino tp native for the ESP modules as well.
 
-## Things we hope to have TODO'ne by August 17
-
-* Photos of a protoype with a solar panel and sensors in a real paddock
-
 ## Things we hope to have TODO'ne by end of August
 
 * Build two more nodes, using breadboard even if needed
