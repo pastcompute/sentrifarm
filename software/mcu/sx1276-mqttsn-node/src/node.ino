@@ -146,7 +146,6 @@ byte adcValue3;
 
 void poll_adc()
 {
-  Wire.begin();
   Wire.beginTransmission(PCF8591);
   Wire.write(0x4); // Auto increment - request all 4 ADC channels
   Wire.endTransmission();
@@ -156,6 +155,7 @@ void poll_adc()
   adcValue1 = Wire.read();
   adcValue2 = Wire.read();
   adcValue3 = Wire.read();
+  Wire.endTransmission();
 
   adc_len = snprintf((char*)adc_buf, sizeof(adc_buf), "%02x %02x %02x %02x", adcValue0, adcValue1, adcValue2, adcValue3);
 }
@@ -203,7 +203,7 @@ void setup()
 
   // Luckily I went with the teensy default for I2c (18,19) on my shield
 
-
+  // This calls Wire.begin() so we dont want to do that again anywhere
   if(!bmp.begin(BMP085_MODE_STANDARD))
   {
     Serial.println("Error detecting BMP-085!");
@@ -241,6 +241,7 @@ void setup()
 
   started_ok = MQTTHandler.Begin(&Serial);
 
+#if 0
   if (started_ok) {
     // FIXME: do this on powerup but not deep sleep wake
     byte hello_payload[6] = { 0, 0, 0, 0, 0, 0 };
@@ -257,6 +258,16 @@ void setup()
     SPI.end();
     delay(500);
   }
+#endif
+
+  if (bmp_good) {
+    poll_bmp();
+    Serial.println((char*)bmp_buf);
+  }
+  poll_adc();
+  Serial.println((char*)adc_buf);
+
+  Serial.println("go...");
 }
 
 bool got_message = false;
@@ -279,9 +290,18 @@ int regack_ttl = 10;
 
 void loop() {
 
+#if 0
+  // hmm after we RX one message the i2c stuff reads junk
+  // is this a buffer overrun in the radio code, or something else?
+
+  // For now, given we reset every time (ESP8266, anyway), reading in setup() once will do
   if (bmp_good) {
     poll_bmp();
+    Serial.println((char*)bmp_buf);
   }
+  poll_adc();
+  Serial.println((char*)adc_buf);
+#endif
   if (!started_ok) {
     digitalWrite(PIN_LED4, LOW);
     delay(500);
