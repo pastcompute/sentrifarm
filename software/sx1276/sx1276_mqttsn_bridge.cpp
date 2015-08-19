@@ -310,6 +310,8 @@ int main(int argc, char *argv[])
 
   // radio->SetPreamble(0x50); // probably a red herring now I found the RX bug
 
+  radio->SetSymbolTimeout(366);
+
   RadioManager radio_manager(radio, platform);
   radio_manager.Restart();
   cout << format("Carrier Frequency: %uHz\n") % radio->carrier();
