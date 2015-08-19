@@ -414,7 +414,7 @@ bool SX1276Radio::SendSimpleMessage(const void *payload, unsigned n)
   WriteRegisterVerify(SX1276REG_FifoAddrPtr, 0x80);
   // Payload length includes zero terminator
   WriteRegisterVerify(SX1276REG_MaxPayloadLength, max_tx_payload_bytes_);
-  WriteRegisterVerify(SX1276REG_PayloadLength, n+1);
+  WriteRegisterVerify(SX1276REG_PayloadLength, n);
 
   usleep(100);
   uint8_t fifo_pos;
