@@ -6,7 +6,7 @@ For background see [the Sentrifarm project page on hackaday.io](http://hackaday.
 ## Hackaday Prize Entry Qualifications
 
 * [Project discussion](https://hackaday.io/project/4758)
-* [2-minute Video](FIXME) _FIXME_
+* 2-minute [Quarter Final Submission Video](https://www.youtube.com/watch?v=L6NtuzwXCsY)
 * [Project logs](https://hackaday.io/project/4758)
 * [System design diagram](media/architecturediagramv0.2.svg)
 * [System design - operational concept](OperationalConcept.md)
