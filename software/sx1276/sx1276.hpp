@@ -82,7 +82,7 @@ public:
   /// Wait for a message
   bool ReceiveSimpleMessage(uint8_t buffer[], int& size, int timeout_ms, bool& timeout, bool& crc_error);
 
-	void SetSymbolTimeout(unsigned symbolTimeout) { symbolTimeout_ = symbolTimeout; }
+  void SetSymbolTimeout(unsigned symbolTimeout) { symbolTimeout_ = symbolTimeout; }
   void SetPreamble(unsigned preamble) { preamble_ = preamble; }
   bool EnableContinuousRx(bool enabled) { continuousMode_ = enabled; }
 

@@ -187,6 +187,7 @@ public:
         num_crc_errors_ ++;
         cerr << "CRC error\n";
       }
+      else { cerr  << "~"; }
 
       // allow pending tx...
       lock.unlock();

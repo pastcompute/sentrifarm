@@ -381,6 +381,7 @@ float SX1276Radio::PredictTimeOnAir(const void *payload, unsigned len) const
 }
 
 
+/// Just send raw unframed data i.e. ASCII, zero terminated
 bool SX1276Radio::SendSimpleMessage(const char *payload)
 {
   char buf[strlen(payload)+1];
@@ -388,7 +389,7 @@ bool SX1276Radio::SendSimpleMessage(const char *payload)
   return SendSimpleMessage(payload, strlen(buf)+1);
 }
 
-/// Just send raw unframed data i.e. ASCII, zero terminated
+/// Just send raw unframed data
 /// Only useful as a beacon but enough to get us started
 bool SX1276Radio::SendSimpleMessage(const void *payload, unsigned n)
 {
@@ -397,7 +398,10 @@ bool SX1276Radio::SendSimpleMessage(const void *payload, unsigned n)
 
   continuousSetup_ = false;
 
-  DEBUG("[DBUG] TX %u\n", n);
+  DEBUG("[SX1276][TX] %u\n", n);
+  fflush(stdout);
+  FILE* f = popen("od -Ax -tx1z -v -w16", "w");
+  if (f) { fwrite(payload, n, 1, f); pclose(f); }
 
   // LoRa Standby
   Standby();
@@ -455,7 +459,7 @@ bool SX1276Radio::SendSimpleMessage(const void *payload, unsigned n)
     }
   } while (steady_clock::now() < t1);
   if (done) {
-    DEBUG("[DBUG] TX fin %u\n", n);
+    DEBUG("[SX1276][TX] fin %u\n", n);
     return true;
   } 
   if (fault_) { PR_ERROR("SPI fault reading IrqFlags register\n"); return false; }
@@ -576,7 +580,7 @@ bool SX1276Radio::ReceiveSimpleMessage(uint8_t buffer[], int& size, int timeout_
   if (ReadRegisterHarder(SX1276REG_Rssi, v)) { last_rssi_dbm_ = -137 + v; }
 
   if (!done) {
-    // DEBUG("[DBUG] RX fin flags=%.2x stat=%.2x rssi=%d\n", flags, (int)stat, last_rssi_dbm_);
+    // DEBUG("[SX1276][RX] fin flags=%.2x stat=%.2x rssi=%d\n", flags, (int)stat, last_rssi_dbm_);
     return true; // no error, only a timeout or crc
   }
 
@@ -608,8 +612,8 @@ bool SX1276Radio::ReceiveSimpleMessage(uint8_t buffer[], int& size, int timeout_
   // Note: SX1276REG_FifoRxByteAddrPtr == last addr written by modem
   ReadRegisterHarder(SX1276REG_FifoRxByteAddrPtr, byptr);
 
-#if LINUX_BEAON
-	// NOT WHEN SENT BY ESP8266 / teemnsy!
+#if LINUX_BEACON
+  // NOT WHEN SENT BY ESP8266 / teemnsy!
   payloadSizeBytes--; // DONT KNOW WHY, I THINK FifoRxNbBytes points 1 down
 #endif
 
