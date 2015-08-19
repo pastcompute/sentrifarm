@@ -96,7 +96,7 @@ SX1276Radio::SX1276Radio(int cs_pin, const SPISettings& spi_settings)
   // DEBUG("SX1276: CS pin=%d\n", cs_pin_);
 }
 
-ICACHE_FLASH_ATTR
+//ICACHE_FLASH_ATTR
 void SX1276Radio::ReadRegister(byte reg, byte& result)
 {
   SPI.beginTransaction(spi_settings_);
@@ -113,7 +113,7 @@ void SX1276Radio::ReadRegister(byte reg, byte& result)
 }
 
 // TODO: add a verify version if required (if things dont work)
-ICACHE_FLASH_ATTR
+//ICACHE_FLASH_ATTR
 void SX1276Radio::WriteRegister(byte reg, byte val, byte& result, bool verify)
 {
   SPI.beginTransaction(spi_settings_);
