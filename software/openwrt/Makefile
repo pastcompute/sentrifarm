@@ -98,13 +98,16 @@ build.c-ares/Makefile: ../ext/c-ares/Makefile.in | ../ext/c-ares
 	@cd ../ext/c-ares && ./buildconf
 
 ../ext/org.eclipse.mosquitto:
-	(cd ../ext && git clone git@github.com:pastcompute/org.eclipse.mosquitto.git -b sentrifarm )
+	(cd ../ext && git clone https://github.com/pastcompute/org.eclipse.mosquitto.git -b sentrifarm )
 
 ../ext/c-ares:
 	(cd ../ext && git clone https://github.com/bagder/c-ares.git )
 
 ../ext/mqtt-sn-tools:
-	(cd ../ext && git clone git@github.com:pastcompute/mqtt-sn-tools.git -b sentrifarm )
+	(cd ../ext && git clone https://github.com/pastcompute/mqtt-sn-tools.git -b sentrifarm )
+
+#../ext/libsocket is presently a .gitsubmodule
+#../ext/org.eclipse.mosquitto.rsmb is presently a .gitsubmodule
 
 # libsocket is a submodule
 # RSMB is a submodule
@@ -123,15 +126,16 @@ FEED_PACKAGES = \
 			netcat socat nmap wavemon picocom ntpd ntp-utils ntpdate pps-tools i2c-tools \
 			file htop less lsof patch coreutils micropython python \
 			mjpeg-streamer  nfc-utils irssi-nossl owfs owshell owhttpd owserver luci \
-			boost-chrono boost-date_time boost-regex boost-thread boost-timer
+			boost-chrono boost-date_time boost-regex boost-thread boost-timer \
+      qt5-core qtserialport
 
 
 feeds: $(TREE)/feeds.conf
 	cd $(TREE) && scripts/feeds update
 	cd $(TREE) && scripts/feeds install $(FEED_PACKAGES)
 
-$(TREE)/feeds.conf: feeds.conf
-	@cp -v $^ $@
+update-feeds $(TREE)/feeds.conf: feeds.conf.in
+	sed -e 's|@CUSTOM_FEED_BASE@|$(TOP)/packages|' < feeds.conf.in > $(TREE)/feeds.conf
 
 $(TREE)/tmp/.kconfig-ar71xx_generic: $(TREE)/target/linux/ar71xx/generic/target.mk
 	@rm -v $@ ; cd $(TREE) ; make defconfig
@@ -152,4 +156,4 @@ openwrt:
 	git clone https://github.com/openwrt-mirror/openwrt.git
 	cd openwrt && git checkout -b local-build ab5bd67652b940c8da4229c64eb0cdf09caf4034
 
-.PHONY: all prereq clean build patch feeds prebuild pre2
+.PHONY: all prereq clean build patch feeds prebuild pre2 update-feeds
