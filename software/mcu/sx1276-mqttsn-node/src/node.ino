@@ -397,12 +397,16 @@ void loop() {
   byte pub_len = 0;
   // ASCII would be nice but we only have 66 bytes to play with
 
+  // To implement QOS1 we are going to have to bite the bullet and rewrite this code to be cleaner so we do the state stuff
+
+  delay(1500);
   if (bmp_len > 0) {
     MQTTHandler.publish(FLAG_QOS_0, topic_id, bmp_buf, bmp_len);
   } else {
     MQTTHandler.publish(FLAG_QOS_0, topic_id, "BMP_BAD", 7);
   }
 
+  delay(1500);
   MQTTHandler.publish(FLAG_QOS_0, topic_id, adc_buf, adc_len);
 
 #if defined(ESP8266)
@@ -412,10 +416,16 @@ void loop() {
                      demo.bootversion, demo.bootmode,
                      (unsigned)demo.vcc, demo.cycles,
                      ESP.getSdkVersion());
+
+  // TODO: add a counter in "eeprom"/NVRAM or something as a way of metrics on missed mesages
+
 #else
   pub_len = snprintf((char*)pub_buf, sizeof(pub_buf), "Hello,World");
 #endif
 
+  delay(1500);
   MQTTHandler.publish(FLAG_QOS_0, topic_id, pub_buf, pub_len);
+
+  delay(1500);
   all_done_nearly = true;
 }
