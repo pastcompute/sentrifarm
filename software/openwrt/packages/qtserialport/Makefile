@@ -12,78 +12,53 @@ PKG_VERSION:=5.1.1
 PKG_RELEASE:=1
 
 PKG_SOURCE_PROTO:=git
-PKG_SOURCE_URL:=git://gitorious.org/qt/qtserialport.git
-PKG_SOURCE_VERSION:=39f90528abda2f5ec7575acf2e1a352702a202e8
+PKG_SOURCE_URL:=https://github.com/qtproject/qtserialport.git
+# PKG_SOURCE_VERSION:=58365228b3181ed03188fc8ff56007ea22678bb5 # V5.1 # 39f90528abda2f5ec7575acf2e1a352702a202e8 # v5.1.1
+PKG_SOURCE_VERSION:=39f90528abda2f5ec7575acf2e1a352702a202e8 # v5.1.1
 PKG_SOURCE:=$(PKG_NAME)-$(PKG_VERSION).tar.bz2
 PKG_SOURCE_SUBDIR:=$(PKG_NAME)-$(PKG_VERSION)
-
+PKG_USE_MIPS16:=0
 PKG_BUILD_DEPENDS:=+qt5-core
+CMAKE_INSTALL:=1
+
+CMAKE_OPTIONS += -DCMAKE_FIND_ROOT_PATH=$(STAGING_DIR) \
+                 -DCMAKE_FIND_ROOT_PATH_MODE_PROGRAM=BOTH \
+                 -DCMAKE_FIND_ROOT_PATH_MODE_LIBRARY=ONLY \
+                 -DCMAKE_FIND_ROOT_PATH_MODE_INCLUDE=ONLY \
+                 -DCMAKE_RUNTIME_OUTPUT_DIRECTORY="$(PKG_INSTALL_DIR)"
 
 include $(INCLUDE_DIR)/package.mk
-$(call	include_mk, cmake.mk)
+include $(INCLUDE_DIR)/cmake.mk
+
+MAKE_FLAGS += VERBOSE=1
 
 define 	Package/qtserialport
   CATEGORY:=Libraries
   SECTION:=libraries
   TITLE:=qtserialport
   DEPENDS:=+qt5-core
+  URL:=https://github.com/qtproject/qtserialport.git
 endef
 
-ifeq ($(CONFIG_CCACHE),)
-  CMAKE_C_COMPILER:=$(TOOLCHAIN_DIR)/bin/$(TARGET_CC)
-  CMAKE_C_COMPILER_ARG1:=
-  CMAKE_CXX_COMPILER:=$(TOOLCHAIN_DIR)/bin/$(TARGET_CXX)
-  CMAKE_CXX_COMPILER_ARG1:=
-else
-  CMAKE_C_COMPILER:=$(STAGING_DIR_HOST)/bin/ccache
-  CMAKE_C_COMPILER_ARG1:=$(filter-out ccache,$(TARGET_CC))
-  CMAKE_CXX_COMPILER:=$(STAGING_DIR_HOST)/bin/ccache
-  CMAKE_CXX_COMPILER_ARG1:=$(filter-out ccache,$(TARGET_CXX))
-endif
-
-define Build/Configure
+define Build/Prepare
+	$(call Build/Prepare/Default)
 	$(CP) ./files/CMakeLists.txt $(PKG_BUILD_DIR)
 	$(INSTALL_DIR) $(PKG_INSTALL_DIR)/usr/include/QtSerialPort
 	$(CP) ./files/Q* $(PKG_INSTALL_DIR)/usr/include/QtSerialPort/
 	$(CP) $(PKG_BUILD_DIR)/src/serialport/*.h $(PKG_INSTALL_DIR)/usr/include/QtSerialPort/
-	( cd $(PKG_BUILD_DIR); \
-	CFLAGS="$(TARGET_CFLAGS) $(EXTRA_CFLAGS)" \
-	CXXFLAGS="$(TARGET_CFLAGS) $(EXTRA_CFLAGS)" \
-	LD_LIBRARY_PATH="$(TARGET_LIBDIRS) $(STAGING_DIR)/usr/lib/" \
-	cmake \
-		-DCMAKE_SYSTEM_NAME=Linux \
-		-DCMAKE_SYSTEM_VERSION=1 \
-		-DCMAKE_SYSTEM_PROCESSOR=$(ARCH) \
-		-DCMAKE_BUILD_TYPE=Debug \
-		-DCMAKE_C_FLAGS_RELEASE="-DNDEBUG" \
-		-DCMAKE_CXX_FLAGS_RELEASE="-DNDEBUG" \
-		-DCMAKE_RUNTIME_OUTPUT_DIRECTORY="$(PKG_INSTALL_DIR)" \
-		-DCMAKE_C_COMPILER="$(CMAKE_C_COMPILER)" \
-		-DCMAKE_C_COMPILER_ARG1="$(CMAKE_C_COMPILER_ARG1)" \
-		-DCMAKE_CXX_COMPILER="$(CMAKE_CXX_COMPILER)" \
-		-DCMAKE_CXX_COMPILER_ARG1="$(CMAKE_CXX_COMPILER_ARG1)" \
-		-DCMAKE_EXE_LINKER_FLAGS="$(TARGET_LDFLAGS)" \
-		-DCMAKE_MODULE_LINKER_FLAGS="$(TARGET_LDFLAGS)" \
-		-DCMAKE_SHARED_LINKER_FLAGS="$(TARGET_LDFLAGS)" \
-		-DCMAKE_FIND_ROOT_PATH=$(STAGING_DIR) \
-		-DCMAKE_FIND_ROOT_PATH_MODE_PROGRAM=BOTH \
-		-DCMAKE_FIND_ROOT_PATH_MODE_LIBRARY=ONLY \
-		-DCMAKE_FIND_ROOT_PATH_MODE_INCLUDE=ONLY \
-		-DCMAKE_STRIP=: \
-		-DCMAKE_INSTALL_PREFIX=/usr \
-		$(CMAKE_OPTIONS) \
-		. \
-	)
+#	$(INSTALL_DIR) $(PKG_BUILD_DIR)/QtSerialPort
+#	$(CP) -v ./files/Q* $(PKG_BUILD_DIR)/QtSerialPort/
+#	$(CP) -v $(PKG_BUILD_DIR)/src/serialport/*.h $(PKG_BUILD_DIR)/QtSerialPort/
+#	$(INSTALL_DIR) $(PKG_BUILD_DIR)/private
+#	$(CP) -v $(PKG_BUILD_DIR)/src/serialport/qt4support/*p.h $(PKG_BUILD_DIR)/private
 endef
 
 define Build/InstallDev
 	$(INSTALL_DIR) $(1)/usr/include/QtSerialPort
 	$(INSTALL_DIR) $(1)/usr/lib
-
 	$(CP) \
 		$(PKG_INSTALL_DIR)/usr/include/QtSerialPort/* \
 		$(1)/usr/include/QtSerialPort/
-
 	$(CP) \
 		$(PKG_BUILD_DIR)/libqtserialport.so* \
 		$(1)/usr/lib/
@@ -91,7 +66,6 @@ endef
 
 define Package/qtserialport/install
 	$(INSTALL_DIR) $(1)/usr/lib
-	
 	$(CP) \
 		$(PKG_BUILD_DIR)/libqtserialport.so* \
 		$(1)/usr/lib/

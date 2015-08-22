@@ -11,7 +11,7 @@ PKG_NAME:=qt5
 PKG_VERSION:=5.0.2
 PKG_RELEASE:=1
 PKG_MD5SUM:=87cae8ae2f82f41ba027c2db0ab639b7
-
+PKG_USE_MIPS16:=0
 PKG_SOURCE:=qt-everywhere-opensource-src-$(PKG_VERSION).tar.gz
 PKG_SOURCE_URL:=http://download.qt-project.org/official_releases/qt/5.0/$(PKG_VERSION)/single
 PKG_BUILD_DIR=$(BUILD_DIR)/qt-everywhere-opensource-src-$(PKG_VERSION)
