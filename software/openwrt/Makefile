@@ -20,6 +20,7 @@ TREE=openwrt
 CONF=openwrt.config.$(DEVICE)
 OWRT_STAGING=$(TOP)/openwrt/staging_dir
 include Makefile.$(DEVICE)
+BUILDD=build.$(DEVICE)
 
 # FIXME: query root-ar71xx from openwrt/ build
 STAGING_DESTDIR=$(OWRT_STAGING)/$(OWRT_TARGET)
@@ -31,67 +32,67 @@ all: prereq build sx1276 rsmb mqtt-sn
 
 # This is annoying because there is no out of tree automake or cmake
 # Then again I fixed it by adding one...
-$(STAGING_DESTDIR)/usr/bin/broker_mqtts rsmb: build.rsmb/Makefile
+$(STAGING_DESTDIR)/usr/bin/broker_mqtts rsmb: $(BUILDD).rsmb/Makefile
 	@echo [BUILD] rsmb...
-	@cd build.rsmb && export STAGING_DIR=$(OWRT_STAGING) && PATH=$(OWRT_STAGING)/$(OWRT_TOOLCHAIN)/bin:$$PATH $(MAKE)
-	@cd build.rsmb && export STAGING_DIR=$(OWRT_STAGING) && PATH=$(OWRT_STAGING)/$(OWRT_TOOLCHAIN)/bin:$$PATH $(MAKE) install DESTDIR=$(STAGING_DESTDIR)
+	@cd $(BUILDD).rsmb && export STAGING_DIR=$(OWRT_STAGING) && PATH=$(OWRT_STAGING)/$(OWRT_TOOLCHAIN)/bin:$$PATH $(MAKE)
+	@cd $(BUILDD).rsmb && export STAGING_DIR=$(OWRT_STAGING) && PATH=$(OWRT_STAGING)/$(OWRT_TOOLCHAIN)/bin:$$PATH $(MAKE) install DESTDIR=$(STAGING_DESTDIR)
 
-$(STAGING_DESTDIR)/usr/bin/mqtt-sn-pub $(STAGING_DESTDIR)/usr/bin/mqtt-sn-sub mqtt-sn: build.mqtt-sn/Makefile
+$(STAGING_DESTDIR)/usr/bin/mqtt-sn-pub $(STAGING_DESTDIR)/usr/bin/mqtt-sn-sub mqtt-sn: $(BUILDD).mqtt-sn/Makefile
 	@echo [BUILD] mqtt-sn...
-	@cd build.mqtt-sn && export STAGING_DIR=$(OWRT_STAGING) && PATH=$(OWRT_STAGING)/$(OWRT_TOOLCHAIN)/bin:$$PATH $(MAKE)
-	@cd build.mqtt-sn && export STAGING_DIR=$(OWRT_STAGING) && PATH=$(OWRT_STAGING)/$(OWRT_TOOLCHAIN)/bin:$$PATH $(MAKE) install DESTDIR=$(STAGING_DESTDIR)
+	@cd $(BUILDD).mqtt-sn && export STAGING_DIR=$(OWRT_STAGING) && PATH=$(OWRT_STAGING)/$(OWRT_TOOLCHAIN)/bin:$$PATH $(MAKE)
+	@cd $(BUILDD).mqtt-sn && export STAGING_DIR=$(OWRT_STAGING) && PATH=$(OWRT_STAGING)/$(OWRT_TOOLCHAIN)/bin:$$PATH $(MAKE) install DESTDIR=$(STAGING_DESTDIR)
 
-build.mqtt-sn/Makefile: | ../ext/mqtt-sn-tools
+$(BUILDD).mqtt-sn/Makefile: | ../ext/mqtt-sn-tools
 	@echo [PREP] mqtt-sn...
-	@mkdir -p build.mqtt-sn
-	@cd build.mqtt-sn && export OWRT_STAGING=$(OWRT_STAGING) OWRT_GCC_PFX=$(OWRT_GCC_PFX) OWRT_TARGET=$(OWRT_TARGET) OWRT_TOOLCHAIN=$(OWRT_TOOLCHAIN) && \
+	@mkdir -p $(BUILDD).mqtt-sn
+	@cd $(BUILDD).mqtt-sn && export OWRT_STAGING=$(OWRT_STAGING) OWRT_GCC_PFX=$(OWRT_GCC_PFX) OWRT_TARGET=$(OWRT_TARGET) OWRT_TOOLCHAIN=$(OWRT_TOOLCHAIN) && \
 											cmake $(MY_CMAKE_OPTS) ../../ext/mqtt-sn-tools
 
-build.rsmb/Makefile: | ../ext/org.eclipse.mosquitto.rsmb
+$(BUILDD).rsmb/Makefile: | ../ext/org.eclipse.mosquitto.rsmb
 	@echo [PREP] rsmb...
-	@mkdir -p build.rsmb
-	@cd build.rsmb && export OWRT_STAGING=$(OWRT_STAGING) OWRT_GCC_PFX=$(OWRT_GCC_PFX) OWRT_TARGET=$(OWRT_TARGET) OWRT_TOOLCHAIN=$(OWRT_TOOLCHAIN) && \
+	@mkdir -p $(BUILDD).rsmb
+	@cd $(BUILDD).rsmb && export OWRT_STAGING=$(OWRT_STAGING) OWRT_GCC_PFX=$(OWRT_GCC_PFX) OWRT_TARGET=$(OWRT_TARGET) OWRT_TOOLCHAIN=$(OWRT_TOOLCHAIN) && \
 											cmake $(MY_CMAKE_OPTS) ../../ext/org.eclipse.mosquitto.rsmb/rsmb/src
 
 sx1276-clean:
-	@rm -rf build.sx1276
+	@rm -rf $(BUILDD).sx1276
 
 sx1276: $(STAGING_DESTDIR)/usr/lib/libmosquitto.so $(STAGING_DESTDIR)/usr/lib/libsocket++.so
-	@mkdir -p build.sx1276
-	@cd build.sx1276 && export OWRT_STAGING=$(OWRT_STAGING) OWRT_GCC_PFX=$(OWRT_GCC_PFX) OWRT_TARGET=$(OWRT_TARGET) OWRT_TOOLCHAIN=$(OWRT_TOOLCHAIN) && \
+	@mkdir -p $(BUILDD).sx1276
+	@cd $(BUILDD).sx1276 && export OWRT_STAGING=$(OWRT_STAGING) OWRT_GCC_PFX=$(OWRT_GCC_PFX) OWRT_TARGET=$(OWRT_TARGET) OWRT_TOOLCHAIN=$(OWRT_TOOLCHAIN) && \
 											cmake $(MY_CMAKE_OPTS) ../../sx1276
-	@cd build.sx1276 && STAGING_DIR=$(OWRT_STAGING) $(MAKE)
+	@cd $(BUILDD).sx1276 && STAGING_DIR=$(OWRT_STAGING) $(MAKE)
 
-$(STAGING_DESTDIR)/usr/lib/libsocket++.so libsocket: build.libsocket/Makefile
+$(STAGING_DESTDIR)/usr/lib/libsocket++.so libsocket: $(BUILDD).libsocket/Makefile
 	@echo [BUILD] libsocket...
-	@cd build.libsocket && export STAGING_DIR=$(OWRT_STAGING) && PATH=$(OWRT_STAGING)/$(OWRT_TOOLCHAIN)/bin:$$PATH $(MAKE)
-	@cd build.libsocket && export STAGING_DIR=$(OWRT_STAGING) && PATH=$(OWRT_STAGING)/$(OWRT_TOOLCHAIN)/bin:$$PATH $(MAKE) install DESTDIR=$(STAGING_DESTDIR)
+	@cd $(BUILDD).libsocket && export STAGING_DIR=$(OWRT_STAGING) && PATH=$(OWRT_STAGING)/$(OWRT_TOOLCHAIN)/bin:$$PATH $(MAKE)
+	@cd $(BUILDD).libsocket && export STAGING_DIR=$(OWRT_STAGING) && PATH=$(OWRT_STAGING)/$(OWRT_TOOLCHAIN)/bin:$$PATH $(MAKE) install DESTDIR=$(STAGING_DESTDIR)
 
-build.libsocket/Makefile: | ../ext/libsocket
+$(BUILDD).libsocket/Makefile: | ../ext/libsocket
 	@echo [PREP] libsocket...
-	@mkdir -p build.libsocket
-	@cd build.libsocket && export OWRT_STAGING=$(OWRT_STAGING) OWRT_GCC_PFX=$(OWRT_GCC_PFX) OWRT_TARGET=$(OWRT_TARGET) OWRT_TOOLCHAIN=$(OWRT_TOOLCHAIN) && \
+	@mkdir -p $(BUILDD).libsocket
+	@cd $(BUILDD).libsocket && export OWRT_STAGING=$(OWRT_STAGING) OWRT_GCC_PFX=$(OWRT_GCC_PFX) OWRT_TARGET=$(OWRT_TARGET) OWRT_TOOLCHAIN=$(OWRT_TOOLCHAIN) && \
 											cmake $(MY_CMAKE_OPTS) ../../ext/libsocket
 
-$(STAGING_DESTDIR)/usr/lib/libmosquitto.so mosquitto: build.mosquitto/Makefile
+$(STAGING_DESTDIR)/usr/lib/libmosquitto.so mosquitto: $(BUILDD).mosquitto/Makefile
 	@echo [BUILD] mosquitto...
-	@cd build.mosquitto && export STAGING_DIR=$(OWRT_STAGING) && PATH=$(OWRT_STAGING)/$(OWRT_TOOLCHAIN)/bin:$$PATH $(MAKE)
-	@cd build.mosquitto && export STAGING_DIR=$(OWRT_STAGING) && PATH=$(OWRT_STAGING)/$(OWRT_TOOLCHAIN)/bin:$$PATH $(MAKE) install DESTDIR=$(STAGING_DESTDIR)
+	@cd $(BUILDD).mosquitto && export STAGING_DIR=$(OWRT_STAGING) && PATH=$(OWRT_STAGING)/$(OWRT_TOOLCHAIN)/bin:$$PATH $(MAKE)
+	@cd $(BUILDD).mosquitto && export STAGING_DIR=$(OWRT_STAGING) && PATH=$(OWRT_STAGING)/$(OWRT_TOOLCHAIN)/bin:$$PATH $(MAKE) install DESTDIR=$(STAGING_DESTDIR)
 
-build.mosquitto/Makefile: $(STAGING_DESTDIR)/usr/lib/libcares.so | ../ext/org.eclipse.mosquitto
+$(BUILDD).mosquitto/Makefile: $(STAGING_DESTDIR)/usr/lib/libcares.so | ../ext/org.eclipse.mosquitto
 	@echo [PREP] mosquitto...
-	@mkdir -p build.mosquitto
-	@cd build.mosquitto && export OWRT_STAGING=$(OWRT_STAGING) OWRT_GCC_PFX=$(OWRT_GCC_PFX) OWRT_TARGET=$(OWRT_TARGET) OWRT_TOOLCHAIN=$(OWRT_TOOLCHAIN) && \
+	@mkdir -p $(BUILDD).mosquitto
+	@cd $(BUILDD).mosquitto && export OWRT_STAGING=$(OWRT_STAGING) OWRT_GCC_PFX=$(OWRT_GCC_PFX) OWRT_TARGET=$(OWRT_TARGET) OWRT_TOOLCHAIN=$(OWRT_TOOLCHAIN) && \
 											cmake $(MY_CMAKE_OPTS) ../../ext/org.eclipse.mosquitto
 
-$(STAGING_DESTDIR)/usr/lib/libcares.so c-ares: build.c-ares/Makefile
+$(STAGING_DESTDIR)/usr/lib/libcares.so c-ares: $(BUILDD).c-ares/Makefile
 	@echo [BUILD] c-ares...
-	@cd build.c-ares && export STAGING_DIR=$(OWRT_STAGING) && PATH=$(OWRT_STAGING)/$(OWRT_TOOLCHAIN)/bin:$$PATH $(MAKE) install dist DESTDIR=$(STAGING_DESTDIR)
+	@cd $(BUILDD).c-ares && export STAGING_DIR=$(OWRT_STAGING) && PATH=$(OWRT_STAGING)/$(OWRT_TOOLCHAIN)/bin:$$PATH $(MAKE) install dist DESTDIR=$(STAGING_DESTDIR)
 
-build.c-ares/Makefile: ../ext/c-ares/Makefile.in | ../ext/c-ares
+$(BUILDD).c-ares/Makefile: ../ext/c-ares/Makefile.in | ../ext/c-ares
 	@echo [PREP] c-ares...
-	@mkdir -p build.c-ares
-	@cd build.c-ares && export OWRT_STAGING=$(OWRT_STAGING) OWRT_GCC_PFX=$(OWRT_GCC_PFX) OWRT_TARGET=$(OWRT_TARGET) OWRT_TOOLCHAIN=$(OWRT_TOOLCHAIN) && \
+	@mkdir -p $(BUILDD).c-ares
+	cd $(BUILDD).c-ares && export OWRT_STAGING=$(OWRT_STAGING) OWRT_GCC_PFX=$(OWRT_GCC_PFX) OWRT_TARGET=$(OWRT_TARGET) OWRT_TOOLCHAIN=$(OWRT_TOOLCHAIN) && \
 											PATH=$(OWRT_STAGING)/$(OWRT_TOOLCHAIN)/bin:$$PATH ../../ext/c-ares/configure --host=$(OWRT_TUPLE) --prefix=/usr
 
 ../ext/c-ares/Makefile.in: ../ext/c-ares
@@ -116,8 +117,8 @@ prebuild: $(TREE)/feeds.conf $(TREE)/.config patch $(TREE)/tmp/.kconfig-ar71xx_g
 
 pre2: $(TREE)/tmp/.kconfig-ar71xx_generic
 
-$(TREE)/.config : $(CONF)
-	cp -v $^ $(TREE)/.config && cd $(TREE) && make defconfig
+force-config $(TREE)/.config : $(CONF)
+	cp -v $(CONF) $(TREE)/.config && cd $(TREE) && make defconfig
 
 build: prebuild
 	cd $(TREE) ; make -j4
@@ -156,4 +157,4 @@ openwrt:
 	git clone https://github.com/openwrt-mirror/openwrt.git
 	cd openwrt && git checkout -b local-build ab5bd67652b940c8da4229c64eb0cdf09caf4034
 
-.PHONY: all prereq clean build patch feeds prebuild pre2 update-feeds
+.PHONY: all prereq clean build patch feeds prebuild pre2 update-feeds force-config
