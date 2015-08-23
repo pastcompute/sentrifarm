@@ -22,6 +22,7 @@ INCLUDEPATH += "./lib/SX1276lib"
 INCLUDEPATH += "./lib/arduino-mqtt-sn"
 INCLUDEPATH += "./lib/Adafruit_BMP085_Unified"
 INCLUDEPATH += "./lib/Adafruit_Sensor"
+INCLUDEPATH += "./lib/sx1276-mqttsn"
 
 win32:INCLUDEPATH ~= s,/,\\,g
 
@@ -39,14 +40,14 @@ OTHER_FILES = \
 
 SOURCES += \
     ./src/node.ino \
-    ./src/sx1276mqttsn.cpp \
     ./lib/SX1276lib/sx1276.cpp \
+    ./lib/sx1276-mqttsn/sx1276mqttsn.cpp \
     ./lib/arduino-mqtt-sn/mqttsn-messages.cpp
 
 HEADERS += \
-    ./src/sx1276mqttsn.h \
     ./lib/SX1276lib/sx1276.h \
     ./lib/SX1276lib/sx1276reg.h \
+    ./lib/sx1276-mqttsn/sx1276mqttsn.h \
     ./lib/arduino-mqtt-sn/mqttsn.h \
     ./lib/arduino-mqtt-sn/mqttsn-messages.h
 
