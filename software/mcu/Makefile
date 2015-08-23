@@ -5,8 +5,13 @@
 # Perfection is the enemy of good and all that...
 
 # Prerequisites are listed in platformio.txt
-platformio:;
+default:
+	cd sx1276-mqttsn-node && platformio run
+
+all: default
+	cd blinky && platformio run
 	cd sx1276-beacon && platformio run
 	cd sx1276-rx && platformio run
+	cd sx1276-regdump && platformio run
 
-.PHONY: platformio
+.PHONY: default all

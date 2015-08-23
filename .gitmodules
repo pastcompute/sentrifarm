@@ -12,8 +12,8 @@
 	path = software/mcu/AsyncMQTT-SN
 	url = https://github.com/pastcompute/AsyncMQTT-SN.git
 [submodule "Adafruit_BMP085_Unified"]
-	path = software/mcu/Adafruit_BMP085_Unified
+	path = software/mcu/libraries/Adafruit_BMP085_Unified
 	url = https://github.com/adafruit/Adafruit_BMP085_Unified
 [submodule "Adafruit_Sensor"]
-	path = software/mcu/Adafruit_Sensor
+	path = software/mcu/libraries/Adafruit_Sensor
 	url = https://github.com/adafruit/Adafruit_Sensor.git
