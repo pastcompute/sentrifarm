@@ -1,0 +1,16 @@
+{
+    "carambola2": {
+        "build": {
+            "mcu": "mips",
+            "variant": "generic"
+        },
+        "frameworks": [""],
+        "name": "Carmbola2",
+        "platform": "Openwrtcarambola2",
+        "upload": {},
+        "url": "http://example.com",
+        "vendor": "My Company Ltd."
+    }
+}
+
+
