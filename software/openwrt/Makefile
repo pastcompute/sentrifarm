@@ -28,7 +28,7 @@ STAGING_DESTDIR=$(OWRT_STAGING)/$(OWRT_TARGET)
 MY_CMAKE_OPTS=-DOPENWRT=yes -DCMAKE_TOOLCHAIN_FILE=$(TOP)/toolchain.$(DEVICE).cmake -DCMAKE_INSTALL_PREFIX=/usr
 #-DCMAKE_SKIP_RPATH=TRUE
 
-all: carambola2 raspbi
+all: carambola2 raspi
 
 carambola2:
 	$(MAKE) DEVICE:=carambola2 force-config all-the-things
