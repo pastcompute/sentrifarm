@@ -28,7 +28,18 @@ STAGING_DESTDIR=$(OWRT_STAGING)/$(OWRT_TARGET)
 MY_CMAKE_OPTS=-DOPENWRT=yes -DCMAKE_TOOLCHAIN_FILE=$(TOP)/toolchain.$(DEVICE).cmake -DCMAKE_INSTALL_PREFIX=/usr
 #-DCMAKE_SKIP_RPATH=TRUE
 
-all: prereq build sx1276 rsmb mqtt-sn
+all: carambola2 raspbi
+
+carambola2:
+	$(MAKE) DEVICE:=carambola2 force-config all-the-things
+
+raspi:
+	$(MAKE) DEVICE:=raspi force-config all-the-things
+
+# NOTE: changing DEVICE without refreshing .config will cause serious issues
+
+
+all-the-things: prereq build sx1276 rsmb mqtt-sn
 
 # This is annoying because there is no out of tree automake or cmake
 # Then again I fixed it by adding one...
