@@ -51,7 +51,6 @@ namespace Sentrifarm {
   void led4_on();
   void led4_off();
   void led4_double_short_flash();
-
 }
 
 #endif // SENTRIFARM_MCU_H__

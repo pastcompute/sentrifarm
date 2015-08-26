@@ -29,10 +29,6 @@
 
 namespace Sentrifarm {
 
-  SPISettings spiSettings(1000000, MSBFIRST, SPI_MODE0);
-
-  SX1276Radio radio(PIN_SX1276_CS, spiSettings);
-
   void setup_world(const String& description)
   {
 #ifdef ESP8266
