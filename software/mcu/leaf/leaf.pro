@@ -25,31 +25,31 @@ INCLUDEPATH += "./lib/Adafruit_BMP085_Unified"
 INCLUDEPATH += "./lib/Adafruit_Sensor"
 INCLUDEPATH += "./lib/sentrifarm"
 
-win32:INCLUDEPATH ~= s,/,\\,g
-
 DEFINES += "F_CPU=80000000L"
 DEFINES += "__ets__"
 DEFINES += "ICACHE_FLASH"
 DEFINES += "ARDUINO_ESP8266_ESP01"
 DEFINES += "ARDUINO_ARCH_ESP8266"
 DEFINES += "ESP8266"
-DEFINES += "ARDUINO=10601"
+DEFINES += "ARDUINO=10604"
+DEFINES += "PLATFORMIO=020202"
 
-OTHER_FILES = \
-    ./lib/arduino-mqtt-sn/examples/mqttsn-serial-bridge.cpp \
+OTHER_FILES += \
     platformio.ini
 
 SOURCES += \
-    ./src/node.ino \
+    ./src/leaf.ino \
     ./lib/SX1276lib/sx1276.cpp \
     ./lib/sentrifarm/sx1276mqttsn.cpp \
+    ./lib/sentrifarm/sf-mcu.cpp \
     ./lib/arduino-mqtt-sn/mqttsn-messages.cpp
 
 HEADERS += \
+    ./lib/sentrifarm/sf-ioadaptorshield.h \
+    ./lib/sentrifarm/sf-mcu.h \
     ./lib/SX1276lib/sx1276.h \
     ./lib/SX1276lib/sx1276reg.h \
     ./lib/sentrifarm/sx1276mqttsn.h \
     ./lib/arduino-mqtt-sn/mqttsn.h \
-    ./lib/arduino-mqtt-sn/mqttsn-messages.h
+    ./lib/arduino-mqtt-sn/mqttsn-messages.h \
 
-message("CONFIG=$$CONFIG")

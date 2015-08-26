@@ -6,6 +6,7 @@
 
 # Prerequisites are listed in platformio.txt
 default:
+	cd leaf && platformio run
 	cd sx1276-mqttsn-node && platformio run
 
 all: default
