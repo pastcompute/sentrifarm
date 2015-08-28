@@ -17,41 +17,16 @@
   along with SentriFarm Radio Relay.  If not, see <http://www.gnu.org/licenses/>.
 */
 
-#ifndef SENTRIFARM_MCU_H__
-#define SENTRIFARM_MCU_H__
+#ifndef SENTRIFARM_UTIL_H__
+#define SENTRIFARM_UTIL_H__
 
-#if defined(ESP8266)
+#define STRINGIFYDEF(x) #x
 
-#include <c_types.h>
-#include <ets_sys.h>
-#include <Esp.h> // deep sleep
+/// Some platforms (e.g. ESP8266) can't sprintf floats
+/// This function gets the fractional part as a number
+inline int fraction(float v) { return int((v - floorf(v)) * 10); }
 
-#elif defined(TEENSYDUINO)
+#define LINE_DOUBLE "===================================="
+#define LINE_SINGLE "------------------------------------"
 
-#else
-
-#error "Unsupported hardware configuration"
-
-#endif
-
-#ifndef ICACHE_FLASH_ATTR
-#define ICACHE_FLASH_ATTR
-#endif
-
-namespace Sentrifarm {
-
-  void setup_world(const String& description);
-
-  void setup_shield();
-
-  void reset_radio();
-
-  void deep_sleep_and_reset(int ms);
-
-  void led4_on();
-  void led4_off();
-  void led4_flash();
-  void led4_double_short_flash();
-}
-
-#endif // SENTRIFARM_MCU_H__
+#endif // SENTRIFARM_UTIL_H__

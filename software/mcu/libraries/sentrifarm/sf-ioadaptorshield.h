@@ -70,4 +70,10 @@
 
 #endif
 
+/// Notional reference voltage on PCF8591 Vref pin - millivolts
+/// One option could be to _sample_ this with the built in ADC on the ESP-201 or teensy-lc
+#define PCF8591_VREF 2490
+
+#define PCF8591_I2C_ADDR (0x90 >> 1)
+
 #endif // SENTRIFARM_IOADAPTORSHIELD_H__

@@ -52,4 +52,6 @@ HEADERS += \
     ./lib/sentrifarm/sx1276mqttsn.h \
     ./lib/arduino-mqtt-sn/mqttsn.h \
     ./lib/arduino-mqtt-sn/mqttsn-messages.h \
+    lib/sentrifarm/sf-sensordata.h \
+    lib/sentrifarm/sf-util.h
 

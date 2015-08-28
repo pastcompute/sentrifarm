@@ -284,7 +284,7 @@ bool need_connect = true;
 bool sent_connect = false;
 bool need_rx = true;
 bool all_done_nearly = false;
-bool wait_regack = false;
+bool wait_regack = true;
 
 int regack_ttl = 10;
 

@@ -101,6 +101,13 @@ namespace Sentrifarm {
     digitalWrite(PIN_LED4, HIGH);
   }
 
+  void led4_flash()
+  {
+    digitalWrite(PIN_LED4, LOW);
+    delay(500);
+    digitalWrite(PIN_LED4, HIGH);
+  }
+
   // Turn off if already on, delay 0.25s, then twice flash the shield LED for 0.25s. Finishes off.
   void led4_double_short_flash()
   {
