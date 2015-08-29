@@ -59,16 +59,20 @@ enum PushStates {
 
 #define STATS_INTERVAL_MS 6000
 
+#define RUNTIME_TIMEOUT 20000
+
 struct Metrics
 {
   int rx_count;
   int crc_count;
   int timeout_count;
+  int disconnect;
 
   void reset() {
     rx_count = 0;
     crc_count = 0;
     timeout_count = 0;
+    disconnect = 0;
   }
 };
 
@@ -77,6 +81,7 @@ PushStates state = NEED_CONNECT;
 Metrics metrics;
 
 elapsedMillis elapsedRuntime;
+elapsedMillis elapsedStatTime;
 
 uint16_t registered_topic_id = 0xffff;
 
@@ -166,6 +171,7 @@ void setup()
   metrics.reset();
 
   elapsedRuntime = 0;
+  elapsedStatTime = 0;
 
   // Make the first connect attempt
   MQTTHandler.connect(0, 30, "sfnode1"); // keep alive in seconds
@@ -194,21 +200,30 @@ bool register_topic()
   return true;
 }
 
+// --------------------------------------------------------------------------
 void publish_data()
 {
   char buf[192]; // keep it short...
-
   // For the moment send ASCII
   sensorData.make_mqtt_0(buf, sizeof(buf));
-
+  Serial.println(buf);
   MQTTHandler.publish(FLAG_QOS_1, registered_topic_id , buf, strlen(buf));
+}
+
+void print_stats()
+{
+  Serial.print(" state="); Serial.print(state);
+  Serial.print(" topic="); Serial.print(registered_topic_id);
+  Serial.print(" rx="); Serial.print(metrics.rx_count);
+  Serial.print(" tout="); Serial.print(metrics.timeout_count);
+  Serial.print(" crc="); Serial.print(metrics.crc_count);
+  Serial.print(" dis="); Serial.print(metrics.disconnect);
+  Serial.println();
 }
 
 // --------------------------------------------------------------------------
 void loop()
 {
-  // Sentrifarm::deep_sleep_and_reset(10000);
-
   // See if we can receive any radio data
   bool rx_ok = false;
   bool crc = false;
@@ -218,12 +233,16 @@ void loop()
     Sentrifarm::led4_flash();
   } else if (crc) { metrics.crc_count++; } else { metrics.timeout_count++; }
 
-  if (elapsedRuntime > STATS_INTERVAL_MS) {
-    Serial.print(" RX count: "); Serial.print(metrics.rx_count);
-    Serial.print(" Timeout count: "); Serial.print(metrics.timeout_count);
-    Serial.print(" CRC count: "); Serial.print(metrics.crc_count);
-    Serial.println();
-    elapsedRuntime = 0;
+  if (elapsedStatTime > STATS_INTERVAL_MS) {
+    print_stats();
+    elapsedStatTime = 0;
+  }
+
+  if (elapsedRuntime > RUNTIME_TIMEOUT) {
+    Serial.println("TOOK TOO LONG.");
+    delay(100);
+    Sentrifarm::deep_sleep_and_reset(10000);
+    return;
   }
 
   // Last msg rx'd was corrupted, so ignore it
@@ -234,6 +253,7 @@ void loop()
   if (MQTTHandler.wait_for_response()) {
     if (MQTTHandler.DidDisconnect()) {
       // We got a MQTTSN disconnect for some unexplained reason
+      metrics.disconnect ++;
       return;
     }
     // timeout - try again
@@ -255,6 +275,7 @@ void loop()
       break;
 
     case WAIT_PUBACK:
+      print_stats();
       Sentrifarm::deep_sleep_and_reset(ROUTINE_SLEEP_INTERVAL_MS);
       break;
 
