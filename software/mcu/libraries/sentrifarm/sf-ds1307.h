@@ -27,9 +27,9 @@ namespace Sentrifarm {
 
   void read_datetime_once(SensorData& sensorData)
   {
+    int error;
     Wire.beginTransmission(D1307_I2C_ADDR);
     Wire.write(0);
-    int error;
     if ((error=Wire.endTransmission()) != 0) {
       Serial.print(F("DS1370 FAIL #0 code ")); Serial.println(error);
       sensorData.have_date = false;
@@ -53,26 +53,33 @@ namespace Sentrifarm {
 
   // Read a value in the nvram
   // addr : offset from 0x8 , valid for 0..0x37 ie 0x8 .. 0x3f)
-  void read_nvram_byte(int addr, byte& value)
+  byte read_nvram_byte(int addr)
   {
+    byte value = 0xff;
+    int error;
     Wire.beginTransmission(D1307_I2C_ADDR);
     Wire.write(addr + 0x8);
-    if (Wire.endTransmission() != 0) {
+    if ((error=Wire.endTransmission()) != 0) {
+      Serial.print(F("DS1370 NVRAM FAIL #0 code ")); Serial.println(error);
     }
     Wire.requestFrom(D1307_I2C_ADDR, 1);
     value = Wire.read();
-    if (Wire.endTransmission() != 0) {
+    if ((error=Wire.endTransmission()) != 0) {
+      Serial.print(F("DS1370 NVRAM FAIL #1 code ")); Serial.println(error);
     }
+    return value;
   }
 
   // Save a value in the nvram
   // addr : offset from 0x8 , valid for 0..0x37 ie 0x8 .. 0x3f)
   void save_nvram_byte(int addr, byte value)
   {
+    int error;
     Wire.beginTransmission(D1307_I2C_ADDR);
     Wire.write(addr + 0x8);
     Wire.write(value);
-    if (Wire.endTransmission() != 0) {
+    if ((error=Wire.endTransmission()) != 0) {
+      Serial.print(F("DS1370 NVRAM FAIL #2 code ")); Serial.println(error);
     }
   }
 }

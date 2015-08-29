@@ -56,7 +56,7 @@ namespace Sentrifarm {
         bmp.getTemperature(&temperature);
         sensorData.ambient_hpa = pressure;
         sensorData.ambient_degc = temperature;
-        sensorData.altitude_m = bmp.pressureToAltitude(seaLevelPressure, event.pressure);
+        sensorData.altitude_m = bmp.pressureToAltitude(seaLevelPressure, pressure);
         sensorData.have_bmp180 = true;
       } else {
         Serial.println(F("Error reading BMP-085!"));
