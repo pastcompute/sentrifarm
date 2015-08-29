@@ -20,9 +20,10 @@
 #ifndef SENTRIFARM_UTIL_H__
 #define SENTRIFARM_UTIL_H__
 
-#define STRINGIFYDEF(x) #x
+#define STRINGIFYDEF(x) STRINGIFYDEFS(x)
+#define STRINGIFYDEFS(x) #x
 
-#define STR_SF_GIT_VERSION "SF_GIT_VERSION"
+#define STR_SF_GIT_VERSION STRINGIFYDEFS(SF_GIT_VERSION)
 
 /// Some platforms (e.g. ESP8266) can't sprintf floats
 /// This function gets the fractional part as a number
