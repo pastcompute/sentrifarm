@@ -49,7 +49,9 @@ namespace Sentrifarm {
 
     void reset() {
       // Requires -DSF_GIT_VERSION to be set...
-      strncpy(sw_version, STRINGIFYDEF(SF_GIT_VERSION), sizeof(sw_version));
+      // strncpy(sw_version, STR_SF_GIT_VERSION, sizeof(sw_version));
+      sw_version[0] = '-';
+      sw_version[1] = 0;
       have_radio = false;
       have_bmp180 = false;
       have_pcf8591 = false;
@@ -59,15 +61,16 @@ namespace Sentrifarm {
       char buf[256];
       Serial.println(LINE_DOUBLE);
 
-      Serial.println("Software tag %s", sw_version);
+      Serial.print("Software tag ");
+      Serial.println(sw_version);
 
       if (have_radio) {
-        snprintf((char*)buf, sizeof(buf), "SX1276 Version  %02x\n", radio_version);
+        snprintf((char*)buf, sizeof(buf), "SX1276 Version  %02x\n\r", radio_version);
         Serial.print(buf);
       } else { Serial.println(("Radio           NOT FOUND")); }
 
       if (have_bmp180) {
-        snprintf((char*)buf, sizeof(buf), "Barometer       %3d.%d hPa\nAir temperature %3d.%d degC\nAltitude        %3d.%d\n",
+        snprintf((char*)buf, sizeof(buf), "Barometer       %3d.%d hPa\n\rAir temperature %3d.%d degC\n\rAltitude        %3d.%d\n\r",
                  (int)floorf(ambient_hpa), fraction(ambient_hpa),
                  (int)floorf(ambient_degc), fraction(ambient_degc),
                  (int)floorf(altitude_m), fraction(altitude_m));
@@ -79,10 +82,10 @@ namespace Sentrifarm {
         int v1 = float(adc_data1) * PCF8591_VREF / 256.F;
         int v2 = float(adc_data2) * PCF8591_VREF / 256.F;
         int v3 = float(adc_data3) * PCF8591_VREF / 256.F;
-        snprintf((char*)buf, sizeof(buf), "PCF8591 Ch#0    %4dmV\n", v0); Serial.print(buf);
-        snprintf((char*)buf, sizeof(buf), "PCF8591 Ch#1    %4dmV\n", v1); Serial.print(buf);
-        snprintf((char*)buf, sizeof(buf), "PCF8591 Ch#2    %4dmV\n", v2); Serial.print(buf);
-        snprintf((char*)buf, sizeof(buf), "PCF8591 Ch#3    %4dmV\n", v3); Serial.print(buf);
+        snprintf((char*)buf, sizeof(buf), "PCF8591 Ch#0    %4dmV\n\r", v0); Serial.print(buf);
+        snprintf((char*)buf, sizeof(buf), "PCF8591 Ch#1    %4dmV\n\r", v1); Serial.print(buf);
+        snprintf((char*)buf, sizeof(buf), "PCF8591 Ch#2    %4dmV\n\r", v2); Serial.print(buf);
+        snprintf((char*)buf, sizeof(buf), "PCF8591 Ch#3    %4dmV\n\r", v3); Serial.print(buf);
       } else { Serial.println(("PCF8591       NOT FOUND")); }
 
       Serial.println(LINE_DOUBLE);

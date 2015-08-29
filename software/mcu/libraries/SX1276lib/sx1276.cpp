@@ -112,6 +112,8 @@ SX1276Radio::SX1276Radio(int cs_pin, const SPISettings& spi_settings)
     rssi_dbm_(-255),
     rx_warm_(false)
 {
+  // Note; we want DEBUG ( Serial) here because this happens before Serial is initialised,
+  // and it hangs the ESP8266
   // DEBUG("SX1276: CS pin=%d\n", cs_pin_);
 }
 

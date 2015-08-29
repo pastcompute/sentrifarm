@@ -22,6 +22,8 @@
 
 #define STRINGIFYDEF(x) #x
 
+#define STR_SF_GIT_VERSION "SF_GIT_VERSION"
+
 /// Some platforms (e.g. ESP8266) can't sprintf floats
 /// This function gets the fractional part as a number
 inline int fraction(float v) { return int((v - floorf(v)) * 10); }

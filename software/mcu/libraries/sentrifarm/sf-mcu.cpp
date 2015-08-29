@@ -39,6 +39,7 @@ namespace Sentrifarm {
     Serial.print(F("\n\n"));
     Serial.print(F("Sentrifarm : "));
     Serial.print(description);
+    Serial.print(" ");
 #if defined(TEENSYDUINO)
     Serial.println(F("TEENSY-LC"));
 #elif defined(ESP8266)
@@ -49,11 +50,13 @@ namespace Sentrifarm {
   void setup_shield()
   {
     // LED
-
     pinMode(PIN_LED4,        OUTPUT);
 
-    // i2c
+    // Radio
+    pinMode(PIN_SX1276_RST,  OUTPUT);
+    pinMode(PIN_SX1276_CS,   OUTPUT);
 
+    // i2c
 #if defined(TEENSYDUINO)
     // The teensy configuration uses the default pins
 #elif defined(ESP8266)
@@ -62,20 +65,9 @@ namespace Sentrifarm {
 #endif
 
     // SPI
-
 #if defined(TEENSYDUINO)
     SPI.setSCK(PIN_SX1276_SCK);
 #endif
-    digitalWrite(PIN_SX1276_CS, HIGH);
-    digitalWrite(PIN_SX1276_RST, HIGH);
-    digitalWrite(PIN_SX1276_MISO, HIGH);
-    digitalWrite(PIN_SX1276_MOSI, HIGH);
-    digitalWrite(PIN_SX1276_SCK,  HIGH);
-
-    // Radio
-
-    pinMode(PIN_SX1276_RST,  OUTPUT);
-    pinMode(PIN_SX1276_CS,   OUTPUT);
   }
 
   void deep_sleep_and_reset(int ms)
@@ -124,6 +116,12 @@ namespace Sentrifarm {
 
   void reset_radio()
   {
+    digitalWrite(PIN_SX1276_MISO, HIGH);
+    digitalWrite(PIN_SX1276_MOSI, HIGH);
+    digitalWrite(PIN_SX1276_SCK,  HIGH);
+    digitalWrite(PIN_SX1276_CS, HIGH);
+    digitalWrite(PIN_SX1276_RST, HIGH);
+
     // Reset the sx1276 module
     digitalWrite(PIN_SX1276_RST, LOW);
     delay(10); // spec states to pull low 100us then wait at least 5 ms

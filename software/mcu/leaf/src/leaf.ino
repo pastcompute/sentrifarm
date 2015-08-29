@@ -22,11 +22,13 @@
 #include <Wire.h>
 // Note: for some reason, platformio will fail to add the path to this files include directory to its library if not #include'd by the .ino file
 #include <mqttsn.h>
-#include <sf-mcu.h>
-#include <sf-ioadaptorshield.h>
 #include <sx1276.h>
-#include <sf-sensordata.h>
 #include <sx1276mqttsn.h>
+#include "sf-mcu.h"
+#include "sf-ioadaptorshield.h"
+#include "sf-sensordata.h"
+#include "sf-bmp180.h"
+#include "sf-pcf8591.h"
 #include <Adafruit_BMP085_U.h>
 
 Adafruit_BMP085_Unified bmp = Adafruit_BMP085_Unified(10085);
@@ -73,74 +75,17 @@ elapsedMillis elapsedRuntime;
 
 uint16_t registered_topic_id = 0xffff;
 
-// --------------------------------------------------------------------------
-// For the moment these functions are here. But they will probably move.
-void read_bmp_once()
+void read_radio_once()
 {
-  // Note: this calls Wire.begin()
-  // If experiencing issues with i2c then look at boot ordering
-  if(!bmp.begin(BMP085_MODE_STANDARD))
-  {
-    Serial.println(F("Error detecting BMP-085!"));
-    sensorData.have_bmp180 = false;
-  } else {
-    sensor_t sensor;
-    bmp.getSensor(&sensor);
-    Serial.println(F("------------- BMP-085 --------------"));
-    Serial.print  (F("Sensor:       ")); Serial.println(sensor.name);
-    Serial.print  (F("Driver Ver:   ")); Serial.println(sensor.version);
-    Serial.print  (F("Unique ID:    ")); Serial.println(sensor.sensor_id);
-    Serial.print  (F("Max Value:    ")); Serial.print(sensor.max_value); Serial.println(F(" hPa"));
-    Serial.print  (F("Min Value:    ")); Serial.print(sensor.min_value); Serial.println(F(" hPa"));
-    Serial.print  (F("Resolution:   ")); Serial.print(sensor.resolution); Serial.println(F(" hPa"));
-    Serial.println(F("------------------------------------"));
-
-    sensors_event_t event;
-    bmp.getEvent(&event);
-    if (event.pressure) {
-      // IDEA: use a 3-axis module to get improved SLP?
-      float seaLevelPressure = SENSORS_PRESSURE_SEALEVELHPA;
-      float pressure = event.pressure;
-      float temperature = 0.F;
-      bmp.getTemperature(&temperature);
-      sensorData.ambient_hpa = bmp.pressureToAltitude(seaLevelPressure, event.pressure);
-      sensorData.ambient_degc = temperature;
-      sensorData.altitude_m = pressure;
-      sensorData.have_bmp180 = true;
-    }
+  SPI.begin();
+  sensorData.radio_version = radio.ReadVersion();
+  SPI.end();
+  Serial.println(sensorData.radio_version);
+  if (sensorData.radio_version != 0 && sensorData.radio_version != 0xff) {
+    sensorData.have_radio = true;
   }
 }
 
-// --------------------------------------------------------------------------
-void read_pcf8591_once()
-{
-  byte adcValue0;
-  byte adcValue1;
-  byte adcValue2;
-  byte adcValue3;
-
-  Wire.beginTransmission(PCF8591_I2C_ADDR);
-  Wire.write(0x4); // Auto increment - request all 4 ADC channels
-  if (Wire.endTransmission() != 0) {
-    sensorData.have_pcf8591 = false;
-    return;
-  }
-  Wire.requestFrom(PCF8591_I2C_ADDR, 5);
-  Wire.read(); // dummy
-  adcValue0 = Wire.read();
-  adcValue1 = Wire.read();
-  adcValue2 = Wire.read();
-  adcValue3 = Wire.read();
-  if (Wire.endTransmission() == 0) {
-    sensorData.adc_data0 = adcValue0;
-    sensorData.adc_data1 = adcValue1;
-    sensorData.adc_data2 = adcValue2;
-    sensorData.adc_data3 = adcValue3;
-    sensorData.have_pcf8591 = true;
-  } else {
-    sensorData.have_pcf8591 = false;
-  }
-}
 
 // --------------------------------------------------------------------------
 void setup()
@@ -158,16 +103,16 @@ void setup()
   memset(&sensorData, 0, sizeof(sensorData)); // probably redundant
   sensorData.reset();
 
-  sensorData.radio_version = radio.ReadVersion();
-  sensorData.have_radio = true;
-
-  read_bmp_once();
-  read_pcf8591_once();
+  // read_chip_once()
+  read_radio_once();
+  Sentrifarm::read_bmp_once(sensorData, bmp);
+  Sentrifarm::read_pcf8591_once(sensorData);
 
   sensorData.debug_dump();
 
   Sentrifarm::led4_double_short_flash();
 
+  // This also initialises correct carrier frequency, etc.
   MQTTHandler.Begin(&Serial);
 
   metrics.reset();
@@ -178,6 +123,8 @@ void setup()
   MQTTHandler.connect(0, 30, "sfnode1"); // keep alive in seconds
   state = SENT_CONNECT;
 }
+
+// void loop() {}
 
 // --------------------------------------------------------------------------
 bool register_topic()
@@ -227,6 +174,7 @@ void loop()
     Serial.print(" RX count: "); Serial.print(metrics.rx_count);
     Serial.print(" Timeout count: "); Serial.print(metrics.timeout_count);
     Serial.print(" CRC count: "); Serial.print(metrics.crc_count);
+    Serial.println();
     elapsedRuntime = 0;
   }
 

@@ -53,5 +53,8 @@ HEADERS += \
     ./lib/arduino-mqtt-sn/mqttsn.h \
     ./lib/arduino-mqtt-sn/mqttsn-messages.h \
     lib/sentrifarm/sf-sensordata.h \
-    lib/sentrifarm/sf-util.h
+    lib/sentrifarm/sf-util.h \
+    lib/sentrifarm/sf-bmp180.h \
+    lib/sentrifarm/sf-ds1307.h \
+    lib/sentrifarm/sf-pcf8591.h
 
