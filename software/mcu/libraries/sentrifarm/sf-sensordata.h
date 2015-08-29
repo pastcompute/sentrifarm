@@ -132,10 +132,14 @@ namespace Sentrifarm {
       int v1 = float(adc_data1) * PCF8591_VREF / 256.F;
       int v2 = float(adc_data2) * PCF8591_VREF / 256.F;
       int v3 = float(adc_data3) * PCF8591_VREF / 256.F;
-      snprintf(buf, len, "%d%d%d,%d,%d.%d,%d.%d,%d,%d,%d,%d", have_radio, have_bmp180, have_pcf8591, radio_version,
-               (int)floorf(ambient_hpa), fraction(ambient_hpa),
-               (int)floorf(ambient_degc), fraction(ambient_degc),
-               v0, v1, v2, v3);
+      snprintf(buf, len, "%02x%02x%02x%02x%02x%02x,%d%d%d%d,%d,%d,%d%d%d%d%d,%d,%d.%d,%d.%d,%d,%d,%d,%d",
+              mac[0],mac[1],mac[2],mac[3],mac[4],mac[5],
+              have_radio, have_date, have_bmp180, have_pcf8591,
+              bootCount, radio_version,
+              year, month, dayOfMonth, hour, minute, second,
+              (int)floorf(ambient_hpa), fraction(ambient_hpa),
+              (int)floorf(ambient_degc), fraction(ambient_degc),
+              v0, v1, v2, v3);
     }
 
   };
