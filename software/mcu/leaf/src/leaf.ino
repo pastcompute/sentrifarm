@@ -32,6 +32,10 @@
 #include "sf-ds1307.h"
 #include <Adafruit_BMP085_U.h>
 
+#ifdef ESP8266
+#include "ESP8266WiFi.h"
+#endif
+
 Adafruit_BMP085_Unified bmp = Adafruit_BMP085_Unified(10085);
 
 SPISettings spiSettings(1000000, MSBFIRST, SPI_MODE0);
@@ -76,6 +80,21 @@ elapsedMillis elapsedRuntime;
 
 uint16_t registered_topic_id = 0xffff;
 
+void read_chip_once()
+{
+  sensorData.chipVersion = ESP.getBootVersion();
+  sensorData.chipBootMode = ESP.getBootMode();
+  sensorData.chipVcc = ESP.getVcc();
+  snprintf(sensorData.sdk, sizeof(sensorData.sdk), ESP.getSdkVersion());
+
+  // Now, we could use the eeprom to save some kind of id
+  // for the moment, use the MAC of the ESP8266
+#ifdef ESP8266
+  WiFi.macAddress(sensorData.mac);
+#endif
+
+}
+
 void read_radio_once()
 {
   SPI.begin();
@@ -85,6 +104,29 @@ void read_radio_once()
   if (sensorData.radio_version != 0 && sensorData.radio_version != 0xff) {
     sensorData.have_radio = true;
   }
+}
+
+void boot_count()
+{
+  // Update bootcount in nvram
+  byte b0 = Sentrifarm::read_nvram_byte(10);
+  byte b1 = Sentrifarm::read_nvram_byte(11);
+  byte b2 = Sentrifarm::read_nvram_byte(12);
+  byte b3 = Sentrifarm::read_nvram_byte(13);
+  uint32_t bc = (uint32_t(b0) << 24) | (uint32_t(b1) << 16) | (uint32_t(b2) << 8) | uint32_t(b3);
+  bc ++;
+#if 0
+  // We are going to need to work out a better way than loading a one-off firmware...
+  // Although having a board where you plug in the rtc, boot to zero, then plug into the real board
+  // is probably not completely bad idea
+  bc = 0;
+#endif
+
+  sensorData.bootCount = bc;
+  Sentrifarm::save_nvram_byte(10, (bc & 0xff000000) >> 24);
+  Sentrifarm::save_nvram_byte(11, (bc & 0xff0000) >> 16);
+  Sentrifarm::save_nvram_byte(12, (bc & 0xff00) >> 8);
+  Sentrifarm::save_nvram_byte(13, (bc & 0xff));
 }
 
 // --------------------------------------------------------------------------
@@ -107,11 +149,11 @@ void setup()
   memset(&sensorData, 0, sizeof(sensorData)); // probably redundant
   sensorData.reset();
 
+  read_chip_once();
+  boot_count();
   Sentrifarm::read_datetime_once(sensorData);
   Sentrifarm::read_bmp_once(sensorData, bmp);
   Sentrifarm::read_pcf8591_once(sensorData);
-
-  // read_chip_once()
   read_radio_once();
 
   sensorData.debug_dump();

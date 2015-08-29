@@ -33,6 +33,13 @@ namespace Sentrifarm {
   {
     char sw_version[42]; ///< Git hash
 
+    uint32_t bootCount;
+    byte chipVersion;
+    byte chipBootMode;
+    uint16_t chipVcc;
+    byte mac[6];
+    char sdk[16];
+
     bool have_radio;
     int radio_version;   ///< SX1276 radio version
 
@@ -59,9 +66,11 @@ namespace Sentrifarm {
 
     void reset() {
       // Requires -DSF_GIT_VERSION to be set...
-      // strncpy(sw_version, STR_SF_GIT_VERSION, sizeof(sw_version));
-      sw_version[0] = '-';
-      sw_version[1] = 0;
+      strncpy(sw_version, STR_SF_GIT_VERSION, sizeof(sw_version));
+      bootCount = 0xffffffff;
+      chipVersion = 0;
+      chipBootMode = 0;
+      chipVcc = 0;
       have_radio = false;
       have_bmp180 = false;
       have_pcf8591 = false;
@@ -74,12 +83,18 @@ namespace Sentrifarm {
 
       Serial.print("Software tag ");
       Serial.println(sw_version);
+#if defined(ESP8266)
+      snprintf(buf, sizeof(buf), "ESP8266: ver=%d boot_mode=%d vcc=%d sdk=%s MAC=%02x:%02x:%02x:%02x:%02x:%02x",
+            (int)chipVersion, (int)chipBootMode, (int)chipVcc, sdk, mac[0], mac[1], mac[2], mac[3], mac[4], mac[5]);
+      Serial.println(buf);
+#endif
+
+      Serial.print("BOOT COUNT : "); Serial.println(bootCount);
 
       if (have_date) {
         snprintf((char*)buf, sizeof(buf), "DS1307: 20%02u-%02d-%02u %02u-%02u\n\r",
                     (int)year, (int)month, (int)dayOfMonth, (int)hour, (int)minute);
         Serial.print(buf);
-
       } else { Serial.println(("DS1307            NOT FOUND")); }
 
       if (have_radio) {
