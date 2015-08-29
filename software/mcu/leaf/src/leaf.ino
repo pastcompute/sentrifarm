@@ -207,7 +207,7 @@ void publish_data()
   // For the moment send ASCII
   sensorData.make_mqtt_0(buf, sizeof(buf));
   Serial.println(buf);
-  MQTTHandler.publish(FLAG_QOS_1, registered_topic_id , buf, strlen(buf));
+  MQTTHandler.publish(FLAG_QOS_0, registered_topic_id , buf, strlen(buf));
 }
 
 void print_stats()
@@ -275,6 +275,7 @@ void loop()
       break;
 
     case WAIT_PUBACK:
+      // probably actually a WILL
       print_stats();
       Sentrifarm::deep_sleep_and_reset(ROUTINE_SLEEP_INTERVAL_MS);
       break;
