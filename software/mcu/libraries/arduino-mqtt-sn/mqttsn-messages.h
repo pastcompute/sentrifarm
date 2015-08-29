@@ -33,7 +33,7 @@ THE SOFTWARE.
 class MQTTSN {
 public:
     enum { MAX_TOPICS = 10 } ;
-    enum { MAX_BUFFER_SIZE = 66 };
+    enum { MAX_BUFFER_SIZE = 92 };
 
     MQTTSN();
     virtual ~MQTTSN();
