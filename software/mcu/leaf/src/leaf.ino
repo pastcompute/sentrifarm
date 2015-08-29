@@ -29,6 +29,7 @@
 #include "sf-sensordata.h"
 #include "sf-bmp180.h"
 #include "sf-pcf8591.h"
+#include "sf-ds1307.h"
 #include <Adafruit_BMP085_U.h>
 
 Adafruit_BMP085_Unified bmp = Adafruit_BMP085_Unified(10085);
@@ -86,7 +87,6 @@ void read_radio_once()
   }
 }
 
-
 // --------------------------------------------------------------------------
 void setup()
 {
@@ -94,6 +94,10 @@ void setup()
   Sentrifarm::setup_shield();
   Sentrifarm::led4_on();
   Sentrifarm::reset_radio();
+
+  // 0x48 (ADC), 0x50 (EEPROM), 0x68 (RTC), 0x77 (BMP)
+  // For reasons I dont understand, the RTC is only working if we first scan the entire i2c bus. WTAF?
+  Wire.begin();  Sentrifarm::scan_i2c_bus();
 
   Serial.println(F("go..."));
   Sentrifarm::led4_double_short_flash();
@@ -103,10 +107,12 @@ void setup()
   memset(&sensorData, 0, sizeof(sensorData)); // probably redundant
   sensorData.reset();
 
-  // read_chip_once()
-  read_radio_once();
+  Sentrifarm::read_datetime_once(sensorData);
   Sentrifarm::read_bmp_once(sensorData, bmp);
   Sentrifarm::read_pcf8591_once(sensorData);
+
+  // read_chip_once()
+  read_radio_once();
 
   sensorData.debug_dump();
 

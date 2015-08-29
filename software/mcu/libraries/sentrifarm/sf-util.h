@@ -28,6 +28,10 @@
 /// This function gets the fractional part as a number
 inline int fraction(float v) { return int((v - floorf(v)) * 10); }
 
+inline byte decToBcd(byte val) { return(val/10*16 + (val%10)); }
+
+inline byte bcdToDec(byte val) { return(val/16*10 + (val%16)); }
+
 #define LINE_DOUBLE "===================================="
 #define LINE_SINGLE "------------------------------------"
 

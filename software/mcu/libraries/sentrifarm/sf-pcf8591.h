@@ -34,6 +34,7 @@ namespace Sentrifarm {
 
     Wire.beginTransmission(PCF8591_I2C_ADDR);
     Wire.write(0x4); // Auto increment - request all 4 ADC channels
+    Wire.write(0x0); // Placeholder - unused DAC
     if (Wire.endTransmission() != 0) {
       sensorData.have_pcf8591 = false;
       return;

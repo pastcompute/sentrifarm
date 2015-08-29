@@ -60,8 +60,12 @@ namespace Sentrifarm {
 #if defined(TEENSYDUINO)
     // The teensy configuration uses the default pins
 #elif defined(ESP8266)
-    // Annoyingly this is using deprecated to set the static default because the adafruit library calls Wire.begin()
+    // Annoyingly the adafruit library calls Wire.begin()
+    // which if we dont set pins, will use the wrong defaults
+    // and further, pins() is deprecated and even more annoyingly
+    // wire.begin() each time will reset everything...
     Wire.pins(PIN_SDA, PIN_SCL);
+    // Wire.begin doesn t work
 #endif
 
     // SPI
@@ -127,6 +131,19 @@ namespace Sentrifarm {
     delay(10); // spec states to pull low 100us then wait at least 5 ms
     digitalWrite(PIN_SX1276_RST, HIGH);
     delay(50);
+  }
+
+  void scan_i2c_bus()
+  {
+    for (byte addr=0; addr < 127; addr++) {
+      Wire.beginTransmission(addr);
+      int error = Wire.endTransmission();
+      char buf[32];
+      if (error == 0) {
+        snprintf(buf, sizeof(buf), "i2c device at %02x", (int)addr);
+        Serial.println(buf);
+      }
+    }
   }
 
 }

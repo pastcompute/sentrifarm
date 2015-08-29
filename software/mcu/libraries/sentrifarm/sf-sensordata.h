@@ -47,6 +47,16 @@ namespace Sentrifarm {
     byte adc_data2;
     byte adc_data3;
 
+    // DS1307 RTC
+    bool have_date;
+    byte second;
+    byte minute;
+    byte hour;
+    byte dayOfWeek;
+    byte dayOfMonth;
+    byte month;
+    byte year;
+
     void reset() {
       // Requires -DSF_GIT_VERSION to be set...
       // strncpy(sw_version, STR_SF_GIT_VERSION, sizeof(sw_version));
@@ -55,6 +65,7 @@ namespace Sentrifarm {
       have_radio = false;
       have_bmp180 = false;
       have_pcf8591 = false;
+      have_date = false;
     }
 
     void debug_dump() const {
@@ -64,13 +75,20 @@ namespace Sentrifarm {
       Serial.print("Software tag ");
       Serial.println(sw_version);
 
+      if (have_date) {
+        snprintf((char*)buf, sizeof(buf), "DS1307: 20%02u-%02d-%02u %02u-%02u\n\r",
+                    (int)year, (int)month, (int)dayOfMonth, (int)hour, (int)minute);
+        Serial.print(buf);
+
+      } else { Serial.println(("DS1307            NOT FOUND")); }
+
       if (have_radio) {
-        snprintf((char*)buf, sizeof(buf), "SX1276 Version  %02x\n\r", radio_version);
+        snprintf((char*)buf, sizeof(buf), "SX1276 Version  0x%02x\n\r", radio_version);
         Serial.print(buf);
       } else { Serial.println(("Radio           NOT FOUND")); }
 
       if (have_bmp180) {
-        snprintf((char*)buf, sizeof(buf), "Barometer       %3d.%d hPa\n\rAir temperature %3d.%d degC\n\rAltitude        %3d.%d\n\r",
+        snprintf((char*)buf, sizeof(buf), "Barometer       %4d.%d hPa\n\rAir temperature  %3d.%d degC\n\rAltitude        %4d.%d\n\r",
                  (int)floorf(ambient_hpa), fraction(ambient_hpa),
                  (int)floorf(ambient_degc), fraction(ambient_degc),
                  (int)floorf(altitude_m), fraction(altitude_m));

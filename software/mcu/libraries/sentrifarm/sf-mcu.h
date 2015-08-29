@@ -48,6 +48,8 @@ namespace Sentrifarm {
 
   void deep_sleep_and_reset(int ms);
 
+  void scan_i2c_bus();
+
   void led4_on();
   void led4_off();
   void led4_flash();

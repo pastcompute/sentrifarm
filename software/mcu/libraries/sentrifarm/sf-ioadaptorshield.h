@@ -76,4 +76,6 @@
 
 #define PCF8591_I2C_ADDR (0x90 >> 1)
 
+#define D1307_I2C_ADDR 0x68
+
 #endif // SENTRIFARM_IOADAPTORSHIELD_H__
