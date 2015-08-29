@@ -221,6 +221,8 @@ void print_stats()
   Serial.println();
 }
 
+int puback_pass_hack = 0;
+
 // --------------------------------------------------------------------------
 void loop()
 {
@@ -241,7 +243,11 @@ void loop()
   if (elapsedRuntime > RUNTIME_TIMEOUT) {
     Serial.println("TOOK TOO LONG.");
     delay(100);
-    Sentrifarm::deep_sleep_and_reset(10000);
+    if (puback_pass_hack == 0) {
+      Sentrifarm::deep_sleep_and_reset(10000);
+    } else {
+      Sentrifarm::deep_sleep_and_reset(ROUTINE_SLEEP_INTERVAL_MS);
+    }
     return;
   }
 
@@ -264,20 +270,29 @@ void loop()
     case SENT_CONNECT:
       // if we got here, then we processed a CONNACK.
       // register our topic
-      register_topic();
+      if (!register_topic()) {
+        // still waiting for it
+        return;
+      }
+      Serial.print("HAVE TOPIC ID:"); Serial.println(registered_topic_id);
+      elapsedRuntime = 0; // hang around again if we got this far
       // We expect the next message to be a regack
       state = WAIT_REGACK;
-      return;
+      // fall through
 
     case WAIT_REGACK:
       publish_data();
+      elapsedRuntime = 0; // hang around again if we got this far
       state = WAIT_PUBACK;
       break;
 
     case WAIT_PUBACK:
       // probably actually a WILL
+      puback_pass_hack ++;
       print_stats();
-      Sentrifarm::deep_sleep_and_reset(ROUTINE_SLEEP_INTERVAL_MS);
+      if (puback_pass_hack > 2) {
+        Sentrifarm::deep_sleep_and_reset(ROUTINE_SLEEP_INTERVAL_MS);
+      }
       break;
 
     default:

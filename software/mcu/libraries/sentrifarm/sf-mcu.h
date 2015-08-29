@@ -26,6 +26,8 @@
 #include <ets_sys.h>
 #include <Esp.h> // deep sleep
 
+extern "C" uint16_t readvdd33(void);
+
 #elif defined(TEENSYDUINO)
 
 #else
