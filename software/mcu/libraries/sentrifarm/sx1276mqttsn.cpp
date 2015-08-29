@@ -114,6 +114,10 @@ void MQTTSX1276::send_message_impl(const uint8_t* msg, uint8_t length)
   tx_buffer_[0] = 0;
   tx_buffer_[1] = tx_rolling_;
   tx_buffer_[2] = 0; // echo counter
+  if (length > MAX_BUFFER_SIZE) {
+    DEBUG("TX TRUNCATION!\n\r");
+    length = MAX_BUFFER_SIZE;
+  }
   memcpy(tx_buffer_+3, msg, length);
   byte xorv = xorvbuf(tx_buffer_, length+3);
   tx_buffer_[length + 3] = xorv;
