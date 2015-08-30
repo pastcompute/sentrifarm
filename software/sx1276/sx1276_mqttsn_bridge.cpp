@@ -21,6 +21,7 @@ along with SentriFarm Radio Relay.  If not, see <http://www.gnu.org/licenses/>.
 #include "misc.hpp"
 #include "util.hpp"
 #include "libsocket/inetserverdgram.hpp"
+#include "libsocket/inetclientdgram.hpp"
 #include <boost/thread.hpp>
 #include <boost/shared_ptr.hpp>
 #include <boost/format.hpp>
@@ -114,7 +115,7 @@ public:
     }
     buffer[len+3] = xorv;
 #if 1
-	  cout << "Predicted time on air: " << radio_->PredictTimeOnAir(buffer, sizeof(buffer)) << "\n";
+    cout << "Predicted time on air: " << radio_->PredictTimeOnAir(buffer, sizeof(buffer)) << "\n";
 #endif
     if (!radio_->SendSimpleMessage(buffer, sizeof(buffer))) {
       // SPI error
@@ -216,14 +217,14 @@ private:
 
 class WorkerThread
 {
-  libsocket::inet_dgram_server& srv_;
+  shared_ptr<libsocket::inet_dgram> socket_;
   RadioManager& radio_;
   bool outward_;
   void OutLoop() {
     for (;;) {
       uint8_t buffer[127];
       string from, fromport;
-      int n = srv_.rcvfrom(buffer, sizeof(buffer), from, fromport);
+      int n = socket_->rcvfrom(buffer, sizeof(buffer), from, fromport);
       if (n > 0) {
         { radio_.SetPort(from, fromport); }
         cerr << format("[UDP RX] %s:%d : %d:%s\n") % from % fromport % n % util::buf2str(buffer,n);
@@ -254,26 +255,35 @@ class WorkerThread
       bool ok = radio_.TryReceive(buffer, 256, r);
 
       if (ok) { // FIXME
-        string ip; string port;
-        bool have_port = radio_.GetPort(ip, port);
-        if (!have_port) { cerr << format("[Radio RX -> NOWHERE] %d:%s\n") % r % util::buf2str(buffer,r); }
-        else {
-        cerr << format("[Radio RX -> %s:%s] %d:%s\n") % ip % port % r % util::buf2str(buffer,r);
+#if 0
         FILE* f = popen("od -Ax -tx1z -v -w16", "w");
         if (f) { fwrite(buffer, r, 1, f); pclose(f); }
+#endif
+        string ip; string port;
+        bool have_port = radio_.GetPort(ip, port);
         try {
-          srv_.sndto(buffer, r, ip, port);
+          if (have_port) {
+            cerr << format("[Radio RX -> %s:%s] %d:%s\n") % ip % port % r % util::buf2str(buffer,r);
+            socket_->sndto(buffer, r, ip, port);
+          } else {
+            shared_ptr<libsocket::dgram_client_socket> client(boost::dynamic_pointer_cast<libsocket::dgram_client_socket>(socket_));
+            if (client) {
+              cerr << format("[Radio RX -> CLIENT] %d:%s\n") % r % util::buf2str(buffer,r);
+              client->snd(buffer, r);
+            } else {
+              cerr << format("[Radio RX -> NOWHERE] %d:%s\n") % r % util::buf2str(buffer,r);
+            }
+          }
         } catch (libsocket::socket_exception& e) { cerr << e.mesg<< "\n"; }
-        }
       } else {
         radio_.Restart();
       }
     }
   }
 public:
-  // TODO: abstrfact SX1276 RADIo to Radio, etc
-  WorkerThread(libsocket::inet_dgram_server& srv, RadioManager& radio, bool outward)
-  : srv_(srv),
+  // TODO: abstract SX1276 Radio to Radio, etc
+  WorkerThread(boost::shared_ptr<libsocket::inet_dgram>& socket, RadioManager& radio, bool outward)
+  : socket_(socket),
     radio_(radio),
     outward_(outward)
   {}
@@ -287,16 +297,39 @@ public:
   }
 };
 
+// OK. so it seems bridge mode is no good when we dont actually have a borker on the other side (like the leaf)
+// So if we just connect to the broker as a client we can bridge the leaf node as a publisher without any issues
+//
+// Processes on primary:
+//   broker_mqtts rsmb-config-carambola2-test  # <-- comment out bridge in config to suppress flood of warnings on no 1885 port
+//   sx1276_mqttsn_bridge /dev/spidev0.1 connect 1883
+//   mqtt-sn-sub -v -t '#'
+// Issues with this configuration: if we restart the subscriber the broker gets confused on msgs from leaf?
+
 int main(int argc, char *argv[])
 {
   string UDP_BIND_IP = "127.0.0.1";
   int port = 1884;
 
-  if (argc < 3) { fprintf(stderr, "Usage: %s <spidev> <udp-listen-port>\n", argv[0]); return 1; }
+  bool udp_server = false;
 
-  if ((port = atoi(argv[2]) < 1)) { cerr << "Invalid port.\n"; return 1; }
+  if (argc < 4) { fprintf(stderr, "Usage: %s <spidev> <listen|connect> <udp-port>\n(Supports localhost connections only)\n", argv[0]); return 1; }
+  string udp_type = string(argv[2]);
+  if (udp_type == "listen") {
+    udp_server = true;
+  } else if (udp_type == "connect") {
+  } else {
+    cerr << "Invalid command.\n"; return 1; 
+  }
 
-  libsocket::inet_dgram_server srv(UDP_BIND_IP, argv[2], LIBSOCKET_IPv4);
+  if ((port = atoi(argv[3]) < 1)) { cerr << "Invalid port.\n"; return 1; }
+
+  shared_ptr<libsocket::inet_dgram> udpsocket;
+  if (udp_server) {
+    udpsocket.reset(new libsocket::inet_dgram_server(UDP_BIND_IP, argv[3], LIBSOCKET_IPv4));
+  } else {
+    udpsocket.reset(new libsocket::inet_dgram_client("127.0.0.1", argv[3], LIBSOCKET_IPv4));
+  }
 
   shared_ptr<SX1276Platform> platform = SX1276Platform::GetInstance(argv[1]);
   if (!platform) { PR_ERROR("Unable to create platform instance\n"); return 1; }
@@ -318,8 +351,8 @@ int main(int argc, char *argv[])
   cout << format("Carrier Frequency: %uHz\n") % radio->carrier();
   if (radio->fault()) { PR_ERROR("Radio Fault\n"); return 1; }
 
-  WorkerThread outThread(srv, radio_manager, true);
-  WorkerThread inThread(srv, radio_manager, false);
+  WorkerThread outThread(udpsocket, radio_manager, true);
+  WorkerThread inThread(udpsocket, radio_manager, false);
 
   radio_manager.TransmitHello();
 
