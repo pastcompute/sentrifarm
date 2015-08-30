@@ -34,6 +34,9 @@
 
 #ifdef ESP8266
 #include "ESP8266WiFi.h"
+extern "C" {
+#include "user_interface.h"
+}
 #endif
 
 Adafruit_BMP085_Unified bmp = Adafruit_BMP085_Unified(10085);
@@ -108,6 +111,7 @@ void read_radio_once()
   Serial.println(sensorData.radio_version);
   if (sensorData.radio_version != 0 && sensorData.radio_version != 0xff) {
     sensorData.have_radio = true;
+    sensorData.rssi = 0;
   }
 }
 
@@ -134,31 +138,49 @@ void boot_count()
   Sentrifarm::save_nvram_byte(13, (bc & 0xff));
 }
 
+bool in_beacon_mode = false;
+
+int32_t beacon_counter = 0;
+
 // --------------------------------------------------------------------------
 void setup()
 {
-  Sentrifarm::setup_world(F("LEAF Node V0.1"));
-  Sentrifarm::setup_shield();
-  Sentrifarm::led4_on();
-  Sentrifarm::reset_radio();
-
-  // 0x48 (ADC), 0x50 (EEPROM), 0x68 (RTC), 0x77 (BMP)
-  // For reasons I dont understand, the RTC is only working if we first scan the entire i2c bus. WTAF?
-  Wire.begin();  Sentrifarm::scan_i2c_bus();
-
-  Serial.println(F("go..."));
-  Sentrifarm::led4_double_short_flash();
-
   // So, to keep things simple, we read all the sensors now,
   // then use loop() as a state machine processor for publishing the data to the central node
   memset(&sensorData, 0, sizeof(sensorData)); // probably redundant
   sensorData.reset();
 
+  Sentrifarm::setup_world(F("LEAF Node V0.1"));
+  Sentrifarm::setup_shield(in_beacon_mode);
+  Sentrifarm::led4_on();
+  Sentrifarm::reset_radio();
+
+  if (in_beacon_mode) {
+    Serial.println("--------BEACON MODE----------")  ;
+    sensorData.beacon_mode = true;
+  } else {
+#ifdef ESP8266
+  // copy the counter into the ESP nvram
+    system_rtc_mem_write(64, &beacon_counter, 4);
+  }
+#endif
+
+  if (!in_beacon_mode) {
+    // 0x48 (ADC), 0x50 (EEPROM), 0x68 (RTC), 0x77 (BMP)
+    // For reasons I dont understand, the RTC is only working if we first scan the entire i2c bus. WTAF?
+    Wire.begin();  Sentrifarm::scan_i2c_bus();
+  }
+
+  Serial.println(F("go..."));
+  Sentrifarm::led4_double_short_flash();
+
   read_chip_once();
-  boot_count();
-  Sentrifarm::read_datetime_once(sensorData);
-  Sentrifarm::read_bmp_once(sensorData, bmp);
-  Sentrifarm::read_pcf8591_once(sensorData);
+  if (!in_beacon_mode) {
+    boot_count();
+    Sentrifarm::read_datetime_once(sensorData);
+    Sentrifarm::read_bmp_once(sensorData, bmp);
+    Sentrifarm::read_pcf8591_once(sensorData);
+  }
   read_radio_once();
 
   sensorData.debug_dump();
@@ -172,6 +194,10 @@ void setup()
 
   elapsedRuntime = 0;
   elapsedStatTime = 0;
+
+  if (in_beacon_mode) {
+    return;
+  }
 
   // Make the first connect attempt
   MQTTHandler.connect(0, 30, "sfnode1"); // keep alive in seconds
@@ -223,9 +249,41 @@ void print_stats()
 
 int puback_pass_hack = 0;
 
+void beacon_tx()
+{
+#ifdef ESP8266
+  // copy the counter into the ESP nvram
+  system_rtc_mem_read(64, &beacon_counter, 4);
+#endif
+
+  char buf[48];
+  snprintf(buf, sizeof(buf), "Sentrifarm Beacon %d", beacon_counter);
+  beacon_counter ++;
+  Serial.println(buf);
+  Serial.println(radio.PredictTimeOnAir(strlen(buf)));
+  Sentrifarm::led4_on();
+  SPI.begin();
+  radio.TransmitMessage(buf, strlen(buf));
+  radio.Standby();
+  SPI.end();
+  delay(1000);
+  Sentrifarm::led4_off();
+
+#ifdef ESP8266
+  // copy the counter into the ESP nvram
+  system_rtc_mem_write(64, &beacon_counter, 4);
+#endif
+
+  Sentrifarm::deep_sleep_and_reset(5000);
+  return;
+}
+
 // --------------------------------------------------------------------------
 void loop()
 {
+  if (in_beacon_mode) { beacon_tx(); }
+
+
   // See if we can receive any radio data
   bool rx_ok = false;
   bool crc = false;
@@ -281,6 +339,7 @@ void loop()
       // fall through
 
     case WAIT_REGACK:
+      sensorData.rssi = radio.GetLastRssi();
       publish_data();
       elapsedRuntime = 0; // hang around again if we got this far
       state = WAIT_PUBACK;

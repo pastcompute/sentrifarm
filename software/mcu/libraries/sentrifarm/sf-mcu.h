@@ -44,7 +44,7 @@ namespace Sentrifarm {
 
   void setup_world(const String& description);
 
-  void setup_shield();
+  void setup_shield(bool & beacon_mode);
 
   void reset_radio();
 

@@ -54,6 +54,9 @@ public:
   /// Set the carrier frequency
   void SetCarrier(uint32_t carrier_hz);
 
+  /// Get RSSi of last receive
+  int GetLastRssi() const { return rssi_dbm_; }
+
   /// Return the SX1276 to LoRa standby mode
   void Standby();
 

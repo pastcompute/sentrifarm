@@ -33,7 +33,9 @@ namespace Sentrifarm {
   {
     char sw_version[42]; ///< Git hash
 
-    uint32_t bootCount;
+    bool beacon_mode;
+
+    int32_t bootCount;
     byte chipVersion;
     byte chipBootMode;
     uint16_t chipVcc;
@@ -42,6 +44,7 @@ namespace Sentrifarm {
 
     bool have_radio;
     int radio_version;   ///< SX1276 radio version
+    int rssi;
 
     bool have_bmp180;
     float ambient_hpa;   ///< BPM180 barometric air pressure, HPa
@@ -67,6 +70,7 @@ namespace Sentrifarm {
     void reset() {
       // Requires -DSF_GIT_VERSION to be set...
       strncpy(sw_version, STR_SF_GIT_VERSION, sizeof(sw_version));
+      beacon_mode = false;
       bootCount = 0xffffffff;
       chipVersion = 0;
       chipBootMode = 0;
@@ -131,15 +135,14 @@ namespace Sentrifarm {
       int v0 = float(adc_data0) * PCF8591_VREF / 256.F;
       int v1 = float(adc_data1) * PCF8591_VREF / 256.F;
       int v2 = float(adc_data2) * PCF8591_VREF / 256.F;
-      int v3 = float(adc_data3) * PCF8591_VREF / 256.F;
-      snprintf(buf, len, "%02x%02x%02x%02x%02x%02x,%d%d%d%d,%d,%d,%d%d%d%d%d,%d,%d.%d,%d.%d,%d,%d,%d,%d",
+      snprintf(buf, len, "%02x%02x%02x%02x%02x%02x,%d%d%d,%d,%d,%d,%02d%02d%02d%02d%02d%02d,%d.%d,%d.%d,%d,%d,%d",
               mac[0],mac[1],mac[2],mac[3],mac[4],mac[5],
-              have_radio, have_date, have_bmp180, have_pcf8591,
-              bootCount, radio_version,
+              have_date, have_bmp180, have_pcf8591,
+              bootCount, radio_version, rssi,
               year, month, dayOfMonth, hour, minute, second,
               (int)floorf(ambient_hpa), fraction(ambient_hpa),
               (int)floorf(ambient_degc), fraction(ambient_degc),
-              v0, v1, v2, v3);
+              v0, v1, v2);
     }
 
   };

@@ -47,7 +47,7 @@ namespace Sentrifarm {
 #endif
   }
 
-  void setup_shield()
+  void setup_shield(bool & beacon_mode)
   {
     // LED
     pinMode(PIN_LED4,        OUTPUT);
@@ -56,16 +56,25 @@ namespace Sentrifarm {
     pinMode(PIN_SX1276_RST,  OUTPUT);
     pinMode(PIN_SX1276_CS,   OUTPUT);
 
+    beacon_mode = false;
+
     // i2c
 #if defined(TEENSYDUINO)
     // The teensy configuration uses the default pins
 #elif defined(ESP8266)
+    // Before we turn on i2c, see if there is a jumper over SCL
+    // in which case go into beacon mode
+    pinMode(PIN_SCL, INPUT_PULLUP);
+    beacon_mode = digitalRead(PIN_SCL) == 0;
+
     // Annoyingly the adafruit library calls Wire.begin()
     // which if we dont set pins, will use the wrong defaults
     // and further, pins() is deprecated and even more annoyingly
     // wire.begin() each time will reset everything...
-    Wire.pins(PIN_SDA, PIN_SCL);
-    // Wire.begin doesn t work
+    if (!beacon_mode) {
+      Wire.pins(PIN_SDA, PIN_SCL);
+      // Wire.begin doesn t work!
+    }
 #endif
 
     // SPI
