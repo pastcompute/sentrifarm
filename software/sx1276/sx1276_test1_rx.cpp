@@ -77,6 +77,7 @@ int main(int argc, char* argv[])
   long total = 0;
   long faultCount = 0;
   char xflop = '.';
+  int tout1 = 0;
   while (true) {
     total++;
 
@@ -95,16 +96,20 @@ int main(int argc, char* argv[])
       radio.ApplyDefaultLoraConfiguration();
       usleep(500000);
     } else if (timeout) {
-      printf("%c\r", xflop); fflush(stdout);
-      switch (xflop) {
-        case '.' : xflop = '-'; break;
-        case '-' : xflop = '/'; break;
-        case '/' : xflop = '|'; break;
-        case '|' : xflop = '\\'; break;
-        case '\\' : xflop = '-'; break;
-        default: xflop = '.'; break;
+      tout1++; // dont print too often or we miss messages
+      if (tout1 % 40 == 0) {
+        printf("%c\r", xflop); fflush(stdout);
+        switch (xflop) {
+          case '.' : xflop = '-'; break;
+          case '-' : xflop = '/'; break;
+          case '/' : xflop = '|'; break;
+          case '|' : xflop = '\\'; break;
+          case '\\' : xflop = '-'; break;
+          default: xflop = '.'; break;
+        }
       }
     } else {
+      tout1 = 0;
       printf("\r"); fflush(stdout);
       FILE* f = popen("od -Ax -tx1z -v -w32", "w");
       if (f) { fwrite(buffer, size, 1, f); pclose(f); }
