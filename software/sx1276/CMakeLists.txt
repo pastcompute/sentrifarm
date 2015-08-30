@@ -96,7 +96,7 @@ find_package(Threads REQUIRED)
 set(Boost_USE_STATIC_LIBS OFF)
 set(Boost_USE_MULTITHREADED ON)
 set(Boost_USE_STATIC_RUNTIME OFF)
-find_package(Boost 1.49.0 COMPONENTS system chrono thread)
+find_package(Boost 1.49.0 COMPONENTS system chrono thread date_time)
 if(Boost_FOUND)
   include_directories(${Boost_INCLUDE_DIRS})
 endif()
@@ -159,7 +159,7 @@ endif(enable_maintainer)
 
 # FIXME This should probably be a lib, sort it out later
 set(MY_FILES buspirate_binary.c buspirate_spi.cpp sx1276_platform.cpp misc.cpp spidev_spi.cpp sx1276.cpp spi.hpp util.hpp)
-set(MY_LIBS ${CMAKE_THREAD_LIBS_INIT} ${Boost_SYSTEM_LIBRARY} ${Boost_CHRONO_LIBRARY})
+set(MY_LIBS ${CMAKE_THREAD_LIBS_INIT} ${Boost_SYSTEM_LIBRARY} ${Boost_CHRONO_LIBRARY} ${Boost_DATE_TIME_LIBRARY})
 
 add_executable(bp_sx1276_dump bp_sx1276_dump.c buspirate_binary.c )
 add_executable(sx1276_dump_regs sx1276_dump_regs.cpp ${MY_FILES})

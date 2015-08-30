@@ -46,7 +46,7 @@ int main(int argc, char* argv[])
   if (!spi) { PR_ERROR("Unable to get SPI instance\n"); return 1; }
 
   // Pass a small value in for RTL-SDK spectrum analyser to show up
-  unsigned inter_msg_delay_us = 200000;
+  int inter_msg_delay_us = 200000;
   if (getenv("BEACON_INTERVAL")) { inter_msg_delay_us = atoi(getenv("BEACON_INTERVAL")); }
 
   Misc::UserTraceSettings(spi);
@@ -62,18 +62,21 @@ int main(int argc, char* argv[])
 
   radio.ChangeCarrier(919000000);
   radio.ApplyDefaultLoraConfiguration();
+  radio.SetSymbolTimeout(732);
 
   cout << format("Check read Carrier Frequency: %uHz\n") % radio.carrier();
 
 
   if (radio.fault()) return 1;
 
-  unsigned timeout_ms = 2000;
+  unsigned timeout_ms = 5000;
   if (getenv("TIMEOUT")) { timeout_ms = atoi(getenv("TIMEOUT")); }
 
+  setvbuf(stdout, NULL, _IONBF, 0);
 
   long total = 0;
   long faultCount = 0;
+  char xflop = '.';
   while (true) {
     total++;
 
@@ -82,7 +85,6 @@ int main(int argc, char* argv[])
     bool timeout = false;
     int size = 127;
     bool error = !radio.ReceiveSimpleMessage(buffer, size, timeout_ms, timeout, crc);
-
     if (crc || error) {
       radio.Standby();
       printf("\n");
@@ -93,13 +95,22 @@ int main(int argc, char* argv[])
       radio.ApplyDefaultLoraConfiguration();
       usleep(500000);
     } else if (timeout) {
-      printf("x");
+      printf("%c\r", xflop); fflush(stdout);
+      switch (xflop) {
+        case '.' : xflop = '-'; break;
+        case '-' : xflop = '/'; break;
+        case '/' : xflop = '|'; break;
+        case '|' : xflop = '\\'; break;
+        case '\\' : xflop = '-'; break;
+        default: xflop = '.'; break;
+      }
     } else {
-      FILE* f = popen("od -Ax -tx1z -v -w16", "w");
+      printf("\r"); fflush(stdout);
+      FILE* f = popen("od -Ax -tx1z -v -w32", "w");
       if (f) { fwrite(buffer, size, 1, f); pclose(f); }
       //printf("%-.126s", buffer);
       radio.Standby();
-      usleep(inter_msg_delay_us);
+      if (inter_msg_delay_us >= 0) { usleep(inter_msg_delay_us); }
     }
   }
   return 1;

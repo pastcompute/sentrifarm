@@ -23,6 +23,7 @@
 
 #include <boost/chrono/time_point.hpp>
 #include <boost/chrono/system_clocks.hpp>
+#include <boost/date_time/posix_time/posix_time.hpp>
 
 using boost::chrono::steady_clock;
 
@@ -618,6 +619,9 @@ bool SX1276Radio::ReceiveSimpleMessage(uint8_t buffer[], int& size, int timeout_
 #endif
 
   DEBUG("[DBUG] ");
+  boost::posix_time::ptime now = boost::posix_time::microsec_clock::local_time();
+  printf("%s ", boost::posix_time::to_simple_string(now).c_str());
+
   DEBUG("RX rssi_pkt=%d ", rssi_packet);
   DEBUG("snr_pkt=%d ", snr_packet);
   DEBUG("stat=%02x ", (unsigned)stat);
