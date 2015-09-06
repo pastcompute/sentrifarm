@@ -20,3 +20,6 @@
 [submodule "software/ext/mqtt2graphite"]
 	path = software/ext/mqtt2graphite
 	url = https://github.com/pastcompute/mqtt2graphite.git
+[submodule "software/ext/docker-grafana-graphite"]
+	path = software/ext/docker-grafana-graphite
+	url = https://github.com/pastcompute/docker-grafana-graphite.git
