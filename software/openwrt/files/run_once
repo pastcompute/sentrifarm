@@ -1,0 +1,71 @@
+# Telnet is initially on ... but we cant use scp then
+# Missing : rsync
+# Missing : boost
+
+# wan is '1', closest to J12
+
+uci add firewall rule
+uci set firewall.@rule[-1].name='Allow-ssh'
+uci set firewall.@rule[-1].proto=tcp
+uci set firewall.@rule[-1].src=wan
+uci set firewall.@rule[-1].src_dport=22
+uci set firewall.@rule[-1].target=ACCEPT
+
+uci add firewall rule
+uci set firewall.@rule[-1].name='Allow-mqtt'
+uci set firewall.@rule[-1].src=wan
+uci set firewall.@rule[-1].proto=udp
+uci set firewall.@rule[-1].src_dport=1883
+uci set firewall.@rule[-1].target=ACCEPT
+
+uci commit
+
+/etc/init.d/firewall restart
+
+# Add alias ethernet rule
+# Note: newfangles way means DHCP not showing up in ifconfig output
+uci set network.debug=interface
+uci set network.debug.ifname=eth1
+uci set network.debug.proto=static
+uci set network.debug.ipaddr=192.168.168.2
+uci set network.debug.netmask=255.255.255.0
+uci commit
+/etc/init.d/network restart
+ubus list network.interface.*
+ifstatus wan
+ifstatus debug
+
+# Note: need host web server at 192.168.168.1/...
+# FIXME: files can differ between carambola2 and rpi
+
+cd /tmp
+opkg -f /etc/opkg.conf.sentrifarm update
+opkg -f /etc/opkg.conf.sentrifarm install boost-atomic boost-chrono boost-date_time boost-regex boost-system boost-thread boost-timer
+
+# FIXME: make the following into OpenWRT packages
+mkdir -p /tmp/dl
+cd /tmp/dl
+wget http://192.168.168.1/sentrifarm-bin/build.carambola2.rsmb/broker_mqtts
+wget http://192.168.168.1/sentrifarm-bin/build.carambola2.rsmb/broker_mqtt
+wget http://192.168.168.1/sentrifarm-bin/build.carambola2.mqtt-sn/mqtt-sn-pub
+wget http://192.168.168.1/sentrifarm-bin/build.carambola2.mqtt-sn/mqtt-sn-sub
+wget http://192.168.168.1/sentrifarm-bin/build.carambola2.sx1276/sx1276_test1_rx
+wget http://192.168.168.1/sentrifarm-bin/build.carambola2.sx1276/sx1276_test1_tx
+wget http://192.168.168.1/sentrifarm-bin/build.carambola2.sx1276/sx1276_dump_regs
+wget http://192.168.168.1/sentrifarm-bin/build.carambola2.sx1276/sx1276_mqttsn_bridge
+wget http://192.168.168.1/sentrifarm-bin/build.carambola2.libsocket/C++/libsocket++.so
+chmod +x *
+wget http://192.168.168.1/sentrifarm-bin/build.carambola2.rsmb/Messages.1.3.0.2
+mv * /usr/bin
+
+# The following refreshes files in the image already
+cd /tmp
+wget http://192.168.168.1/sentrifarm-bin/files/sentrifarm-rsmb-config.txt
+mv sentrifarm-rsmb-config.txt /etc
+
+# /tmp/dl/broker_mqtts /etc/sentrifarm-rsmb-config.txt
+# /tmp/dl/broker_mqtt /etc/sentrifarm-rsmb-config.txt
+# /tmp/dl/mqtt-sn-sub -t '#' -v
+# LD_LIBRARY_PATH=/tmp/dl /tmp/dl/sx1276_mqttsn_bridge /dev/spidev0.1 connect 1883
+
+

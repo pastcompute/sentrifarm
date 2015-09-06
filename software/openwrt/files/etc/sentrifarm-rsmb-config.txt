@@ -1,0 +1,10 @@
+trace_output protocol
+#trace_output stderr
+trave_level maximum
+log_level detail
+#log_level config
+listener 1883 INADDR_ANY mqtts
+listener 1883 INADDR_ANY
+listener 1884 INADDR_ANY
+autosave_interval 0
+keepalive_interval 2
