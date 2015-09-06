@@ -17,3 +17,6 @@
 [submodule "Adafruit_Sensor"]
 	path = software/mcu/libraries/Adafruit_Sensor
 	url = https://github.com/adafruit/Adafruit_Sensor.git
+[submodule "software/ext/mqtt2graphite"]
+	path = software/ext/mqtt2graphite
+	url = https://github.com/pastcompute/mqtt2graphite.git
