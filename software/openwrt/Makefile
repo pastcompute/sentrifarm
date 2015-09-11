@@ -38,7 +38,6 @@ raspi:
 
 # NOTE: changing DEVICE without refreshing .config will cause serious issues
 
-
 all-the-things: prereq build sx1276 rsmb mqtt-sn
 
 # This is annoying because there is no out of tree automake or cmake
@@ -136,10 +135,10 @@ build: prebuild
 
 FEED_PACKAGES = \
 			netcat socat nmap wavemon picocom ntpd ntp-utils ntpdate pps-tools i2c-tools \
-			file htop less lsof patch coreutils micropython python \
+			file htop less lsof patch coreutils micropython \
 			mjpeg-streamer  nfc-utils irssi-nossl owfs owshell owhttpd owserver luci \
 			boost-chrono boost-date_time boost-regex boost-thread boost-timer \
-      qt5-core qtserialport
+      qt5-core qtserialport openssh-client  socat ssmtp
 
 
 feeds: $(TREE)/feeds.conf

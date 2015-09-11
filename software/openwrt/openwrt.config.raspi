@@ -92,7 +92,6 @@ CONFIG_PACKAGE_htop=y
 CONFIG_PACKAGE_gdb=y
 CONFIG_PACKAGE_patch=y
 
-
 CONFIG_PACKAGE_logger=y
 CONFIG_PACKAGE_spipdev-test=y
 CONFIG_PACKAGE_strace=y
@@ -126,11 +125,23 @@ CONFIG_PACKAGE_boost-thread=y
 CONFIG_PACKAGE_boost-system=y
 CONFIG_PACKAGE_boost-regex=y
 CONFIG_PACKAGE_boost-timer=y
+CONFIG_PACKAGE_boost-date_time=y
 CONFIG_PACKAGE_libuuid=y   # needed for mosquitto
 CONFIG_PACKAGE_screen=y
-
-CONFIG_PACKAGE_qt5-core=y
-CONFIG_PACKAGE_qtserialport=y
+CONFIG_PACKAGE_openssh-client=y
+CONFIG_PACKAGE_curl=y
+CONFIG_PACKAGE_ssmtp=y
+# --> needs libsocket.so for some reason! CONFIG_PACKAGE_nfc-utils=m
+# --> annoyinglg brings in pcscd
+CONFIG_PACKAGE_uuidgen=m
+CONFIG_PACKAGE_maccalc=m
+#CONFIG_PACKAGE_lsof=m
+CONFIG_PACKAGE_ldd=m
+CONFIG_PACKAGE_sqlite3-cli=m
+CONFIG_PACKAGE_qt5-core=m
+CONFIG_PACKAGE_qtserialport=m
+CONFIG_PACKAGE_r8169-firmware=m
+CONFIG_PACKAGE_r8188eu-firmware=m
 
 # rm -rf tmp build_dir/target* staging_dir/target*
 # patch -p1 < $SENTRIFARM/base-station/carambola2/kernel.patch 
