@@ -39,6 +39,10 @@ extern "C" {
 }
 #endif
 
+#ifdef TEENSYDUINO
+#define Serial Serial1
+#endif
+
 Adafruit_BMP085_Unified bmp = Adafruit_BMP085_Unified(10085);
 
 SPISettings spiSettings(1000000, MSBFIRST, SPI_MODE0);
@@ -90,6 +94,7 @@ uint16_t registered_topic_id = 0xffff;
 
 void read_chip_once()
 {
+#ifdef ESP8266
   sensorData.chipVersion = ESP.getBootVersion();
   sensorData.chipBootMode = ESP.getBootMode();
   sensorData.chipVcc = ESP.getVcc();
@@ -97,7 +102,6 @@ void read_chip_once()
 
   // Now, we could use the eeprom to save some kind of id
   // for the moment, use the MAC of the ESP8266
-#ifdef ESP8266
   WiFi.macAddress(sensorData.mac);
 #endif
 
@@ -162,13 +166,16 @@ void setup()
 #ifdef ESP8266
   // copy the counter into the ESP nvram
     system_rtc_mem_write(64, &beacon_counter, 4);
-  }
 #endif
+  }
 
   if (!in_beacon_mode) {
+    Wire.begin();
+#if !defined(TEENSYDUINO)
     // 0x48 (ADC), 0x50 (EEPROM), 0x68 (RTC), 0x77 (BMP)
     // For reasons I dont understand, the RTC is only working if we first scan the entire i2c bus. WTAF?
-    Wire.begin();  Sentrifarm::scan_i2c_bus();
+    Sentrifarm::scan_i2c_bus();
+#endif
   }
 
   Serial.println(F("go..."));
@@ -202,6 +209,7 @@ void setup()
   // Make the first connect attempt
   MQTTHandler.connect(0, 30, "sfnode1"); // keep alive in seconds
   state = SENT_CONNECT;
+  Sentrifarm::led4_double_short_flash();
 }
 
 // void loop() {}
@@ -257,7 +265,7 @@ void beacon_tx()
 #endif
 
   char buf[48];
-  snprintf(buf, sizeof(buf), "Sentrifarm Beacon %d", beacon_counter);
+  snprintf(buf, sizeof(buf), "Sentrifarm Beacon %d", (int)beacon_counter);
   beacon_counter ++;
   Serial.println(buf);
   Serial.println(radio.PredictTimeOnAir(strlen(buf)));

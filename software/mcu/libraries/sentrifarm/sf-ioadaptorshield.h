@@ -57,7 +57,9 @@
 
 #elif defined(TEENSYDUINO)
 
+// Note: the LED on the teensy board is inverted relative to us (doh)
 #define PIN_LED4         5
+#define PIN_LED4T        13
 
 #define PIN_SX1276_RST  21
 #define PIN_SX1276_CS   10

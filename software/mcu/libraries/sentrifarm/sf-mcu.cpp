@@ -27,6 +27,10 @@
 
 #include <sx1276.h>
 
+#ifdef TEENSYDUINO
+#define Serial Serial1
+#endif
+
 namespace Sentrifarm {
 
   void setup_world(const String& description)
@@ -96,35 +100,49 @@ namespace Sentrifarm {
 #endif
   }
 
+  // Hack for teensy LED duplication
+#if defined(TEENSYDUINO)
+#define WRITE_LED4(pin, x)   digitalWrite(pin, x); digitalWrite(PIN_LED4T, !x);
+#else
+#define WRITE_LED4(pin, x)   digitalWrite(pin, x);
+#endif
+
   void led4_on()
   {
-    digitalWrite(PIN_LED4, LOW);
+    WRITE_LED4(PIN_LED4, LOW);
   }
 
   void led4_off()
   {
-    digitalWrite(PIN_LED4, HIGH);
+    WRITE_LED4(PIN_LED4, HIGH);
   }
 
   void led4_flash()
   {
-    digitalWrite(PIN_LED4, LOW);
+    WRITE_LED4(PIN_LED4, LOW);
     delay(500);
-    digitalWrite(PIN_LED4, HIGH);
+    WRITE_LED4(PIN_LED4, HIGH);
+  }
+
+  void led4_short_flash()
+  {
+    WRITE_LED4(PIN_LED4, LOW);
+    delay(200);
+    WRITE_LED4(PIN_LED4, HIGH);
   }
 
   // Turn off if already on, delay 0.25s, then twice flash the shield LED for 0.25s. Finishes off.
   void led4_double_short_flash()
   {
-    digitalWrite(PIN_LED4, HIGH);
+    WRITE_LED4(PIN_LED4, HIGH);
     delay(250);
-    digitalWrite(PIN_LED4, LOW);
+    WRITE_LED4(PIN_LED4, LOW);
     delay(250);
-    digitalWrite(PIN_LED4, HIGH);
+    WRITE_LED4(PIN_LED4, HIGH);
     delay(250);
-    digitalWrite(PIN_LED4, LOW);
+    WRITE_LED4(PIN_LED4, LOW);
     delay(250);
-    digitalWrite(PIN_LED4, HIGH);
+    WRITE_LED4(PIN_LED4, HIGH);
   }
 
   void reset_radio()
@@ -144,11 +162,14 @@ namespace Sentrifarm {
 
   void scan_i2c_bus()
   {
+    Serial.println("Scanning i2c bus");
+    led4_double_short_flash();
     for (byte addr=0; addr < 127; addr++) {
       Wire.beginTransmission(addr);
       int error = Wire.endTransmission();
       char buf[32];
       if (error == 0) {
+        led4_short_flash();
         snprintf(buf, sizeof(buf), "i2c device at %02x", (int)addr);
         Serial.println(buf);
       }

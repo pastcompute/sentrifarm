@@ -1,8 +1,16 @@
 #include "Arduino.h"
 
+#ifdef ESP82666
+  #define LED_PIN 2
+#endif
+
 #ifndef LED_PIN
-  // Most Arduino boards already have a LED attached to pin 13 on the board itself
   #define LED_PIN 13
+#endif
+
+#ifdef TEENSYDUINO
+// Physical pins 2+3 (or labelled 0,1) NOT 8,10 as per the Eagle diagram?
+#define Serial Serial1
 #endif
 
 void setup()

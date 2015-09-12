@@ -42,6 +42,7 @@ SOURCES += \
     ./lib/SX1276lib/sx1276.cpp \
     ./lib/sentrifarm/sx1276mqttsn.cpp \
     ./lib/sentrifarm/sf-mcu.cpp \
+    ./lib/sentrifarm/sf-sensordata.cpp \
     ./lib/arduino-mqtt-sn/mqttsn-messages.cpp
 
 HEADERS += \

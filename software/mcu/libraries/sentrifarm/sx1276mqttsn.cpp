@@ -27,6 +27,10 @@
 
 #define VERBOSE 1
 
+#ifdef TEENSYDUINO
+#define Serial Serial1
+#endif
+
 #if VERBOSE
 #include <stdio.h>
 #define DEBUG(x ...) { char buf[128]; snprintf(buf, sizeof(buf), x); Serial.print(buf); }
