@@ -1,0 +1,3 @@
+broker_mqtts /etc/sentrifarm-rsmb-config.txt > /tmp/broker.log 2>&1  &  
+(sleep 3 ; sx1276_mqttsn_bridge /dev/spidev0.1 connect 1883 > /tmp/relay.log 2>&1 )&
+
