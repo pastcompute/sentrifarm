@@ -27,6 +27,7 @@ uci commit
 uci set network.debug=interface
 uci set network.debug.ifname=eth1
 uci set network.debug.proto=static
+uci set network.debug.force_link=1
 uci set network.debug.ipaddr=192.168.168.2
 uci set network.debug.netmask=255.255.255.0
 uci commit
@@ -38,11 +39,17 @@ ifstatus debug
 # Note: need host web server at $IP/...
 # FIXME: files can differ between carambola2 and rpi
 
-IP=192.168.168.1
+IP=$IP
+IP=172.30.42.19
+cd /etc
+wget http://$IP/sentrifarm-bin/files/etc/opkg.conf.sentrifarm
+
 
 cd /tmp
 opkg -f /etc/opkg.conf.sentrifarm update
 opkg -f /etc/opkg.conf.sentrifarm install boost-atomic boost-chrono boost-date_time boost-regex boost-system boost-thread boost-timer
+# Needed for keys to avoid stringtoolong error
+opkg -f /etc/opkg.conf.sentrifarm install openssh-client
 
 # FIXME: make the following into OpenWRT packages
 mkdir -p /tmp/dl
@@ -63,7 +70,7 @@ mv -v * /usr/lib
 
 # The following refreshes files in the image already
 cd /tmp
-wget http://$IP/sentrifarm-bin/files/sentrifarm-rsmb-config.txt
+wget http://$IP/sentrifarm-bin/files/etc/sentrifarm-rsmb-config.txt
 mv sentrifarm-rsmb-config.txt /etc
 
 # /tmp/dl/broker_mqtts /etc/sentrifarm-rsmb-config.txt
