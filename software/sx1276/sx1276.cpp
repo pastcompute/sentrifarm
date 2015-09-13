@@ -334,9 +334,11 @@ bool SX1276Radio::ApplyDefaultLoraConfiguration()
   // Lets start at 12 max, 6dBm out (9) while in the lab
 
   //v = 0 | (0x2 << 4) | 9;
+  //CAUSING ISSUES
 
 #if defined(SX1276_HIGH_POWER)
 	// Using the inAir9b:
+	fprintf(stderr, "inAir9b High power Mode\n");
 	WriteRegisterVerify(SX1276REG_PaConfig, 0xff);
 	WriteRegisterVerify(SX1276REG_PaDac, 0x87);
 #else

@@ -65,7 +65,7 @@ int main(int argc, char* argv[])
 
   if (radio.fault()) return 1;
 
-  char msg[] = "Hello, World! XXXXXX\n";
+  char msg[128];
   printf("Beacon message: '%s'\n", safe_str(msg).c_str());
   printf("Predicted time on air: %fs\n", radio.PredictTimeOnAir(msg));
 
@@ -73,7 +73,14 @@ int main(int argc, char* argv[])
   int faultCount = 0;
   while (true) {
     total++;
-    snprintf(msg, sizeof(msg), "Hello, World! %6d\n", total);
+
+    time_t rawt;
+    struct tm *ti;
+    char buft[80];
+    time(&rawt);
+    ti = localtime(&rawt);
+    strftime(buft,80,"%d-%m-%Y %I:%M:%S", ti);
+    snprintf(msg, sizeof(msg), "TX BEACON %6d %s\n", total, buft);
 	
     if (radio.SendSimpleMessage(msg)) { printf("%d ", total); fflush(stdout); radio.Standby(); usleep(inter_msg_delay_us); continue; }
     radio.Standby();
