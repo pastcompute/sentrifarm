@@ -383,6 +383,7 @@ void loop()
 
     case WAIT_REGACK:
       sensorData.rssi = radio.GetLastRssi();
+      sensorData.snr = radio.GetLastSnr();
       publish_data();
       elapsedRuntime = 0; // hang around again if we got this far
       state = WAIT_PUBACK;

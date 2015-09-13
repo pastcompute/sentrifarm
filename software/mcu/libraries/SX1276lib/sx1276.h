@@ -57,6 +57,9 @@ public:
   /// Get RSSi of last receive
   int GetLastRssi() const { return rssi_dbm_; }
 
+  /// Get SNR of last receive
+  int GetLastSnr() const { return rx_snr_db_; }
+
   /// Return the SX1276 to LoRa standby mode
   void Standby();
 
@@ -104,6 +107,7 @@ private:
 
   // radio status
   int rssi_dbm_;
+  int rx_snr_db_;
   bool rx_warm_;
 };
 

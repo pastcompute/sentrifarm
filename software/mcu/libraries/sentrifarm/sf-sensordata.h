@@ -45,6 +45,7 @@ namespace Sentrifarm {
     bool have_radio;
     int radio_version;   ///< SX1276 radio version
     int rssi;
+    int snr;
 
     bool have_bmp180;
     float ambient_hpa;   ///< BPM180 barometric air pressure, HPa
@@ -93,7 +94,7 @@ namespace Sentrifarm {
       snprintf(buf, len, "%02x%02x%02x%02x%02x%02x,%d%d%d,%d,%d,%d,%02d%02d%02d%02d%02d%02d,%d.%d,%d.%d,%d,%d,%d",
               mac[0],mac[1],mac[2],mac[3],mac[4],mac[5],
               have_date, have_bmp180, have_pcf8591,
-              (int)bootCount, radio_version, rssi,
+              (int)bootCount, radio_version, snr,
               year, month, dayOfMonth, hour, minute, second,
               (int)floorf(ambient_hpa), fraction(ambient_hpa),
               (int)floorf(ambient_degc), fraction(ambient_degc),

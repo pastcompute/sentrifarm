@@ -114,6 +114,7 @@ SX1276Radio::SX1276Radio(int cs_pin, const SPISettings& spi_settings)
     spreading_factor_(DEFAULT_SPREADING_FACTOR),
     coding_rate_(DEFAULT_CODING_RATE),
     rssi_dbm_(-255),
+    rx_snr_db_(-255),
     rx_warm_(false)
 {
   // Note; we want DEBUG ( Serial) here because this happens before Serial is initialised,
@@ -443,6 +444,7 @@ bool SX1276Radio::ReceiveMessage(byte buffer[], byte size, byte& received, bool&
   byte stat = 0;
 
   rssi_dbm_ = -255;
+  rx_snr_db_ = -255;
   ReadRegister(SX1276REG_Rssi, v); rssi_dbm_ = -137 + v;
 
   if (!done) { return false; }
@@ -461,6 +463,7 @@ bool SX1276Radio::ReceiveMessage(byte buffer[], byte size, byte& received, bool&
     case 0x4: coding_rate = 8;
     default: coding_rate = 0;
   }
+  rx_snr_db_ = snr_packet;
 
   byte payloadSizeBytes = 0xff;
   uint16_t headerCount = 0;
