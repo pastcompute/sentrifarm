@@ -41,7 +41,7 @@
 ICACHE_FLASH_ATTR
 MQTTSX1276::MQTTSX1276(SX1276Radio& radio)
   : radio_(radio), rx_buffer_len_(0), tx_rolling_(0),
-    connack_possible_(false)
+    got_disconnect_(0), got_puback_(0), connack_possible_(false)
 {
 }
 
@@ -148,12 +148,21 @@ void MQTTSX1276::connack_handler(const msg_connack* msg)
   // We only get here when we got a connack after _we_ sent a connect
   // So I have no idea why RSMB sends _us_ a CONNACK!
   // Perhaps it is the broker trying to 'connect' with another broker
+  DEBUG("CONNACK\n\r");
   connack_possible_ = true;
+}
+
+ICACHE_FLASH_ATTR
+void MQTTSX1276::puback_handler(const msg_puback* msg)
+{
+  DEBUG("PUBACK\n\r");
+  got_puback_ ++;
 }
 
 ICACHE_FLASH_ATTR
 void MQTTSX1276::disconnect_handler(const msg_disconnect* msg)
 {
+  DEBUG("DISCONNECT\n\r");
   got_disconnect_ ++;
 }
 
@@ -185,11 +194,6 @@ void MQTTSX1276::publish_handler(const msg_publish* msg)
 
 ICACHE_FLASH_ATTR
 void MQTTSX1276::register_handler(const msg_register* msg)
-{
-}
-
-ICACHE_FLASH_ATTR
-void MQTTSX1276::puback_handler(const msg_puback* msg)
 {
 }
 

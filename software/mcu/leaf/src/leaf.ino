@@ -246,7 +246,11 @@ void publish_data()
   // For the moment send ASCII
   sensorData.make_mqtt_0(buf, sizeof(buf));
   Serial.println(buf);
+#if defined(TEENSYDUINO)
+  MQTTHandler.publish(FLAG_QOS_1, registered_topic_id , buf, strlen(buf));
+#else // untested with 1
   MQTTHandler.publish(FLAG_QOS_0, registered_topic_id , buf, strlen(buf));
+#endif
 }
 
 ICACHE_FLASH_ATTR
@@ -335,13 +339,14 @@ void loop()
   }
 
   if (elapsedRuntime > RUNTIME_TIMEOUT) {
-    Serial.println("TOOK TOO LONG.");
+    Serial.println(F("TOOK TOO LONG."));
     delay(100);
     if (puback_pass_hack == 0) {
-      Sentrifarm::deep_sleep_and_reset(10000);
-    } else {
-      Sentrifarm::deep_sleep_and_reset(ROUTINE_SLEEP_INTERVAL_MS);
+      if (state != WAIT_PUBACK) { // If QOS is zero then we never get a puback
+        Sentrifarm::deep_sleep_and_reset(10000);
+      }
     }
+    Sentrifarm::deep_sleep_and_reset(ROUTINE_SLEEP_INTERVAL_MS);
     return;
   }
 
@@ -357,7 +362,9 @@ void loop()
       return;
     }
     // timeout - try again
-    return;
+    if (!MQTTHandler.DidPuback()) {
+      return;
+    }
   }
 
   switch (state) {
@@ -368,7 +375,7 @@ void loop()
         // still waiting for it
         return;
       }
-      Serial.print("HAVE TOPIC ID:"); Serial.println(registered_topic_id);
+      Serial.print(F("HAVE TOPIC ID:")); Serial.println(registered_topic_id);
       elapsedRuntime = 0; // hang around again if we got this far
       // We expect the next message to be a regack
       state = WAIT_REGACK;
@@ -385,7 +392,7 @@ void loop()
       // probably actually a WILL
       puback_pass_hack ++;
       print_stats();
-      if (puback_pass_hack > 2) {
+      if (MQTTHandler.DidPuback() || puback_pass_hack > 2) {
         Sentrifarm::deep_sleep_and_reset(ROUTINE_SLEEP_INTERVAL_MS);
       }
       break;

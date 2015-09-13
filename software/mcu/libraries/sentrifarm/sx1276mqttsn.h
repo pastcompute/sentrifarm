@@ -46,6 +46,7 @@ public:
   bool TryReceive(bool &crc);
   void ResetDisconnect() { got_disconnect_ = 0; }
   bool DidDisconnect() const { return got_disconnect_ > 0; }
+  bool DidPuback() const { return got_puback_ > 0; }
 
 protected:
   virtual bool parse_impl(uint8_t* response);
@@ -53,6 +54,7 @@ protected:
   virtual void willmsgreq_handler(const message_header* msg);
   virtual void connack_handler(const msg_connack* msg);
   virtual void disconnect_handler(const msg_disconnect* msg);
+  virtual void puback_handler(const msg_puback* msg);
 #if 0
   virtual void advertise_handler(const msg_advertise* msg);
   virtual void gwinfo_handler(const msg_gwinfo* msg);
@@ -78,6 +80,7 @@ private:
   byte tx_buffer_[MAX_BUFFER_SIZE+4];
   byte tx_rolling_;
   byte got_disconnect_;
+  byte got_puback_;
 
   bool connack_possible_;
 };
