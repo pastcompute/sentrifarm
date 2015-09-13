@@ -35,8 +35,10 @@ ubus list network.interface.*
 ifstatus wan
 ifstatus debug
 
-# Note: need host web server at 192.168.168.1/...
+# Note: need host web server at $IP/...
 # FIXME: files can differ between carambola2 and rpi
+
+IP=192.168.168.1
 
 cd /tmp
 opkg -f /etc/opkg.conf.sentrifarm update
@@ -45,23 +47,23 @@ opkg -f /etc/opkg.conf.sentrifarm install boost-atomic boost-chrono boost-date_t
 # FIXME: make the following into OpenWRT packages
 mkdir -p /tmp/dl
 cd /tmp/dl
-wget http://192.168.168.1/sentrifarm-bin/build.carambola2.rsmb/broker_mqtts
-wget http://192.168.168.1/sentrifarm-bin/build.carambola2.rsmb/broker_mqtt
-wget http://192.168.168.1/sentrifarm-bin/build.carambola2.mqtt-sn/mqtt-sn-pub
-wget http://192.168.168.1/sentrifarm-bin/build.carambola2.mqtt-sn/mqtt-sn-sub
-wget http://192.168.168.1/sentrifarm-bin/build.carambola2.sx1276/sx1276_test1_rx
-wget http://192.168.168.1/sentrifarm-bin/build.carambola2.sx1276/sx1276_test1_tx
-wget http://192.168.168.1/sentrifarm-bin/build.carambola2.sx1276/sx1276_dump_regs
-wget http://192.168.168.1/sentrifarm-bin/build.carambola2.sx1276/sx1276_mqttsn_bridge
+wget http://$IP/sentrifarm-bin/build.carambola2.rsmb/broker_mqtts
+wget http://$IP/sentrifarm-bin/build.carambola2.rsmb/broker_mqtt
+wget http://$IP/sentrifarm-bin/build.carambola2.mqtt-sn/mqtt-sn-pub
+wget http://$IP/sentrifarm-bin/build.carambola2.mqtt-sn/mqtt-sn-sub
+wget http://$IP/sentrifarm-bin/build.carambola2.sx1276/sx1276_test1_rx
+wget http://$IP/sentrifarm-bin/build.carambola2.sx1276/sx1276_test1_tx
+wget http://$IP/sentrifarm-bin/build.carambola2.sx1276/sx1276_dump_regs
+wget http://$IP/sentrifarm-bin/build.carambola2.sx1276/sx1276_mqttsn_bridge
 chmod +x *
-wget http://192.168.168.1/sentrifarm-bin/build.carambola2.rsmb/Messages.1.3.0.2
-mv * /usr/bin
-wget http://192.168.168.1/sentrifarm-bin/build.carambola2.libsocket/C++/libsocket++.so
-mv * /usr/lib
+wget http://$IP/sentrifarm-bin/build.carambola2.rsmb/Messages.1.3.0.2
+mv -v * /usr/bin
+wget http://$IP/sentrifarm-bin/build.carambola2.libsocket/C++/libsocket++.so
+mv -v * /usr/lib
 
 # The following refreshes files in the image already
 cd /tmp
-wget http://192.168.168.1/sentrifarm-bin/files/sentrifarm-rsmb-config.txt
+wget http://$IP/sentrifarm-bin/files/sentrifarm-rsmb-config.txt
 mv sentrifarm-rsmb-config.txt /etc
 
 # /tmp/dl/broker_mqtts /etc/sentrifarm-rsmb-config.txt
@@ -78,3 +80,6 @@ mv sentrifarm-rsmb-config.txt /etc
 # cd software && MQTT_HOST=192.168.168.2 python ext/mqtt2graphite/mqtt2graphite.py data/mqtt2graphite-sf.map
 #
 
+
+# TODO:
+# Add -4 option to ntpd
