@@ -40,11 +40,28 @@ echo bmp085 0x77 > '/sys/class/i2c-dev/i2c-0/device/new_device'
 # SCK    : phys J13 pin 12 :  spi0 CLK  - pulled down via 10k resistor
 # 
 
+logger "Setup GPIO"
+
+# GPIO17 is hard coded into the platform init SPI device CS - file: patches/0001-SPI0.1-and-0.2-with-GPIO-CS.patch
+
 # Extra LED on LED4 / dev phys pin 2 / gpio 15
 # Reversed: 1 = off, 0 = on
 echo 15 > /sys/class/gpio/export
 echo out > /sys/class/gpio/gpio15/direction
 echo 0 > /sys/class/gpio/gpio15/value
+
+# Why was 16 already enabled ?!?
+echo 1 > /sys/class/gpio/export
+echo in > /sys/class/gpio/gpio1/direction
+
+ls -l /sys/class/gpio
+
+# PIN 6: short to 3v3 to get BEACON MODE
+
+X=`cat /sys/class/gpio/gpio1/value`
+if [ "$X" == "1" ] ; then
+  logger "GPIO1 == HIGH. ENTER BEACON MODE"
+fi
 
 # 1-wire
 
