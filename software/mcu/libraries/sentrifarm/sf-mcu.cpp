@@ -46,6 +46,8 @@ namespace Sentrifarm {
     Serial.print(" ");
 #if defined(TEENSYDUINO)
     Serial.println(F("TEENSY-LC"));
+    pinMode(PIN_LED4T,        OUTPUT);
+    led4_flash();
 #elif defined(ESP8266)
     Serial.println(F("ESP8266 ESP-201"));
 #endif
@@ -162,15 +164,16 @@ namespace Sentrifarm {
 
   void scan_i2c_bus()
   {
-    Serial.println("Scanning i2c bus");
+    Serial.println("Scanning i2c bus. If this hangs, check the pullup resistors.");
     led4_double_short_flash();
-    for (byte addr=0; addr < 127; addr++) {
+    for (byte addr=3; addr < 127; addr++) {
+      char buf[32];
+      // snprintf(buf, sizeof(buf), "Scanning i2c addr %02x", (int)addr);      Serial.println(buf);
       Wire.beginTransmission(addr);
       int error = Wire.endTransmission();
-      char buf[32];
       if (error == 0) {
         led4_short_flash();
-        snprintf(buf, sizeof(buf), "i2c device at %02x", (int)addr);
+        snprintf(buf, sizeof(buf), "Found i2c device at %02x", (int)addr);
         Serial.println(buf);
       }
     }

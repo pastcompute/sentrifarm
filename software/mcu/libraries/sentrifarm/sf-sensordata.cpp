@@ -8,6 +8,7 @@
 
 namespace Sentrifarm {
 
+  ICACHE_FLASH_ATTR
   void SensorData::debug_dump() const {
     char buf[256];
     Serial.println(LINE_DOUBLE);
@@ -31,7 +32,7 @@ namespace Sentrifarm {
     if (have_radio) {
       snprintf((char*)buf, sizeof(buf), "SX1276 Version  0x%02x\n\r", radio_version);
       Serial.print(buf);
-    } else { Serial.println(("Radio           NOT FOUND")); }
+    } else { Serial.println(("Radio             NOT FOUND")); }
 
     if (have_bmp180) {
       snprintf((char*)buf, sizeof(buf), "Barometer       %4d.%d hPa\n\rAir temperature  %3d.%d degC\n\rAltitude        %4d.%d\n\r",
@@ -50,7 +51,7 @@ namespace Sentrifarm {
       snprintf((char*)buf, sizeof(buf), "PCF8591 Ch#1    %4dmV\n\r", v1); Serial.print(buf);
       snprintf((char*)buf, sizeof(buf), "PCF8591 Ch#2    %4dmV\n\r", v2); Serial.print(buf);
       snprintf((char*)buf, sizeof(buf), "PCF8591 Ch#3    %4dmV\n\r", v3); Serial.print(buf);
-    } else { Serial.println(("PCF8591       NOT FOUND")); }
+    } else { Serial.println(("PCF8591           NOT FOUND")); }
 
     Serial.println(LINE_DOUBLE);
   }

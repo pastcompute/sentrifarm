@@ -160,7 +160,7 @@ void setup()
   Sentrifarm::reset_radio();
 
   if (in_beacon_mode) {
-    Serial.println("--------BEACON MODE----------")  ;
+    Serial.println(F("--------BEACON MODE----------"));
     sensorData.beacon_mode = true;
   } else {
 #ifdef ESP8266
@@ -171,11 +171,9 @@ void setup()
 
   if (!in_beacon_mode) {
     Wire.begin();
-#if !defined(TEENSYDUINO)
     // 0x48 (ADC), 0x50 (EEPROM), 0x68 (RTC), 0x77 (BMP)
     // For reasons I dont understand, the RTC is only working if we first scan the entire i2c bus. WTAF?
     Sentrifarm::scan_i2c_bus();
-#endif
   }
 
   Serial.println(F("go..."));
