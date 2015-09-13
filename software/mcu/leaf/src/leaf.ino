@@ -143,6 +143,7 @@ void boot_count()
 }
 
 bool in_beacon_mode = false;
+bool in_log_mode = false;
 
 int32_t beacon_counter = 0;
 
@@ -155,13 +156,15 @@ void setup()
   sensorData.reset();
 
   Sentrifarm::setup_world(F("LEAF Node V0.1"));
-  Sentrifarm::setup_shield(in_beacon_mode);
+  Sentrifarm::setup_shield(in_beacon_mode, in_log_mode);
   Sentrifarm::led4_on();
   Sentrifarm::reset_radio();
 
   if (in_beacon_mode) {
     Serial.println(F("--------BEACON MODE----------"));
     sensorData.beacon_mode = true;
+  } else if (in_log_mode) {
+    Serial.println(F("--------RADIOLOG MODE----------"));
   } else {
 #ifdef ESP8266
   // copy the counter into the ESP nvram
@@ -169,7 +172,7 @@ void setup()
 #endif
   }
 
-  if (!in_beacon_mode) {
+  if (!in_beacon_mode && !in_log_mode) {
     Wire.begin();
     // 0x48 (ADC), 0x50 (EEPROM), 0x68 (RTC), 0x77 (BMP)
     // For reasons I dont understand, the RTC is only working if we first scan the entire i2c bus. WTAF?
@@ -180,7 +183,7 @@ void setup()
   Sentrifarm::led4_double_short_flash();
 
   read_chip_once();
-  if (!in_beacon_mode) {
+  if (!in_beacon_mode && !in_log_mode) {
     boot_count();
     Sentrifarm::read_datetime_once(sensorData);
     Sentrifarm::read_bmp_once(sensorData, bmp);
@@ -201,6 +204,10 @@ void setup()
   elapsedStatTime = 0;
 
   if (in_beacon_mode) {
+    return;
+  }
+
+  if (in_log_mode) {
     return;
   }
 
@@ -242,6 +249,7 @@ void publish_data()
   MQTTHandler.publish(FLAG_QOS_0, registered_topic_id , buf, strlen(buf));
 }
 
+ICACHE_FLASH_ATTR
 void print_stats()
 {
   Serial.print(" state="); Serial.print(state);
@@ -255,6 +263,28 @@ void print_stats()
 
 int puback_pass_hack = 0;
 
+ICACHE_FLASH_ATTR
+void log_mode()
+{
+  bool crc = false;
+  byte buf[128] = { 0 };
+  byte rxlen = 0;
+  SPI.begin();
+  if (radio.ReceiveMessage(buf, sizeof(buf), rxlen, crc))
+  {
+    Sentrifarm::led4_flash();
+    char buf2[256];
+    snprintf(buf2, sizeof(buf2), "[RX] %d bytes, crc=%d rssi=%d DATA=%02x%02x%02x%02x",
+        rxlen, crc, radio.GetLastRssi(), (int)buf[0], (int)buf[1], (int)buf[2], (int)buf[3]);
+    Serial.println(buf2);
+    Serial.println((char*)buf);
+  }
+  radio.Standby();
+  SPI.end();
+}
+
+
+ICACHE_FLASH_ATTR
 void beacon_tx()
 {
 #ifdef ESP8266
@@ -287,7 +317,8 @@ void beacon_tx()
 // --------------------------------------------------------------------------
 void loop()
 {
-  if (in_beacon_mode) { beacon_tx(); }
+  if (in_log_mode) { log_mode(); return; }
+  if (in_beacon_mode) { beacon_tx(); return; }
 
 
   // See if we can receive any radio data

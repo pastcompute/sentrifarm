@@ -212,7 +212,7 @@ bool SX1276Radio::Begin()
   WriteRegister(SX1276REG_PaConfig, 0xff); // inAir9b
   WriteRegister(SX1276REG_PaDac, 0x87);
 #else
-  WriteRegister(SX1276REG_PaConfig, 0x7f);
+  // WriteRegister(SX1276REG_PaConfig, 0x7f);
   // Default: WriteRegister(SX1276REG_PaDac, 0x84);
 #endif
 

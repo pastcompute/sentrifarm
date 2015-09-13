@@ -53,7 +53,7 @@ namespace Sentrifarm {
 #endif
   }
 
-  void setup_shield(bool & beacon_mode)
+  void setup_shield(bool & beacon_mode, bool & log_mode)
   {
     // LED
     pinMode(PIN_LED4,        OUTPUT);
@@ -73,11 +73,14 @@ namespace Sentrifarm {
     pinMode(PIN_SCL, INPUT_PULLUP);
     beacon_mode = digitalRead(PIN_SCL) == 0;
 
+    pinMode(PIN_SDA, INPUT_PULLUP);
+    log_mode = digitalRead(PIN_SDA) == 0;
+
     // Annoyingly the adafruit library calls Wire.begin()
     // which if we dont set pins, will use the wrong defaults
     // and further, pins() is deprecated and even more annoyingly
     // wire.begin() each time will reset everything...
-    if (!beacon_mode) {
+    if (!beacon_mode && !log_mode) {
       Wire.pins(PIN_SDA, PIN_SCL);
       // Wire.begin doesn t work!
     }
