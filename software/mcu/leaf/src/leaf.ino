@@ -320,7 +320,6 @@ void loop()
   if (in_log_mode) { log_mode(); return; }
   if (in_beacon_mode) { beacon_tx(); return; }
 
-
   // See if we can receive any radio data
   bool rx_ok = false;
   bool crc = false;

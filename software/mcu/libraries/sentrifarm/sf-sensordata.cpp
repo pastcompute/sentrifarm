@@ -1,4 +1,5 @@
 #include "Arduino.h"
+#include "sf-mcu.h"
 #include "sf-ioadaptorshield.h"
 #include "sf-sensordata.h"
 

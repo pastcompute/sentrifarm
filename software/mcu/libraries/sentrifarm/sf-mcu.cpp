@@ -64,10 +64,6 @@ namespace Sentrifarm {
 
     beacon_mode = false;
 
-    // i2c
-#if defined(TEENSYDUINO)
-    // The teensy configuration uses the default pins
-#elif defined(ESP8266)
     // Before we turn on i2c, see if there is a jumper over SCL
     // in which case go into beacon mode
     pinMode(PIN_SCL, INPUT_PULLUP);
@@ -76,6 +72,10 @@ namespace Sentrifarm {
     pinMode(PIN_SDA, INPUT_PULLUP);
     log_mode = digitalRead(PIN_SDA) == 0;
 
+    // i2c
+#if defined(TEENSYDUINO)
+    // The teensy configuration uses the default pins
+#elif defined(ESP8266)
     // Annoyingly the adafruit library calls Wire.begin()
     // which if we dont set pins, will use the wrong defaults
     // and further, pins() is deprecated and even more annoyingly
@@ -92,6 +92,10 @@ namespace Sentrifarm {
 #endif
   }
 
+#define CPU_RESTART_ADDR (uint32_t *)0xE000ED0C
+#define CPU_RESTART_VAL 0x5FA0004
+#define CPU_RESTART (*CPU_RESTART_ADDR = CPU_RESTART_VAL);
+
   void deep_sleep_and_reset(int ms)
   {
     Serial.print(F("ENTER DEEP SLEEP "));
@@ -99,9 +103,15 @@ namespace Sentrifarm {
 #if defined(ESP8266)
     ESP.deepSleep(ms * 1000, WAKE_RF_DISABLED); // long enough to see current fall on the USB power meter
     delay(500); // Note, deep sleep actually takes a bit to activate, so we want to make sure loop doesnt do anything...
+#elif defined(TEENSYDUINO)
+    delay(ms);
+    Serial.println(F("Restart"));
+    delay(250);
+    CPU_RESTART
+    delay(250);
+    Serial.println(F("Never!"));
 #else
     delay(ms);
-    // to simulate ESP8266 behaviour we should reset the CPU here
 #endif
   }
 
