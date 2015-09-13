@@ -334,8 +334,15 @@ bool SX1276Radio::ApplyDefaultLoraConfiguration()
   // Lets start at 12 max, 6dBm out (9) while in the lab
 
   //v = 0 | (0x2 << 4) | 9;
-  //CAUSING ISSUES WriteRegisterVerify(SX1276REG_PaConfig, v);
 
+#if defined(SX1276_HIGH_POWER)
+	// Using the inAir9b:
+	WriteRegisterVerify(SX1276REG_PaConfig, 0xff);
+	WriteRegisterVerify(SX1276REG_PaDac, 0x87);
+#else
+	WriteRegisterVerify(SX1276REG_PaConfig, 0x7f);
+	WriteRegisterVerify(SX1276REG_PaDac, 0x84);
+#endif
   // TODO: Report node address
 
   // DIO mapping
@@ -353,7 +360,7 @@ bool SX1276Radio::ApplyDefaultLoraConfiguration()
   // Pin header DIO0 : Tx done: 01
 
   spi_->ReadRegister(SX1276REG_DioMapping1, v);
-  WriteRegisterVerify(SX1276REG_DioMapping1, v | 0x1);
+  WriteRegisterVerify(SX1276REG_DioMapping1, (v | 0x1) & ~(0x10));
 
   // WriteRegisterVerify(SX1276REG_DioMapping1, (0x1 << 6) | (0x0 << 4) | (0x1));  CAUSING ISSUES?
   // WriteRegisterVerify(SX1276REG_DioMapping2, (0x2 << 4));                       CAUSING ISSUES?
