@@ -208,6 +208,14 @@ bool SX1276Radio::Begin()
   // Pin header DIO5 (bits 5-4): Clk Out: 10
   WriteRegister(SX1276REG_DioMapping2, 0x20);
 
+#if defined(SX1276_HIGH_POWER)
+  WriteRegister(SX1276REG_PaConfig, 0xff); // inAir9b
+  WriteRegister(SX1276REG_PaDac, 0x87);
+#else
+  WriteRegister(SX1276REG_PaConfig, 0x7f);
+  // Default: WriteRegister(SX1276REG_PaDac, 0x84);
+#endif
+
   // Preamble size
   WriteRegister(SX1276REG_PreambleLSB, preamble_);
 
