@@ -92,6 +92,11 @@ elapsedMillis elapsedStatTime;
 
 uint16_t registered_topic_id = 0xffff;
 
+bool in_beacon_mode = false;
+bool in_log_mode = false;
+
+int32_t beacon_counter = 0;
+
 void read_chip_once()
 {
 #ifdef ESP8266
@@ -128,12 +133,11 @@ void boot_count()
   byte b3 = Sentrifarm::read_nvram_byte(13);
   uint32_t bc = (uint32_t(b0) << 24) | (uint32_t(b1) << 16) | (uint32_t(b2) << 8) | uint32_t(b3);
   bc ++;
-#if 0
-  // We are going to need to work out a better way than loading a one-off firmware...
-  // Although having a board where you plug in the rtc, boot to zero, then plug into the real board
-  // is probably not completely bad idea
-  bc = 0;
-#endif
+
+  // Use beacon mode to reset the boot count to zero
+  if (in_beacon_mode) {
+    bc = 0;
+  }
 
   sensorData.bootCount = bc;
   Sentrifarm::save_nvram_byte(10, (bc & 0xff000000) >> 24);
@@ -141,11 +145,6 @@ void boot_count()
   Sentrifarm::save_nvram_byte(12, (bc & 0xff00) >> 8);
   Sentrifarm::save_nvram_byte(13, (bc & 0xff));
 }
-
-bool in_beacon_mode = false;
-bool in_log_mode = false;
-
-int32_t beacon_counter = 0;
 
 // --------------------------------------------------------------------------
 void setup()
@@ -183,8 +182,8 @@ void setup()
   Sentrifarm::led4_double_short_flash();
 
   read_chip_once();
+  boot_count();
   if (!in_beacon_mode && !in_log_mode) {
-    boot_count();
     Sentrifarm::read_datetime_once(sensorData);
     Sentrifarm::read_bmp_once(sensorData, bmp);
     Sentrifarm::read_pcf8591_once(sensorData);
