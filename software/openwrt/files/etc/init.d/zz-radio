@@ -1,0 +1,14 @@
+#!/bin/sh /etc/rc.common
+
+# if NOT beaconing mode
+
+logger "Start Broker"
+broker_mqtts /etc/sentrifarm-rsmb-config.txt
+
+logger "Start Radio Relay"
+sleep 5
+sx1276_mqttsn_bridge /dev/spidev0.1 connect 1883
+
+# else
+
+# ...

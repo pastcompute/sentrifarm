@@ -1,0 +1,7 @@
+dest root /
+dest ram /tmp
+lists_dir ext /var/opkg-lists
+option overlay_root /overlay
+src/gz sentrifarm-base http://@IP@/sentrifarm-wrt/bin/ar71xx/packages/base
+src/gz sentrifarm http://@IP@/sentrifarm-wrt/bin/ar71xx/packages/packages
+

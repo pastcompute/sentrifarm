@@ -39,12 +39,12 @@ ifstatus debug
 # Note: need host web server at $IP/...
 # FIXME: files can differ between carambola2 and rpi
 
-IP=$IP
-IP=172.30.42.19
+IP=192.168.168.1
 cd /etc
-wget http://$IP/sentrifarm-bin/files/etc/opkg.conf.sentrifarm
+# wget http://$IP/sentrifarm-bin/files/etc/opkg.conf.sentrifarm
+set 's/@IP@/'$IP'/' /etc/opkg.conf.sentrifarm.in > /etc/opkg.conf.sentrifarm
 
-
+# Following should be redundant now
 cd /tmp
 opkg -f /etc/opkg.conf.sentrifarm update
 opkg -f /etc/opkg.conf.sentrifarm install boost-atomic boost-chrono boost-date_time boost-regex boost-system boost-thread boost-timer

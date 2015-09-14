@@ -40,7 +40,12 @@ echo bmp085 0x77 > '/sys/class/i2c-dev/i2c-0/device/new_device'
 # SCK    : phys J13 pin 12 :  spi0 CLK  - pulled down via 10k resistor
 # 
 
-logger "Setup GPIO"
+MACHINE_X=`egrep ^machine /proc/cpuinfo|cut -c 13-`
+
+
+logger "Setup GPIO for $MACHINE_X"
+
+if [ "$MACHINE_X" = "8devices Carambola2 board"
 
 # GPIO17 is hard coded into the platform init SPI device CS - file: patches/0001-SPI0.1-and-0.2-with-GPIO-CS.patch
 
@@ -56,11 +61,17 @@ echo in > /sys/class/gpio/gpio1/direction
 
 ls -l /sys/class/gpio
 
-# PIN 6: short to 3v3 to get BEACON MODE
+# If Carambola2 : Physical PIN 6: short to 3v3 to get BEACON MODE
 
 X=`cat /sys/class/gpio/gpio1/value`
 if [ "$X" == "1" ] ; then
   logger "GPIO1 == HIGH. ENTER BEACON MODE"
+fi
+
+else
+
+# Assume raspberry pi
+
 fi
 
 # 1-wire
