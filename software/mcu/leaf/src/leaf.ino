@@ -245,11 +245,10 @@ void publish_data()
   // For the moment send ASCII
   sensorData.make_mqtt_0(buf, sizeof(buf));
   Serial.println(buf);
-#if defined(TEENSYDUINO)
-  MQTTHandler.publish(FLAG_QOS_1, registered_topic_id , buf, strlen(buf));
-#else // untested with 1
-  MQTTHandler.publish(FLAG_QOS_0, registered_topic_id , buf, strlen(buf));
-#endif
+
+  uint8_t flags = FLAG_QOS_1; // 0
+
+  MQTTHandler.publish(flags, registered_topic_id , buf, strlen(buf));
 }
 
 ICACHE_FLASH_ATTR
