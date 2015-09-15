@@ -138,9 +138,15 @@ SX1276Radio::SX1276Radio(const boost::shared_ptr<SPI>& spi)
   actual_hz_(0),
   continuousMode_(false),
   continuousSetup_(false),
+  high_power_mode_(false),
   preamble_(0x8),
   symbolTimeout_(0x08)
 {
+  char *p = getenv("SX1276_HIGH");
+  if (p && strcmp(p, "1")==0) {
+    high_power_mode_ = true;
+  }
+
   fault_ = !spi_->ReadRegister(0x42, version_);
   ReadCarrier();
 }
@@ -336,15 +342,17 @@ bool SX1276Radio::ApplyDefaultLoraConfiguration()
   //v = 0 | (0x2 << 4) | 9;
   //CAUSING ISSUES
 
-#if defined(SX1276_HIGH_POWER)
-	// Using the inAir9b:
-	fprintf(stderr, "inAir9b High power Mode\n");
-	WriteRegisterVerify(SX1276REG_PaConfig, 0xff);
-	WriteRegisterVerify(SX1276REG_PaDac, 0x87);
-#else
-	WriteRegisterVerify(SX1276REG_PaConfig, 0x7f);
-	WriteRegisterVerify(SX1276REG_PaDac, 0x84);
-#endif
+  if (high_power_mode_) {
+    // Using the inAir9b:
+    fprintf(stderr, "inAir9b High power Mode\n");
+    WriteRegisterVerify(SX1276REG_PaConfig, 0xff);
+    WriteRegisterVerify(SX1276REG_PaDac, 0x87);
+    // This also needs 3v3 on pin (7)
+  } else {
+    WriteRegisterVerify(SX1276REG_PaConfig, 0x7f);
+    WriteRegisterVerify(SX1276REG_PaDac, 0x84);
+  }
+
   // TODO: Report node address
 
   // DIO mapping

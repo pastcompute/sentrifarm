@@ -84,7 +84,10 @@ public:
 
   void SetSymbolTimeout(unsigned symbolTimeout) { symbolTimeout_ = symbolTimeout; }
   void SetPreamble(unsigned preamble) { preamble_ = preamble; }
-  bool EnableContinuousRx(bool enabled) { continuousMode_ = enabled; }
+  void EnableContinuousRx(bool enabled) { continuousMode_ = enabled; }
+  // Only has effect if called before ApplyDefaultLoraConfiguration()
+  // Default set by environment variable
+  void EnableHighPowerMode(bool enabled) { high_power_mode_ = enabled; }
 
   /// Revert to LoRa standby mode.
   /// @param old_value Previous mode register value
@@ -123,8 +126,9 @@ private:
   uint32_t actual_hz_;           ///< Actual carrier frequency, hz
   bool continuousMode_;          ///< If true then next call to ReceiveSimpleMessage will use continuous mode and not return to standby
   bool continuousSetup_;
-	unsigned preamble_;
-	unsigned symbolTimeout_;
+  bool high_power_mode_;
+  unsigned preamble_;
+  unsigned symbolTimeout_;
 };
 
 #endif // SX1276_HPP__
