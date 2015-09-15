@@ -319,7 +319,11 @@ void beacon_tx()
 void loop()
 {
   if (in_log_mode) { log_mode(); return; }
-  if (in_beacon_mode) { beacon_tx(); delay(5000); return; }
+  if (in_beacon_mode) {
+    beacon_tx();
+    Sentrifarm::deep_sleep_and_reset(2500); // for some reasy we hit the wdt after about 200 5000ms cycles
+    return;
+  }
 
   // See if we can receive any radio data
   bool rx_ok = false;
