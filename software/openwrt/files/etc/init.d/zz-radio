@@ -1,8 +1,14 @@
 #!/bin/sh /etc/rc.common
 
-BEACON=`cat /sys/class/gpio/gpio24/value` # short to earth
+START=99
+STOP=99
 
-if [ "$BEACON" == "0" ] ; then
+BEACON=`cat /sys/class/gpio/gpio24/value` # need to short to 3v3, because there is no pullup
+
+start() {
+echo start
+
+if [ "$BEACON" = "1" ] ; then
 
 if test -e /usr/bin/sx1276_test1_tx ; then
   logger "Start Beacon Transmitter"
@@ -23,3 +29,11 @@ if test -e /usr/bin/sx1276_mqttsn_bridge ; then
 fi
 
 fi
+
+}
+
+stop() {
+	echo stop
+  :
+}
+

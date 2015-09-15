@@ -1,5 +1,11 @@
 #!/bin/sh /etc/rc.common
 
+EXTRA_COMMANDS="again"
+EXTRA_HELP="again   Run again"
+START=98
+STOP=98
+
+boot() {
 logger "Setup i2c RTC"
 echo ds1307 0x68 > '/sys/class/i2c-dev/i2c-0/device/new_device'
 
@@ -139,6 +145,11 @@ logger "DS18B20: `cat /sys/bus/w1/devices/28-0314630d0eff/w1_slave`"
 logger "RTC: `hwclock -r`"
 logger "Date: `date`"
 
-sx1276_dump_regs | logger
+sx1276_dump_regs /dev/spidev0.1 | logger
 
-exit 0
+}
+
+again() {
+boot
+}
+
