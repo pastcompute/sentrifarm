@@ -392,6 +392,7 @@ void SX1276Radio::ReceiveInit()
   // To start with: midpoint gain (gain E G1 (max)..G6 (min)) bits 7-5 and no boost, while we are testing in the lab...
   // Boost, bits 0..1 - 00 = default LNA current, 11 == 150% boost
   WriteRegister(SX1276REG_FifoTxBaseAddr, (0x4 << 5) | (0x00));
+  // WTF? WriteRegister(SX1276REG_Lna, (0x4 << 5) | (0x00));
 
   WriteRegister(SX1276REG_MaxPayloadLength, max_rx_payload_bytes_);
   WriteRegister(SX1276REG_PayloadLength, max_rx_payload_bytes_);
