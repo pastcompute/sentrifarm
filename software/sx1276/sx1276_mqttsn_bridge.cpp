@@ -338,6 +338,10 @@ int main(int argc, char *argv[])
   if (!spi) { PR_ERROR("Unable to get SPI instance\n"); return 1; }
 
   usleep(100);
+
+  Misc::UserTraceSettings(spi);
+
+
   shared_ptr<SX1276Radio> radio(new SX1276Radio(spi));
   cout << format("SX1276 Version: %.2x\n") % radio->version();
 

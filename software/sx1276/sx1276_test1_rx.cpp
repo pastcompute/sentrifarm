@@ -60,12 +60,12 @@ int main(int argc, char* argv[])
 
   platform->ResetSX1276();
 
-  radio.ChangeCarrier(919000000);
-  radio.ApplyDefaultLoraConfiguration();
   radio.SetSymbolTimeout(732);
 
-  cout << format("Check read Carrier Frequency: %uHz\n") % radio.carrier();
+  radio.ChangeCarrier(919000000);
+  radio.ApplyDefaultLoraConfiguration();
 
+  cout << format("Check read Carrier Frequency: %uHz\n") % radio.carrier();
 
   if (radio.fault()) return 1;
 
