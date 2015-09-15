@@ -69,7 +69,7 @@ bool SpidevSPI::ConfigureSPI()
           return false;
   }
   if (ioctl(fd_, SPI_IOC_RD_LSB_FIRST, &lsb) < 0) {
-          perror("SPI rd_lsb_fist");
+          perror("SPI rd_lsb_first");
           return false;
   }
   if (ioctl(fd_, SPI_IOC_RD_BITS_PER_WORD, &bits) < 0) {

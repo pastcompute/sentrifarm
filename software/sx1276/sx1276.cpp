@@ -231,6 +231,7 @@ bool SX1276Radio::Standby(uint8_t& old_mode)
 {
   uint8_t v=0;
   spi_->ReadRegister(SX1276REG_OpMode, v);
+  old_mode = v;
   if (!fault_) { EnterStandby(); }
   return !fault_;
 }
@@ -239,6 +240,7 @@ bool SX1276Radio::Sleep(uint8_t& old_mode)
 {
   uint8_t v=0;
   spi_->ReadRegister(SX1276REG_OpMode, v);
+  old_mode = v;
   if (!fault_) { EnterSleep(); }
   return !fault_;
 }
