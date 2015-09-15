@@ -76,11 +76,13 @@ if [ "$MACHINE_X" = "8devices Carambola2 board" ] ; then
 # Reversed: 1 = off, 0 = on
 echo 15 > /sys/class/gpio/export
 echo out > /sys/class/gpio/gpio15/direction
+sleep 1
 echo 0 > /sys/class/gpio/gpio15/value
 
 # Why was 16 already enabled ?!?
 echo 1 > /sys/class/gpio/export
 echo in > /sys/class/gpio/gpio1/direction
+sleep 1
 
 ls -l /sys/class/gpio
 
@@ -100,14 +102,13 @@ echo 1 > /sys/class/leds/led0/brightness   # <-- note, this only flashes it due 
 
 echo 24 > /sys/class/gpio/export
 echo in > /sys/class/gpio/gpio24/direction
+sleep 1
 
 # Pin 18
 X=`cat /sys/class/gpio/gpio24/value`
 if [ "$X" == "1" ] ; then
   logger "GPIO24 == HIGH. ENTER BEACON MODE"
 fi
-
-else
 
 fi
 

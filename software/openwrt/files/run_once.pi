@@ -83,9 +83,9 @@ wget http://$IP/sentrifarm-bin/build.$MACHINE.libsocket/C++/libsocket++.so
 mv -v * /usr/lib
 
 # The following refreshes files in the image already
-cd /tmp
-wget http://$IP/sentrifarm-bin/files/etc/sentrifarm-rsmb-config.txt
-mv sentrifarm-rsmb-config.txt /etc
+# cd /tmp
+# wget http://$IP/sentrifarm-bin/files/etc/sentrifarm-rsmb-config.txt
+# mv sentrifarm-rsmb-config.txt /etc
 
 # /tmp/dl/broker_mqtts /etc/sentrifarm-rsmb-config.txt
 # /tmp/dl/broker_mqtt /etc/sentrifarm-rsmb-config.txt
@@ -105,4 +105,7 @@ mv sentrifarm-rsmb-config.txt /etc
 # TODO:
 # Add -4 option to ntpd via a script
 echo "You need to add -4 to /etc/init.d/ntpd script"
+
+cp /99gpio-i2c-rtc.pi /etc/modules.d
+echo "Reboot for GPIO and module changes to take effect"
 
