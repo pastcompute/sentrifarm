@@ -1,14 +1,25 @@
 #!/bin/sh /etc/rc.common
 
-# if NOT beaconing mode
+BEACON=`cat /sys/class/gpio/gpio24/value` # short to earth
 
-logger "Start Broker"
-broker_mqtts /etc/sentrifarm-rsmb-config.txt
+if [ "$BEACON" == "0" ] ; then
 
-logger "Start Radio Relay"
-sleep 5
-sx1276_mqttsn_bridge /dev/spidev0.1 connect 1883
+if test -e /usr/bin/sx1276_test1_tx ; then
+  logger "Start Beacon Transmitter"
+  sx1276_test1_tx /dev/spidev0.1 > /tmp/beacontx.log 2>&1 &
+fi
 
-# else
+else
 
-# ...
+if test -e /usr/bin/broker_mqtts ; then
+  logger "Start Broker"
+  broker_mqtts /etc/sentrifarm-rsmb-config.txt > /tmp/broker.log 2>&1 &
+fi
+
+if test -e /usr/bin/sx1276_mqttsn_bridge ; then
+  logger "Start Radio Relay in 5 seconds"
+  sleep 5
+  sx1276_mqttsn_bridge /dev/spidev0.1 connect 1883  > /tmp/relay.log 2>&1 &
+fi
+
+fi

@@ -48,7 +48,7 @@ echo bmp085 0x77 > '/sys/class/i2c-dev/i2c-0/device/new_device'
 # MOSI   : phys P1 pin 19 gpio 10 : spi0 MOSI
 # MISO   : phys P1 pin 21 gpio 9  : spi0 MISO
 # SCK    : phys P1 pin 23 gpio 11 : spi0 SCLK
-# CS     : phys P1 pin 24 gpio 8  : spi0 CE0
+# CS     : phys P1 pin 26 gpio X  : spi0 CE1   <-- not CE0, because spidev0.0 wont match spidev0.1 on the c2
 #
 # MISO   : phys P1 pin 3 gpio 0   : spi0 I2C SDA
 # SCK    : phys P1 pin 5 gpio 1   : spi0 I2C SCL
@@ -58,15 +58,17 @@ echo bmp085 0x77 > '/sys/class/i2c-dev/i2c-0/device/new_device'
 #
 # GPIO4  : phys P1 pin 7 gpio 4   : SX1276 RESET
 # GPIO27 : phys P1 pin 13 gpio 27 : LED4 <-- some raspberry pi doco has this called GPIO21
-# GPIO22 : phys P1 pin 15 gpio 22 : 1-wire
+# GPIO25 : phys P1 pin 22 gpio 25 : 1-wire
+# GPIO24 : phys P1 pin 18 gpio 24 : Use for beacon mode
 
 
 MACHINE_X=`egrep ^machine /proc/cpuinfo|cut -c 13-`
+MACHINE_Y=`egrep ^Hardware /proc/cpuinfo |cut -c 12-`
 
 
-logger "Setup GPIO for $MACHINE_X"
+logger "Setup GPIO for ${MACHINE_X:+${MACHINE_X}}${MACHINE_X:-${MACHINE_Y}}"
 
-if [ "$MACHINE_X" = "8devices Carambola2 board"
+if [ "$MACHINE_X" = "8devices Carambola2 board" ] ; then
 
 # GPIO17 is hard coded into the platform init SPI device CS - file: patches/0001-SPI0.1-and-0.2-with-GPIO-CS.patch
 
@@ -92,6 +94,20 @@ fi
 else
 
 # Assume raspberry pi
+
+echo 1 > /sys/class/leds/led0/brightness   # <-- note, this only flashes it due to mmc trigger
+echo 1 > /sys/class/leds/led0/brightness   # <-- note, this only flashes it due to mmc trigger
+
+echo 24 > /sys/class/gpio/export
+echo in > /sys/class/gpio/gpio24/direction
+
+# Pin 18
+X=`cat /sys/class/gpio/gpio24/value`
+if [ "$X" == "1" ] ; then
+  logger "GPIO24 == HIGH. ENTER BEACON MODE"
+fi
+
+else
 
 fi
 
@@ -121,5 +137,7 @@ logger "Air Temp: `cat /sys/bus/i2c/drivers/bmp085/0-0077/temp0_input`"
 logger "DS18B20: `cat /sys/bus/w1/devices/28-0314630d0eff/w1_slave`"
 logger "RTC: `hwclock -r`"
 logger "Date: `date`"
+
+sx1276_dump_regs | logger
 
 exit 0
