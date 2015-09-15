@@ -321,8 +321,10 @@ bool SX1276Radio::ApplyDefaultLoraConfiguration()
   // We can send 64 byte payload in approx 0.4s + preamble (>= 6+4 symbols, @ 2^9/125000
   // say approx 0.45 seconds for a 8+4 preamble
 
+  // IMPORTANT: Testing of 2015-09-13 was accidentally done using 4/5
+
   // 125kHz, 4/6, explicit header
-  v = (SX1276_LORA_BW_125000 << 4) | (SX1276_LORA_CODING_RATE_4_6) | 0x0;
+  v = (SX1276_LORA_BW_125000 << 4) | ((SX1276_LORA_CODING_RATE_4_6) << 1) | 0x0;
   WriteRegisterVerify(SX1276REG_ModemConfig1, v);
 
   // SF9, normal (not continuous) mode, CRC, and upper 2 bits of symbol timeout (maximum i.e. 1023)
@@ -608,17 +610,16 @@ bool SX1276Radio::ReceiveSimpleMessage(uint8_t buffer[], int& size, int timeout_
   timeout = false;
   int rssi_packet = 255;
   int snr_packet = -255;
-  int coding_rate = 0;
+  unsigned coding_rate = 0;
   if (ReadRegisterHarder(SX1276REG_PacketRssi, v)) { rssi_packet = -137 + v; }
   if (ReadRegisterHarder(SX1276REG_PacketSnr, v)) { snr_packet = (v & 0x80 ? (~v + 1) : v) >> 4; } // 2's comp
   if (ReadRegisterHarder(SX1276REG_ModemStat, stat)) {
-    coding_rate = stat >> 5;
-    switch (coding_rate) {
-    case 0x1: coding_rate = 5;
-    case 0x2: coding_rate = 6;
-    case 0x3: coding_rate = 7;
-    case 0x4: coding_rate = 8;
-    default: coding_rate = 0;
+    switch (stat >> 5) {
+    case 1: coding_rate = 5; break;
+    case 2: coding_rate = 6; break;
+    case 3: coding_rate = 7; break;
+    case 4: coding_rate = 8; break;
+    default: coding_rate = 0; break;
     }
   }
   uint8_t payloadSizeBytes = 0xff;
@@ -638,11 +639,12 @@ bool SX1276Radio::ReceiveSimpleMessage(uint8_t buffer[], int& size, int timeout_
   payloadSizeBytes--; // DONT KNOW WHY, I THINK FifoRxNbBytes points 1 down
 #endif
 
-  DEBUG("[DBUG] ");
+  DEBUG("[DBUG] RX ");
   boost::posix_time::ptime now = boost::posix_time::microsec_clock::local_time();
   printf("%s ", boost::posix_time::to_simple_string(now).c_str());
 
-  DEBUG("RX rssi_pkt=%d ", rssi_packet);
+  DEBUG("cr=4/%u ", coding_rate);
+  DEBUG("rssi_pkt=%d ", rssi_packet);
   DEBUG("snr_pkt=%d ", snr_packet);
   DEBUG("stat=%02x ", (unsigned)stat);
   DEBUG("sz=%d ", (unsigned)payloadSizeBytes);

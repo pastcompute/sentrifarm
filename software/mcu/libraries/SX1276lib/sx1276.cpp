@@ -194,8 +194,11 @@ bool SX1276Radio::Begin()
     return false;
   }
 
+  // IMPORTANT: Testing of 2015-09-13 was accidentally done using 4/5
+  // because we forgot to shift the CR. Which also explains why we never get CRC errors!
+  // because implicit header could have been on
   // 125kHz, 4/6, explicit header
-  v = (BandwidthToBitfield(bandwidth_hz_) << 4) | CodingRateToBitfield(coding_rate_) | 0x0;
+  v = (BandwidthToBitfield(bandwidth_hz_) << 4) | (CodingRateToBitfield(coding_rate_) << 1) | 0x0;
   WriteRegister(SX1276REG_ModemConfig1, v);
 
   // SF9, normal (not continuous) mode, CRC, and upper 2 bits of symbol timeout (maximum i.e. 1023)
@@ -457,11 +460,11 @@ bool SX1276Radio::ReceiveMessage(byte buffer[], byte size, byte& received, bool&
   ReadRegister(SX1276REG_ModemStat, stat);
   coding_rate = stat >> 5;
   switch (coding_rate) {
-    case 0x1: coding_rate = 5;
-    case 0x2: coding_rate = 6;
-    case 0x3: coding_rate = 7;
-    case 0x4: coding_rate = 8;
-    default: coding_rate = 0;
+    case 0x1: coding_rate = 5; break;
+    case 0x2: coding_rate = 6; break;
+    case 0x3: coding_rate = 7; break;
+    case 0x4: coding_rate = 8; break;
+    default: coding_rate = 0;  break;
   }
   rx_snr_db_ = snr_packet;
 
