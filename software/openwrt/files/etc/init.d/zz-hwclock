@@ -9,7 +9,8 @@ echo 24c32  0x50 > '/sys/class/i2c-dev/i2c-0/device/new_device'
 logger "Setup i2c Barometer"
 echo bmp085 0x77 > '/sys/class/i2c-dev/i2c-0/device/new_device'
 
-# atm:
+# Carambola2 Pins:
+#
 # GPIO16 : phys J12 pin 2  : (LED6) -- note needs to be LOW at boot
 # GPIO17 : phys J12 pin 1  : spi0.1 (SX1276) CS 
 #   -- note needs to be HI at boot, which is OK because we need to pull this high anyway via 10k resistor to boot!
@@ -39,6 +40,26 @@ echo bmp085 0x77 > '/sys/class/i2c-dev/i2c-0/device/new_device'
 # MOSI   : phys J13 pin 13 :  spi0 MOSI - note, C2 datasheet says needs to be pulled to ?
 # SCK    : phys J13 pin 12 :  spi0 CLK  - pulled down via 10k resistor
 # 
+
+# Raspberry Pi Pins:
+# Pin 2,4 = 5V pin 6, 9, 14, 20, 25 = GND 25 = next to video out, 26 = outside edge, 2,4 = outer top corner of board
+# Pint 1,17 = 3v3
+#
+# MOSI   : phys P1 pin 19 gpio 10 : spi0 MOSI
+# MISO   : phys P1 pin 21 gpio 9  : spi0 MISO
+# SCK    : phys P1 pin 23 gpio 11 : spi0 SCLK
+# CS     : phys P1 pin 24 gpio 8  : spi0 CE0
+#
+# MISO   : phys P1 pin 3 gpio 0   : spi0 I2C SDA
+# SCK    : phys P1 pin 5 gpio 1   : spi0 I2C SCL
+#
+# TX     : phys P1 pin 8 gpio 14  : serial TX
+# RX     : phys P1 pin 10 gpio 15 : serial RX
+#
+# GPIO4  : phys P1 pin 7 gpio 4   : SX1276 RESET
+# GPIO27 : phys P1 pin 13 gpio 27 : LED4 <-- some raspberry pi doco has this called GPIO21
+# GPIO22 : phys P1 pin 15 gpio 22 : 1-wire
+
 
 MACHINE_X=`egrep ^machine /proc/cpuinfo|cut -c 13-`
 
