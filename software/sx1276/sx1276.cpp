@@ -549,11 +549,13 @@ bool SX1276Radio::ReceiveSimpleMessage(uint8_t buffer[], int& size, int timeout_
   bool done = false;
   bool have_header = false;
   do {
+    spi_->TraceSuppressNext(true);
     if (!ReadRegisterHarder(SX1276REG_IrqFlags, flags)) {
       PR_ERROR("SPI fault waiting for packet reading flags.\n");
       return false;
     }
 #if TRACE_STATE_CHANGE
+    spi_->TraceSuppressNext(true);
     if (!ReadRegisterHarder(SX1276REG_ModemStat, stat)) {
       // this is not critical, so we could probably leave this out and be more resilient
       // but all the error stuff is for the bus pirate anyway

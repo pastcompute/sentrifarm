@@ -27,7 +27,7 @@
 class SPI
 {
 public:
-  SPI() : fd_(-1), trace_reads_(false), trace_writes_(false) {}
+  SPI() : fd_(-1), trace_reads_(false), trace_next_suppress_(false), trace_writes_(false) {}
 
   virtual bool IsOpen() const = 0;
 
@@ -43,11 +43,13 @@ public:
   virtual bool WriteRegister(uint8_t reg, uint8_t value) = 0;
 
   inline void TraceReads(bool enabled) { trace_reads_ = enabled; }
+  inline void TraceSuppressNext(bool suppressed) { trace_next_suppress_ = suppressed; }
   inline void TraceWrites(bool enabled) { trace_writes_ = enabled; }
 
 protected:
   int fd_;
   bool trace_reads_;
+  bool trace_next_suppress_;
   bool trace_writes_;
 };
 

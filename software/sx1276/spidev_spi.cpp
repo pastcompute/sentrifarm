@@ -104,7 +104,8 @@ bool SpidevSPI::ReadRegister(uint8_t reg, uint8_t& result)
   if (status != 2) { fprintf(stderr, "SPI [R] status: %d at register %d\n", status, (int)reg); return false; }
   result = buf[0];
 
-  if (trace_reads_) { fprintf(stderr, "[R] %.2x --> %.2x\n", (int)reg, (int)result); }
+  if (trace_reads_ && !trace_next_suppress_) { fprintf(stderr, "[R] %.2x --> %.2x\n", (int)reg, (int)result); }
+  trace_next_suppress_ = false;
   return true;
 }
 
