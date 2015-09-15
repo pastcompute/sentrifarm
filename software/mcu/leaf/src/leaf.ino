@@ -312,7 +312,6 @@ void beacon_tx()
   system_rtc_mem_write(64, &beacon_counter, 4);
 #endif
 
-  Sentrifarm::deep_sleep_and_reset(5000);
   return;
 }
 
@@ -320,7 +319,7 @@ void beacon_tx()
 void loop()
 {
   if (in_log_mode) { log_mode(); return; }
-  if (in_beacon_mode) { beacon_tx(); return; }
+  if (in_beacon_mode) { beacon_tx(); delay(5000); return; }
 
   // See if we can receive any radio data
   bool rx_ok = false;
