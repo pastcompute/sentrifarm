@@ -6,8 +6,6 @@ STOP=99
 BEACON=`cat /sys/class/gpio/gpio24/value` # need to short to 3v3, because there is no pullup
 
 start() {
-echo start
-
 if [ "$BEACON" = "1" ] ; then
 
 if test -e /usr/bin/sx1276_test1_tx ; then
@@ -33,7 +31,9 @@ fi
 }
 
 stop() {
-	echo stop
-  :
+  killall sx1276_test1_rx
+  killall sx1276_test1_tx
+  killall sx1276_mqttsn_bridge
+  killall broker_mqtts
 }
 
