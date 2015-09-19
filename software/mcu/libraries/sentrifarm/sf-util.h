@@ -33,7 +33,7 @@ inline byte decToBcd(byte val) { return(val/10*16 + (val%10)); }
 
 inline byte bcdToDec(byte val) { return(val/16*10 + (val%16)); }
 
-#define LINE_DOUBLE "===================================="
-#define LINE_SINGLE "------------------------------------"
+#define LINE_DOUBLE "===================="
+#define LINE_SINGLE "--------------------"
 
 #endif // SENTRIFARM_UTIL_H__

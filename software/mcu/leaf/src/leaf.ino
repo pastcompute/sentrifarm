@@ -170,10 +170,10 @@ void setup()
   Sentrifarm::reset_radio();
 
   if (in_beacon_mode) {
-    Serial.println(F("--------BEACON MODE----------"));
+    Serial.println(F("BEACON MODE"));
     sensorData.beacon_mode = true;
   } else if (in_log_mode) {
-    Serial.println(F("--------RADIOLOG MODE----------"));
+    Serial.println(F("RADIOLOG MODE"));
   } else {
 #ifdef ESP8266
   // copy the counter into the ESP nvram
@@ -212,6 +212,7 @@ void setup()
       Serial.print(HumiditySensor.readTemperature());
       Serial.println();
     }
+    digitalWrite(PIN_DHT, HIGH);
 #endif
   }
   read_radio_once();
@@ -237,6 +238,7 @@ void setup()
   }
 
   // Make the first connect attempt
+  // FIXME should use mac or something
   MQTTHandler.connect(0, 30, "sfnode1"); // keep alive in seconds
   state = SENT_CONNECT;
   Sentrifarm::led4_double_short_flash();
@@ -254,9 +256,9 @@ bool register_topic()
   uint8_t idx = 0;
   if (0xffff == (topic_id = MQTTHandler.find_topic_id(TOPIC, idx))) {
     Serial.println(TOPIC);
-    Serial.println("Try register");
+    Serial.println("Try reg");
     if (!MQTTHandler.register_topic(TOPIC)) {
-      Serial.println("Register error");
+      Serial.println("Reg error");
       Sentrifarm::deep_sleep_and_reset(FAULT_SLEEP_INTERVAL_MS);
       return false;
     }
@@ -305,7 +307,7 @@ void log_mode()
   {
     Sentrifarm::led4_flash();
     char buf2[256];
-    snprintf(buf2, sizeof(buf2), "[RX] %d bytes, crc=%d rssi=%d DATA=%02x%02x%02x%02x",
+    snprintf(buf2, sizeof(buf2), "[RX] %d bytes, crc=%d rssi=%d %02x%02x%02x%02x",
         rxlen, crc, radio.GetLastRssi(), (int)buf[0], (int)buf[1], (int)buf[2], (int)buf[3]);
     Serial.println(buf2);
     Serial.println((char*)buf);
@@ -324,7 +326,7 @@ void beacon_tx()
 #endif
 
   char buf[48];
-  snprintf(buf, sizeof(buf), "Sentrifarm Beacon %d", (int)beacon_counter);
+  snprintf(buf, sizeof(buf), "Beacon %d", (int)beacon_counter);
   beacon_counter ++;
   Serial.println(buf);
   Serial.println(radio.PredictTimeOnAir(strlen(buf)));
@@ -369,7 +371,7 @@ void loop()
   }
 
   if (elapsedRuntime > RUNTIME_TIMEOUT) {
-    Serial.println(F("TOOK TOO LONG."));
+    Serial.println(F("TOO LONG"));
     delay(100);
     if (puback_pass_hack == 0) {
       if (state != WAIT_PUBACK) { // If QOS is zero then we never get a puback
@@ -405,7 +407,7 @@ void loop()
         // still waiting for it
         return;
       }
-      Serial.print(F("HAVE TOPIC ID:")); Serial.println(registered_topic_id);
+      Serial.print(F("HAVE TOPIC")); Serial.println(registered_topic_id);
       elapsedRuntime = 0; // hang around again if we got this far
       // We expect the next message to be a regack
       state = WAIT_REGACK;

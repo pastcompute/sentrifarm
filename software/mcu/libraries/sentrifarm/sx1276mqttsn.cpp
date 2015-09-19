@@ -56,9 +56,9 @@ bool MQTTSX1276::Begin(Stream* debug)
   bool started_ok  = false;
   // init SPI and then program the chip to LoRa mode
   SPI.begin();
-  if (debug) { debug->print(F("SX1276: version=")); debug->println(radio_.ReadVersion()); }
+  if (debug) { debug->print(F("SX1276 ver=")); debug->println(radio_.ReadVersion()); }
   if (!radio_.Begin()) {
-    if (debug) { debug->println(F("SX1276 init error")); }
+    if (debug) { debug->println(F("SX1276 init err")); }
   } else {
     radio_.SetCarrier(919000000);
     uint32_t carrier_hz = 0;
@@ -91,7 +91,7 @@ bool MQTTSX1276::TryReceive(bool& crc)
 ICACHE_FLASH_ATTR
 bool MQTTSX1276::parse_impl(uint8_t* response)
 {
-  if (rx_buffer_len_ < 3) { DEBUG("SHORT MESSAGE!\n\r"); return true; }
+  if (rx_buffer_len_ < 3) { DEBUG("SHORT MSG!\n\r"); return true; }
   // Ooops, our carambola is still using the dogdgy 3-byte header
   DEBUG("RX CTR=%d\n\r", rx_buffer_[1]);
 
@@ -119,7 +119,7 @@ void MQTTSX1276::send_message_impl(const uint8_t* msg, uint8_t length)
   tx_buffer_[1] = tx_rolling_;
   tx_buffer_[2] = 0; // echo counter
   if (length > MAX_BUFFER_SIZE) {
-    DEBUG("TX TRUNCATION!\n\r");
+    DEBUG("TX TRUNC!\n\r");
     length = MAX_BUFFER_SIZE;
   }
   memcpy(tx_buffer_+3, msg, length);
@@ -162,7 +162,7 @@ void MQTTSX1276::puback_handler(const msg_puback* msg)
 ICACHE_FLASH_ATTR
 void MQTTSX1276::disconnect_handler(const msg_disconnect* msg)
 {
-  DEBUG("DISCONNECT\n\r");
+  DEBUG("DISCON\n\r");
   got_disconnect_ ++;
 }
 

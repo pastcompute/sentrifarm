@@ -5,7 +5,11 @@
 
 #ifdef TEENSYDUINO
 #define Serial Serial1
+#define FF
+#else
+#define FF F
 #endif
+
 
 namespace Sentrifarm {
 
@@ -14,7 +18,7 @@ namespace Sentrifarm {
     char buf[256];
     Serial.println(LINE_DOUBLE);
 
-    Serial.print(F("Software tag "));
+    Serial.print(FF("Ver: "));
     Serial.println(sw_version);
 #if defined(ESP8266)
     snprintf(buf, sizeof(buf), "ESP8266: ver=%d boot_mode=%d vcc=%d sdk=%s MAC=%02x:%02x:%02x:%02x:%02x:%02x",
@@ -22,38 +26,37 @@ namespace Sentrifarm {
     Serial.println(buf);
 #endif
 
-    Serial.print(F("BOOT COUNT : ")); Serial.println(bootCount);
-
+    led4_flash();
+    Serial.print(FF("BOOT COUNT : ")); Serial.println(bootCount);
     if (have_date) {
-      snprintf((char*)buf, sizeof(buf), "DS1307: 20%02u-%02d-%02u %02u-%02u\n\r",
+      snprintf((char*)buf, sizeof(buf), "DS1307: 20%02u-%02d-%02u %02u-%02u",
                   (int)year, (int)month, (int)dayOfMonth, (int)hour, (int)minute);
-      Serial.print(buf);
-    } else { Serial.println((F("DS1307            NOT FOUND"))); }
+      Serial.println(buf);
+    } else { Serial.println((FF("DS1307 NOT FOUND"))); }
 
     if (have_radio) {
-      snprintf((char*)buf, sizeof(buf), "SX1276 Version  0x%02x\n\r", radio_version);
-      Serial.print(buf);
-    } else { Serial.println((F("Radio             NOT FOUND"))); }
+      snprintf((char*)buf, sizeof(buf), "SX1276 Version 0x%02x", radio_version);
+      Serial.println(buf);
+    } else { Serial.println((FF("Radio NOT FOUND"))); }
 
     if (have_bmp180) {
-      snprintf((char*)buf, sizeof(buf), "Barometer       %4d.%d hPa\n\rAir temperature  %3d.%d degC\n\rAltitude        %4d.%d\n\r",
+      snprintf((char*)buf, sizeof(buf), "Barom %4d.%d hPa\n\rAir temp %3d.%d degC\n\rAltitude %4d.%d",
                (int)floorf(ambient_hpa), fraction(ambient_hpa),
                (int)floorf(ambient_degc), fraction(ambient_degc),
                (int)floorf(altitude_m), fraction(altitude_m));
-      Serial.print(buf);
-    } else { Serial.println((F("Barometer       NOT FOUND"))); }
+      Serial.println(buf);
+    } else { Serial.println((FF("BMP180 NOT FOUND"))); }
 
     if (have_pcf8591) {
       int v0 = float(adc_data0) * PCF8591_VREF / 256.F;
       int v1 = float(adc_data1) * PCF8591_VREF / 256.F;
       int v2 = float(adc_data2) * PCF8591_VREF / 256.F;
       int v3 = float(adc_data3) * PCF8591_VREF / 256.F;
-      snprintf((char*)buf, sizeof(buf), "PCF8591 Ch#0    %4dmV\n\r", v0); Serial.print(buf);
-      snprintf((char*)buf, sizeof(buf), "PCF8591 Ch#1    %4dmV\n\r", v1); Serial.print(buf);
-      snprintf((char*)buf, sizeof(buf), "PCF8591 Ch#2    %4dmV\n\r", v2); Serial.print(buf);
-      snprintf((char*)buf, sizeof(buf), "PCF8591 Ch#3    %4dmV\n\r", v3); Serial.print(buf);
-    } else { Serial.println((F("PCF8591           NOT FOUND"))); }
-
+      snprintf((char*)buf, sizeof(buf), "ADC#0 %4dmV = %dUV Rating\n\r", v0, v0/100); Serial.print(buf);
+      snprintf((char*)buf, sizeof(buf), "ADC#1 %4dmV\n\r", v1); Serial.print(buf);
+      snprintf((char*)buf, sizeof(buf), "ADC#2 %4dmV\n\r", v2); Serial.print(buf);
+      snprintf((char*)buf, sizeof(buf), "ADC#3 %4dmV\n\r", v3); Serial.print(buf);
+    } else { Serial.println((FF("PCF8591 NOT FOUND"))); }
     Serial.println(LINE_DOUBLE);
   }
 

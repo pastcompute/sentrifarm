@@ -87,6 +87,7 @@ namespace Sentrifarm {
       have_date = false;
       have_humidity = false;
       humidity = -1;
+      memset(mac, 0, 6);
     }
 
     void debug_dump() const;
