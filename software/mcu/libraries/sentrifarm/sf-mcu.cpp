@@ -192,7 +192,11 @@ namespace Sentrifarm {
 
   void scan_i2c_bus()
   {
-    Serial.println("Scanning i2c bus. If this hangs, check the pullup resistors.");
+#if defined(TEENSYDUINO)
+    Serial.println(F("Scanning i2c bus. If this hangs, check the pullup resistors."));
+#else
+    Serial.println(F("Scanning i2c bus."));
+#endif
     led4_double_short_flash();
     for (byte addr=3; addr < 127; addr++) {
       char buf[32];
@@ -201,7 +205,7 @@ namespace Sentrifarm {
       int error = Wire.endTransmission();
       if (error == 0) {
         led4_short_flash();
-        snprintf(buf, sizeof(buf), "Found i2c device at %02x", (int)addr);
+        snprintf(buf, sizeof(buf), "i2c device at %02x", (int)addr);
         Serial.println(buf);
       }
     }
