@@ -64,6 +64,7 @@ namespace Sentrifarm {
 
     beacon_mode = false;
 
+#ifdef ESP8266 // why is this not working on the teensy?
     // Before we turn on i2c, see if there is a jumper over SCL
     // in which case go into beacon mode
     pinMode(PIN_SCL, INPUT_PULLUP);
@@ -71,6 +72,7 @@ namespace Sentrifarm {
 
     pinMode(PIN_SDA, INPUT_PULLUP);
     log_mode = digitalRead(PIN_SDA) == 0;
+#endif
 
     // i2c
 #if defined(TEENSYDUINO)

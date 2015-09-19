@@ -176,7 +176,10 @@ void setup()
     Wire.begin();
     // 0x48 (ADC), 0x50 (EEPROM), 0x68 (RTC), 0x77 (BMP)
     // For reasons I dont understand, the RTC is only working if we first scan the entire i2c bus. WTAF?
+    // Note: this also hangs if the RTC is plugged in wrong
+#if !defined(TEENSYDUINO)
     Sentrifarm::scan_i2c_bus();
+#endif
   }
 
   Serial.println(F("go..."));
