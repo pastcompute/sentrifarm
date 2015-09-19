@@ -15,4 +15,7 @@ all: default
 	cd sx1276-rx && platformio run
 	cd sx1276-regdump && platformio run
 
+prereq:
+	platformio library install 19 # DHT11
+
 .PHONY: default all

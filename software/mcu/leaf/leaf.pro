@@ -19,6 +19,7 @@ INCLUDEPATH += "$${PLATFORMIO}/packages/toolchain-xtensa/xtensa-lx106-elf/includ
 INCLUDEPATH += "$${PLATFORMIO}/packages/toolchain-xtensa/lib/gcc/xtensa-lx106-elf/4.8.2/include"
 INCLUDEPATH += "$${PLATFORMIO}/packages/toolchain-xtensa/lib/gcc/xtensa-lx106-elf/4.8.2/include"
 INCLUDEPATH += "$${PLATFORMIO}/packages/sdk-esp8266/include"
+INCLUDEPATH += "$${PLATFORMIO}/lib/Adafruit_DHT_ID19"
 INCLUDEPATH += "./lib/SX1276lib"
 INCLUDEPATH += "./lib/arduino-mqtt-sn"
 INCLUDEPATH += "./lib/Adafruit_BMP085_Unified"

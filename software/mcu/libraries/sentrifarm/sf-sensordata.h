@@ -69,6 +69,9 @@ namespace Sentrifarm {
     byte month;
     byte year;
 
+    bool have_humidity;
+    float humidity;
+
     void reset() {
       // Requires -DSF_GIT_VERSION to be set...
       strncpy(sw_version, STR_SF_GIT_VERSION, sizeof(sw_version));
@@ -82,6 +85,8 @@ namespace Sentrifarm {
       have_bmp180 = false;
       have_pcf8591 = false;
       have_date = false;
+      have_humidity = false;
+      humidity = -1;
     }
 
     void debug_dump() const;
@@ -94,13 +99,13 @@ namespace Sentrifarm {
       int v1 = float(adc_data1) * PCF8591_VREF / 256.F;
       int v2 = float(adc_data2) * PCF8591_VREF / 256.F;
       int v3 = float(adc_data3) * PCF8591_VREF / 256.F;
-      snprintf(buf, len, "X,%d%d%d%d,%d,%d,%d,%02d%02d%02d%02d,%d.%d,%d.%d,%d,%d,%d,%d",
-              have_mac, have_date, have_bmp180, have_pcf8591,
+      snprintf(buf, len, "X,%d%d%d%d%d,%d,%d,%d,%02d%02d%02d%02d,%d.%d,%d.%d,%d,%d,%d,%d,%d.%d",
+              have_mac, have_date, have_bmp180, have_pcf8591, have_humidity,
               (int)bootCount, radio_version, snr,
               dayOfMonth, hour, minute, second,
               (int)floorf(ambient_hpa), fraction(ambient_hpa),
               (int)floorf(ambient_degc), fraction(ambient_degc),
-              v0, v1, v2, v3,);
+              v0, v1, v2, v3, (int)floorf(humidity), fraction(humidity));
     }
 
   };

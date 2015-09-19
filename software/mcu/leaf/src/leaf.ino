@@ -32,6 +32,11 @@
 #include "sf-ds1307.h"
 #include <Adafruit_BMP085_U.h>
 
+#define WITH_DHT 1
+#if WITH_DHT
+#include <DHT.h>
+#endif
+
 #ifdef ESP8266
 #include "ESP8266WiFi.h"
 extern "C" {
@@ -52,6 +57,10 @@ SX1276Radio radio(PIN_SX1276_CS, spiSettings);
 MQTTSX1276 MQTTHandler(radio);
 
 Sentrifarm::SensorData sensorData;
+
+#if WITH_DHT
+DHT HumiditySensor(PIN_DHT,DHT11);
+#endif
 
 enum PushStates {
   NEED_CONNECT,
@@ -191,6 +200,19 @@ void setup()
     Sentrifarm::read_datetime_once(sensorData);
     Sentrifarm::read_bmp_once(sensorData, bmp);
     Sentrifarm::read_pcf8591_once(sensorData);
+#if WITH_DHT
+    HumiditySensor.begin();
+    bool hh = HumiditySensor.read();
+    if (hh) {
+      sensorData.humidity = HumiditySensor.readHumidity();
+      sensorData.have_humidity = true;
+      Serial.print("H/T ");
+      Serial.print(sensorData.humidity);
+      Serial.print(",");
+      Serial.print(HumiditySensor.readTemperature());
+      Serial.println();
+    }
+#endif
   }
   read_radio_once();
 
