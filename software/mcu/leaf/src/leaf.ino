@@ -106,6 +106,7 @@ bool in_log_mode = false;
 
 int32_t beacon_counter = 0;
 
+ICACHE_FLASH_ATTR
 void read_chip_once()
 {
 #ifdef ESP8266
@@ -117,11 +118,11 @@ void read_chip_once()
   // Now, we could use the eeprom to save some kind of id
   // for the moment, use the MAC of the ESP8266
   WiFi.macAddress(sensorData.mac);
-  have_mac = true;
+  sensorData.have_mac = true;
 #endif
-
 }
 
+ICACHE_FLASH_ATTR
 void read_radio_once()
 {
   SPI.begin();
@@ -134,6 +135,7 @@ void read_radio_once()
   }
 }
 
+ICACHE_FLASH_ATTR
 void boot_count()
 {
   // Update bootcount in nvram
@@ -247,6 +249,7 @@ void setup()
 // void loop() {}
 
 // --------------------------------------------------------------------------
+ICACHE_FLASH_ATTR
 bool register_topic()
 {
   char TOPIC[128];
@@ -270,6 +273,7 @@ bool register_topic()
 }
 
 // --------------------------------------------------------------------------
+ICACHE_FLASH_ATTR
 void publish_data()
 {
   char buf[192]; // keep it short...
@@ -316,7 +320,9 @@ void log_mode()
   SPI.end();
 }
 
-
+#if 1
+void beacon_tx() {}
+#else
 ICACHE_FLASH_ATTR
 void beacon_tx()
 {
@@ -345,6 +351,7 @@ void beacon_tx()
 
   return;
 }
+#endif
 
 // --------------------------------------------------------------------------
 void loop()
