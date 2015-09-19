@@ -581,6 +581,9 @@ bool SX1276Radio::ReceiveSimpleMessage(uint8_t buffer[], int& size, int timeout_
 #endif
     if (flags & (1<<4)) { // valid header
       // dodgy hack : once we started getting a message we rely on the symbol timeout to exit
+      if (!have_header) {
+        t1 = t1 + boost::chrono::milliseconds(timeout_ms);
+      }
       have_header = true;
     }
     if (flags & (1 << 6)) { // rx done
@@ -597,7 +600,7 @@ bool SX1276Radio::ReceiveSimpleMessage(uint8_t buffer[], int& size, int timeout_
 #else
     usleep(100);
 #endif
-  } while (steady_clock::now() < t1 || have_header); // once we get a valid header dont break until final
+  } while (steady_clock::now() < t1); // once we get a valid header dont break until final
 
   ReadRegisterHarder(SX1276REG_ModemStat, stat);
 
