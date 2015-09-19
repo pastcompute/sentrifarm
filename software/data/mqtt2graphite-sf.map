@@ -1,4 +1,4 @@
 #(@)mqtt2graphite map file
 #
-v	#
-
+v	sentrifarm/leaf/#
+n	sentrifarm/base/w1therm/#

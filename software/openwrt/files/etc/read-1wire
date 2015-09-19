@@ -1,0 +1,28 @@
+#!/bin/sh
+
+# Simple cron to read temperature from DS18B20 and report to mqtt
+
+MAC=`ifconfig eth0 |sed -n -e 's/^eth0.* HWaddr \(.*\)/\1/p'|tr -d ' '`
+
+cd /sys/bus/w1/devices
+for x in * ; do
+
+case $x in
+w1_bus_master*)
+	:
+;;
+
+*)
+  ADDR=`cat $x/w1_slave|sed -n -e 's/[0-9a-f][0-9a-f] [0-9a-f][0-9a-f] \(.*\) [0-9a-f][0-9a-f] t=\(.*\)/\1/p'`
+  DEGCTH=`cat $x/w1_slave|sed -n -e 's/^\(.*\) t=\(.*\)/\2/p'`
+  b=""
+  TOPIC=`for a in $ADDR; do b=$b$a ; done; echo $b`
+  TOPIC="sentrifarm/base/w1therm/$MAC/$TOPIC"
+  # echo mqtt-sn-pub -t "$TOPIC" -m $DEGCTH
+  mosquitto_pub -q 1 -t "$TOPIC" -m $DEGCTH
+;;
+
+esac
+done
+
+

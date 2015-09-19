@@ -69,6 +69,7 @@ MACHINE=carambola2
 # FIXME: make the following into OpenWRT packages
 mkdir -p /tmp/dl
 cd /tmp/dl
+wget http://$IP/sentrifarm-bin/build.$MACHINE.mosquitto/client/mosquitto_pub
 wget http://$IP/sentrifarm-bin/build.$MACHINE.rsmb/broker_mqtts
 wget http://$IP/sentrifarm-bin/build.$MACHINE.rsmb/broker_mqtt
 wget http://$IP/sentrifarm-bin/build.$MACHINE.mqtt-sn/mqtt-sn-pub
@@ -82,6 +83,8 @@ cd /tmp/dl
 wget http://$IP/sentrifarm-bin/build.$MACHINE.rsmb/Messages.1.3.0.2
 mv -v * /usr/bin
 wget http://$IP/sentrifarm-bin/build.$MACHINE.libsocket/C++/libsocket++.so
+wget http://$IP/sentrifarm-bin/build.$MACHINE.mosquitto/lib/libmosquitto.so.1
+wget http://$IP/sentrifarm-bin/openwrt/staging_dir/target-mips_34kc_uClibc-0.9.33.2/usr/lib/libcares.so.2
 mv -v * /usr/lib
 
 # The following refreshes files in the image already

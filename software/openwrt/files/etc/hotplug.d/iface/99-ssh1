@@ -1,0 +1,8 @@
+#!/bin/sh
+[ "$ACTION" = "ifup" -a "$INTERFACE" = "wan" ] && {
+ssh -i /root/.ssh/id_c2g2 grafana@45.32.247.13 killall -u grafana
+ssh -i /root/.ssh/id_c2g2 -R 1883:localhost:1883 grafana@45.32.247.13 \
+   python2.7 /home/grafana/sentrifarm/software/ext/mqtt2graphite/mqtt2graphite.py /home/grafana/sentrifarm/software/data/mqtt2graphite-sf.map &
+}
+exit 0
+
