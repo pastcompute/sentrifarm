@@ -40,10 +40,19 @@ namespace Sentrifarm {
     }
     Wire.requestFrom(PCF8591_I2C_ADDR, 5);
     Wire.read(); // dummy
+#ifdef ESP8266
     adcValue0 = Wire.read();
     adcValue1 = Wire.read();
     adcValue2 = Wire.read();
     adcValue3 = Wire.read();
+#else
+    // why is teensy out by one?
+    Wire.read();
+    adcValue0 = Wire.read();
+    adcValue1 = Wire.read();
+    adcValue2 = Wire.read();
+    adcValue3 = Wire.read();
+#endif
     if (Wire.endTransmission() == 0) {
       sensorData.adc_data0 = adcValue0;
       sensorData.adc_data1 = adcValue1;

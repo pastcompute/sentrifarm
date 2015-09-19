@@ -39,6 +39,7 @@ namespace Sentrifarm {
     byte chipVersion;
     byte chipBootMode;
     uint16_t chipVcc;
+    bool have_mac;
     byte mac[6];
     char sdk[16];
 
@@ -76,6 +77,7 @@ namespace Sentrifarm {
       chipVersion = 0;
       chipBootMode = 0;
       chipVcc = 0;
+      have_mac = false;
       have_radio = false;
       have_bmp180 = false;
       have_pcf8591 = false;
@@ -91,14 +93,14 @@ namespace Sentrifarm {
       int v0 = float(adc_data0) * PCF8591_VREF / 256.F;
       int v1 = float(adc_data1) * PCF8591_VREF / 256.F;
       int v2 = float(adc_data2) * PCF8591_VREF / 256.F;
-      snprintf(buf, len, "%02x%02x%02x%02x%02x%02x,%d%d%d,%d,%d,%d,%02d%02d%02d%02d%02d%02d,%d.%d,%d.%d,%d,%d,%d",
-              mac[0],mac[1],mac[2],mac[3],mac[4],mac[5],
-              have_date, have_bmp180, have_pcf8591,
+      int v3 = float(adc_data3) * PCF8591_VREF / 256.F;
+      snprintf(buf, len, "X,%d%d%d%d,%d,%d,%d,%02d%02d%02d%02d,%d.%d,%d.%d,%d,%d,%d,%d",
+              have_mac, have_date, have_bmp180, have_pcf8591,
               (int)bootCount, radio_version, snr,
-              year, month, dayOfMonth, hour, minute, second,
+              dayOfMonth, hour, minute, second,
               (int)floorf(ambient_hpa), fraction(ambient_hpa),
               (int)floorf(ambient_degc), fraction(ambient_degc),
-              v0, v1, v2);
+              v0, v1, v2, v3,);
     }
 
   };

@@ -108,6 +108,7 @@ void read_chip_once()
   // Now, we could use the eeprom to save some kind of id
   // for the moment, use the MAC of the ESP8266
   WiFi.macAddress(sensorData.mac);
+  have_mac = true;
 #endif
 
 }
@@ -221,10 +222,13 @@ void setup()
 // --------------------------------------------------------------------------
 bool register_topic()
 {
-  const char TOPIC[] = "sentrifarm/leaf/data";
+  char TOPIC[128];
+  int n = snprintf(TOPIC, sizeof(TOPIC), "sentrifarm/leaf/csv/");
+  snprintf(TOPIC + n, sizeof(TOPIC)-n, "%02x%02x%02x%02x%02x%02x", sensorData.mac[0],sensorData.mac[1],sensorData.mac[2],sensorData.mac[3],sensorData.mac[4],sensorData.mac[5]);
   uint16_t topic_id = 0xffff;
   uint8_t idx = 0;
   if (0xffff == (topic_id = MQTTHandler.find_topic_id(TOPIC, idx))) {
+    Serial.println(TOPIC);
     Serial.println("Try register");
     if (!MQTTHandler.register_topic(TOPIC)) {
       Serial.println("Register error");
