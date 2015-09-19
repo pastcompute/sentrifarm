@@ -55,8 +55,12 @@ namespace Sentrifarm {
 
   void setup_shield(bool & beacon_mode, bool & log_mode)
   {
+#ifdef DISABLE_LED4
+    // DHT11
+#else
     // LED
     pinMode(PIN_LED4,        OUTPUT);
+#endif
 
     // Radio
     pinMode(PIN_SX1276_RST,  OUTPUT);
@@ -124,6 +128,14 @@ namespace Sentrifarm {
 #define WRITE_LED4(pin, x)   digitalWrite(pin, x);
 #endif
 
+#ifdef DISABLE_LED4
+  void led4_double_short_flash() {}
+  void led4_on() {}
+  void led4_off() {}
+  void led4_flash() {}
+  void led4_short_flash() {}
+
+#else
   void led4_on()
   {
     WRITE_LED4(PIN_LED4, LOW);
@@ -161,6 +173,7 @@ namespace Sentrifarm {
     delay(250);
     WRITE_LED4(PIN_LED4, HIGH);
   }
+#endif
 
   void reset_radio()
   {

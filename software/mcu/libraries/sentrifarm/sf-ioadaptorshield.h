@@ -43,7 +43,13 @@
 
 #if defined(ESP8266)
 
-#define PIN_LED4         2
+// Pivot - we dont have a spare I/O for the DHT on the ESP
+//       - (we should learn how to retask serial RX whilst keeping TX for debug)
+//       - but we haven't had the odd hangs like the teensy to debug either
+#define DISABLE_LED4
+//#define PIN_LED4         2
+
+#define PIN_DHT          2
 
 #define PIN_SX1276_RST   0
 #define PIN_SX1276_CS   15
