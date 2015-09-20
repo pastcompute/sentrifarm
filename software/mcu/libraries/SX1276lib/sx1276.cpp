@@ -115,7 +115,8 @@ SX1276Radio::SX1276Radio(int cs_pin, const SPISettings& spi_settings)
     coding_rate_(DEFAULT_CODING_RATE),
     rssi_dbm_(-255),
     rx_snr_db_(-255),
-    rx_warm_(false)
+    rx_warm_(false),
+    dead_(true)
 {
   // Note; we want DEBUG ( Serial) here because this happens before Serial is initialised,
   // and it hangs the ESP8266
@@ -193,6 +194,7 @@ bool SX1276Radio::Begin()
     DEBUG("Unable to enter LoRa mode. v=0x%02x\n\r", v);
     return false;
   }
+  dead_ = false;
 
   // IMPORTANT: Testing of 2015-09-13 was accidentally done using 4/5
   // because we forgot to shift the CR. Which also explains why we never get CRC errors!

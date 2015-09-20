@@ -363,6 +363,14 @@ void loop()
     return;
   }
 
+  if (radio.fault()) {
+    Serial.println("No radio");
+    Sentrifarm::deep_sleep_and_reset(15000);
+    return;
+  }
+
+
+
   // See if we can receive any radio data
   bool rx_ok = false;
   bool crc = false;

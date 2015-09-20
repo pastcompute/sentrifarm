@@ -84,6 +84,9 @@ public:
   /// @return false if timeout or crc error
   bool ReceiveMessage(byte buffer[], byte size, byte& received, bool& crc_error);
 
+
+  bool fault() const { return dead_; }
+
 private:
   void ReadRegister(byte reg, byte& result);
 
@@ -109,6 +112,7 @@ private:
   int rssi_dbm_;
   int rx_snr_db_;
   bool rx_warm_;
+  bool dead_;
 };
 
 #endif //SX1276_H__
