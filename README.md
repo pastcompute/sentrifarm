@@ -7,6 +7,7 @@ For background see [the Sentrifarm project page on hackaday.io](http://hackaday.
 
 * [Project discussion](https://hackaday.io/project/4758)
 * 2-minute [Quarter Final Submission Video](https://www.youtube.com/watch?v=L6NtuzwXCsY)
+* Artist [impression](media/ArtisticImpression.png)
 * [Project logs](https://hackaday.io/project/4758)
 * [System design diagram](media/architecturediagramv0.2.svg)
 * [System design - operational concept](OperationalConcept.md)
@@ -18,16 +19,19 @@ For background see [the Sentrifarm project page on hackaday.io](http://hackaday.
 * Hardware designs released under Creative Commons CC-BY-SA.
 * Source code released under GPL v3 except where existing imported components are otherwise identified as being used under other licenses such as MIT, BSD, etc.
 * Clipart in diagrams obtained from open / CC license sources : open office gallery, openclipart.com
-* Our own photos under CC-BY-NC
+* Our own photos and diagrams and videos under CC-BY-NC
 * We reserve the right to dual-license software that we developed under alternative licenses
 
 ### Third party software components incorporated into the repository
+
+* mqttsn-messages.cpp - MIT license
 
 ### Third party software components incorporated into the repository as a submodule
 
 * Adafruit arduino sensor library - Apache license
 * Adafruit BMP085 library - open source unspecified
 * Arduino MQTTSN library - MIT license
+* Arduino DHT11 library - MIT license
 * Frankenstein & Antares - GPL licensed ESP8266 framework. Note, not actively used at present tie but this may change.
 
 ### Third party software components submodules or cloned and binaries cross-compiled during the build
