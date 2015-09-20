@@ -8,13 +8,13 @@ Regardless of the hackaday prize outcome, we intend to have a running system by 
 
 ## Build several more nodes
 
-Although the modular pluggable design allows us to test all the modules, only two nodes are presently deployed (one station and one remote), due to time and funding contraints. Two more modules are being purchased to allow us to deploy two legs concurrently.
+Although the modular pluggable design allows us to test all the modules, only two nodes are presently deployed (one station and one remote), due to time and funding contraints. More radios were purchased, this time the 20dBm modules, so we replaced the 14dBm modules with those, they likely hepled with our great range results.
 
 We intend to modify the Station unit design so that one station can communicate with two remotes using one radio and antenna, however this depends on having time to upgrade the software from a simple point to point protocol to use the proper LoRa protocol.
 
 ## Deploy more sensors
 
-The first prototypes only have a few sensors. The critical path is really expanding the range (Done, see below), improving robustness of communications (proper designed antennas and fixes to the messaging have allow us to be 99% reliable when properly aligned and in range) and understanding the power usage (will take a lot more analysis and experiment).
+The first prototypes only had a few sensors. The critical path is really expanding the range (*Done*, see below), improving robustness of communications (*Done* using properly designed antennas and fixes to the messaging have allow us to be 99% reliable when properly aligned and in range) and understanding the power usage (will take a lot more analysis and experiment).
 
 More sensors can be added relatively easily later. Presently supported: temperature, barometer, humidity, UV, daylight (via solar panel voltage), and wind (not fully tested due to equipment failure)
 
