@@ -23,3 +23,6 @@
 [submodule "software/ext/docker-grafana-graphite"]
 	path = software/ext/docker-grafana-graphite
 	url = https://github.com/pastcompute/docker-grafana-graphite.git
+[submodule "software/mcu/libraries/DHT-sensor-library"]
+	path = software/mcu/libraries/DHT-sensor-library
+	url = https://github.com/pastcompute/DHT-sensor-library.git

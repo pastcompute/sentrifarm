@@ -19,7 +19,7 @@ INCLUDEPATH += "$${PLATFORMIO}/packages/toolchain-xtensa/xtensa-lx106-elf/includ
 INCLUDEPATH += "$${PLATFORMIO}/packages/toolchain-xtensa/lib/gcc/xtensa-lx106-elf/4.8.2/include"
 INCLUDEPATH += "$${PLATFORMIO}/packages/toolchain-xtensa/lib/gcc/xtensa-lx106-elf/4.8.2/include"
 INCLUDEPATH += "$${PLATFORMIO}/packages/sdk-esp8266/include"
-INCLUDEPATH += "$${PLATFORMIO}/lib/Adafruit_DHT_ID19"
+INCLUDEPATH += "./lib/DHT-sensor-library"
 INCLUDEPATH += "./lib/SX1276lib"
 INCLUDEPATH += "./lib/arduino-mqtt-sn"
 INCLUDEPATH += "./lib/Adafruit_BMP085_Unified"
@@ -44,6 +44,7 @@ SOURCES += \
     ./lib/sentrifarm/sx1276mqttsn.cpp \
     ./lib/sentrifarm/sf-mcu.cpp \
     ./lib/sentrifarm/sf-sensordata.cpp \
+    ./lib/DHT-sensor-library/DHT.cpp \
     ./lib/arduino-mqtt-sn/mqttsn-messages.cpp
 
 HEADERS += \
@@ -54,6 +55,7 @@ HEADERS += \
     ./lib/sentrifarm/sx1276mqttsn.h \
     ./lib/arduino-mqtt-sn/mqttsn.h \
     ./lib/arduino-mqtt-sn/mqttsn-messages.h \
+    ./lib/DHT-sensor-library/DHT.h \
     lib/sentrifarm/sf-sensordata.h \
     lib/sentrifarm/sf-util.h \
     lib/sentrifarm/sf-bmp180.h \
