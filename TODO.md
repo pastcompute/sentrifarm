@@ -14,9 +14,9 @@ We intend to modify the Station unit design so that one station can communicate 
 
 ## Deploy more sensors
 
-The first prototypes only have a few sensors. The critical path is really expanding the range, improving robustness of communications and understanding the power usage.
+The first prototypes only have a few sensors. The critical path is really expanding the range (Done, see below), improving robustness of communications (proper designed antennas and fixes to the messaging have allow us to be 99% reliable when properly aligned and in range) and understanding the power usage (will take a lot more analysis and experiment).
 
-More sensors can be added relatively easily later.
+More sensors can be added relatively easily later. Presently supported: temperature, barometer, humidity, UV, daylight (via solar panel voltage), and wind (not fully tested due to equipment failure)
 
 ## investigate interoperability
 
@@ -24,8 +24,10 @@ We have been provided with a different radio module to evaluate and would like t
 
 ## Extend deployment range
 
-So far we have spent little time on understanding and tuning the radio links and antenna.
+~~So far we have spent little time on understanding and tuning the radio links and antenna.~~
 The inAir9 LoRa maximum design range exceeds 15km, so significant future effort will be extended on achieving the desired range.
+
+We succeeded in what we thought was spectacular fashion, see project logs [Great weather for Fox Hunting](https://hackaday.io/project/4758/log/25075-great-weather-for-fox-hunting-at-last) and [Up towers and through scrub](https://hackaday.io/project/4758/log/25150-up-towers-and-through-scrub])
 
 ## Improve solar power efficiency
 
@@ -47,17 +49,22 @@ For the low power standard nodes, add an NFC module so that the farmer can tap t
 
 ## Improved microcontroller build
 
-Presently I have been using platformio to get moving quickly for building the software portably over the Teensy and the ESP201
-However I have realised that platformio is too opaque in how it discovers and downloads software, so I am intending to migrate to
-Cmake and a custom build script. I'll probably look at moving away from arduino tp native for the ESP modules as well.
+Presently I have been using platformio to get moving quickly for building the software portably over the Teensy and the ESP201. However I have realised that platformio is too opaque in how it discovers and downloads software, so I am intending to migrate to Cmake and a custom build script. I'll may look at moving away from arduino to native for the ESP modules as well.
 
 ## Things we hope to have TODO'ne by end of August
 
 * Build two more nodes, using breadboard even if needed
-* Relay of barometer, temperature, smoke, rain and UV data from a nodes, via the farm station to the OpenHAB system,
-* Screenshots of OpenHAB output
-* Operating at a distance of a few hundred metres
+* Relay of barometer, temperature, humidity and UV data from a nodes, via the farm station to ~~the OpenHAB system~~ Grafana *DONE* smoke, rain not done
+* Screenshots of ~~OpenHAB output~~ Grafana dashboards *DONE*
+* Operating at a distance of a few hundred metres  *VERY DONE*
 
 ## Goals for end of September
 
-* Extend RF hop range out to 5km.  Antennas & radio tuning!
+* Extend RF hop range out to 5km.  Antennas & radio tuning! *DONE!*
+
+## Next steps
+
+* Unfinished items above, in particular, consoldiating all the hacks made to the circuitry and making a new board
+* Improve reliability issues
+* Finish implementing wind, and add live GFDI calculation to the dashboard
+* Finish the rain gauge
