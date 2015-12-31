@@ -171,10 +171,10 @@ void setup()
   Sentrifarm::led4_on();
   Sentrifarm::reset_radio();
 
-  if (in_beacon_mode) {
+  if (in_beacon_mode && !in_log_mode) {
     Serial.println(F("BEACON MODE"));
     sensorData.beacon_mode = true;
-  } else if (in_log_mode) {
+  } else if (in_log_mode && !in_beacon_mode) {
     Serial.println(F("RADIOLOG MODE"));
   } else {
 #ifdef ESP8266
@@ -368,8 +368,6 @@ void loop()
     Sentrifarm::deep_sleep_and_reset(15000);
     return;
   }
-
-
 
   // See if we can receive any radio data
   bool rx_ok = false;

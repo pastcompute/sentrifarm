@@ -62,11 +62,8 @@ namespace Sentrifarm {
     pinMode(PIN_LED4,        OUTPUT);
 #endif
 
-    // Radio
-    pinMode(PIN_SX1276_RST,  OUTPUT);
-    pinMode(PIN_SX1276_CS,   OUTPUT);
-
     beacon_mode = false;
+    log_mode = false;
 
 #ifdef ESP8266 // why is this not working on the teensy?
     // Before we turn on i2c, see if there is a jumper over SCL
@@ -91,6 +88,10 @@ namespace Sentrifarm {
       // Wire.begin doesn t work!
     }
 #endif
+
+    // Radio
+    pinMode(PIN_SX1276_RST,  OUTPUT);
+    pinMode(PIN_SX1276_CS,   OUTPUT);
 
     // SPI
 #if defined(TEENSYDUINO)
