@@ -29,7 +29,7 @@ namespace Sentrifarm {
     led4_flash();
     Serial.print(FF("BOOT COUNT : ")); Serial.println(bootCount);
     if (have_date) {
-      snprintf((char*)buf, sizeof(buf), "DS1307: 20%02u-%02d-%02u %02u-%02u",
+      snprintf((char*)buf, sizeof(buf), "DS1307: 20%02u-%02d-%02u %02u:%02u",
                   (int)year, (int)month, (int)dayOfMonth, (int)hour, (int)minute);
       Serial.println(buf);
     } else { Serial.println((FF("DS1307 NOT FOUND"))); }

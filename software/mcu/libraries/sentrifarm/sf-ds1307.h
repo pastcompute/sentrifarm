@@ -31,11 +31,11 @@ namespace Sentrifarm {
     Wire.beginTransmission(D1307_I2C_ADDR);
     Wire.write(0);
     if ((error=Wire.endTransmission()) != 0) {
-      Serial.print(F("DS1370 FAIL #0 code ")); Serial.println(error);
+      Serial.print(F("DS1307 FAIL E1:")); Serial.println(error);
       sensorData.have_date = false;
       return;
     }
-    Wire.requestFrom(D1307_I2C_ADDR, 7);
+    Wire.requestFrom(D1307_I2C_ADDR, 8);
     sensorData.second = bcdToDec(Wire.read() & 0x7f);
     sensorData.minute = bcdToDec(Wire.read());
     sensorData.hour = bcdToDec(Wire.read() & 0x3f);
@@ -43,8 +43,9 @@ namespace Sentrifarm {
     sensorData.dayOfMonth = bcdToDec(Wire.read());
     sensorData.month = bcdToDec(Wire.read());
     sensorData.year = bcdToDec(Wire.read());
+    Wire.read(); // control register
     if ((error=Wire.endTransmission()) != 0) {
-      Serial.print(F("DS1370 FAIL #1 code ")); Serial.println(error);
+      Serial.print(F("DS1307 FAIL E2:")); Serial.println(error);
       sensorData.have_date = false;
       return;
     }
@@ -82,6 +83,11 @@ namespace Sentrifarm {
       Serial.print(F("DS1370 NVRAM FAIL #2 code ")); Serial.println(error);
     }
   }
-}
+
+  uint8_t bin2bcd(uint8_t val) { return val + 6 * (val / 10); }
+
+  extern void read_datetime_once(SensorData& sensorData);
+
+  }
 
 #endif // SENTRIFARM_DS1307_H__
