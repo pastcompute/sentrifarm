@@ -27,43 +27,64 @@ namespace Sentrifarm {
   // --------------------------------------------------------------------------
   void read_pcf8591_once(SensorData& sensorData)
   {
-    byte adcValue0;
-    byte adcValue1;
-    byte adcValue2;
-    byte adcValue3;
+    byte adcValue = 0;
+    sensorData.have_pcf8591 = false;
 
+    for (byte ch=0; ch <4; ch++) {
+      Wire.beginTransmission(PCF8591_I2C_ADDR);
+      Wire.write(ch | 0x40);   // Enable DAC when using internal oscillator
+      Wire.write(0);
+      if (Wire.endTransmission() != 0) {
+        return;
+      }
+      // Read each value 5 times and average/discard, to try and account for the fact
+      // that randomly there will be junk
+      byte value[5];
+      for (byte r=0; r < 5; r++) {
+        Wire.requestFrom(PCF8591_I2C_ADDR, 2);
+        if (!Wire.available()) { goto done; }
+        Wire.read();
+        if (!Wire.available()) { goto done; }
+        value[r] = Wire.read();
+      }
+      float mean = 0;
+      for (byte r=0; r < 5; r++) {
+        mean += value[r];
+      }
+      mean /= 5.F;
+      // Scan for data that is way off the mean and discard it
+      byte dist[5];
+      float meandist = 0;
+      for (byte r=0; r < 5; r++) {
+        meandist += (dist[r] = abs(float(value[r]) - mean));
+      }
+      meandist /= 5;
+      // re-average
+      if (meandist > 0) {
+        mean = 0;
+        byte nvalid = 0;
+        for (byte r=0; r < 5; r++) {
+          if (dist[r] < meandist) { mean += value[r]; nvalid ++; }
+        }
+        if (nvalid > 0) {
+          mean /= nvalid;
+        }
+      }
+      adcValue = mean;
+      switch (ch) {
+      case 0: sensorData.adc_data0 = adcValue; break;
+      case 1: sensorData.adc_data1 = adcValue; break;
+      case 2: sensorData.adc_data2 = adcValue; break;
+      case 3: sensorData.adc_data3 = adcValue; break;
+      }
+      delay(100);
+    }
+    sensorData.have_pcf8591 = true;
+done:
     Wire.beginTransmission(PCF8591_I2C_ADDR);
-    Wire.write(0x4); // Auto increment - request all 4 ADC channels
-    if (Wire.endTransmission() != 0) {
-      sensorData.have_pcf8591 = false;
-      return;
-    }
-    Wire.requestFrom(PCF8591_I2C_ADDR, 5);
-    Wire.read(); // dummy
-#ifdef ESP8266
-    adcValue0 = Wire.read();
-    adcValue1 = Wire.read();
-    adcValue2 = Wire.read();
-    adcValue3 = Wire.read();
-#else
-    // why is teensy out by one?
-    Wire.read();
-    adcValue0 = Wire.read();
-    adcValue1 = Wire.read();
-    adcValue2 = Wire.read();
-    adcValue3 = Wire.read();
-#endif
-    if (Wire.endTransmission() == 0) {
-      sensorData.adc_data0 = adcValue0;
-      sensorData.adc_data1 = adcValue1;
-      sensorData.adc_data2 = adcValue2;
-      sensorData.adc_data3 = adcValue3;
-      sensorData.have_pcf8591 = true;
-    } else {
-      sensorData.have_pcf8591 = false;
-    }
+    Wire.write(0);
+    Wire.endTransmission();
   }
-
 }
 
 
