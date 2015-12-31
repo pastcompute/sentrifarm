@@ -207,14 +207,17 @@ void setup()
     bool hh = HumiditySensor.read();
     if (hh) {
       sensorData.humidity = HumiditySensor.readHumidity();
+      sensorData.humidity_temp = HumiditySensor.readTemperature();
       sensorData.have_humidity = true;
       Serial.print("H/T ");
       Serial.print(sensorData.humidity);
       Serial.print(",");
-      Serial.print(HumiditySensor.readTemperature());
+      Serial.print(sensorData.humidity_temp);
       Serial.println();
+    } else {
+      digitalWrite(PIN_DHT, HIGH);
+      Serial.println("H/T ERROR");
     }
-    digitalWrite(PIN_DHT, HIGH);
 #endif
   }
   read_radio_once();

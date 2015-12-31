@@ -71,6 +71,7 @@ namespace Sentrifarm {
 
     bool have_humidity;
     float humidity;
+    float humidity_temp;
 
     void reset() {
       // Requires -DSF_GIT_VERSION to be set...
@@ -87,6 +88,7 @@ namespace Sentrifarm {
       have_date = false;
       have_humidity = false;
       humidity = -1;
+      humidity_temp = -1;
       memset(mac, 0, 6);
     }
 
@@ -100,13 +102,16 @@ namespace Sentrifarm {
       int v1 = float(adc_data1) * PCF8591_VREF / 256.F;
       int v2 = float(adc_data2) * PCF8591_VREF / 256.F;
       int v3 = float(adc_data3) * PCF8591_VREF / 256.F;
-      snprintf(buf, len, "X,%d%d%d%d%d,%d,%d,%d,%02d%02d%02d%02d,%d.%d,%d.%d,%d,%d,%d,%d,%d.%d",
+      snprintf(buf, len, "X,%d%d%d%d%d,%d,%d,%d,%02d%02d%02d%02d,%d.%d,%d.%d,%d,%d,%d,%d,%d.%d,%d.%d",
               have_mac, have_date, have_bmp180, have_pcf8591, have_humidity,
               (int)bootCount, radio_version, snr,
               dayOfMonth, hour, minute, second,
               (int)floorf(ambient_hpa), fraction(ambient_hpa),
               (int)floorf(ambient_degc), fraction(ambient_degc),
-              v0, v1, v2, v3, (int)floorf(humidity), fraction(humidity));
+              v0, v1, v2, v3,
+              (int)floorf(humidity), fraction(humidity),
+              (int)floorf(humidity_temp), fraction(humidity_temp),
+              );
     }
 
   };
