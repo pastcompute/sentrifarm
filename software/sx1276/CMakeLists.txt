@@ -142,8 +142,8 @@ mark_as_advanced(MOSQUITTO_INCLUDE_DIR MOSQUITTO_LIBRARY )
 # For OpenWRT the makefile will build it into the correct locals
 # Use build/ on a standard linux PC and install to /usr/local as cmake -DCMAKE_INSTALL_PREFIX=/usr/local
 # Our clone has https://github.com/dermesser/libsocket/pull/21 applied
-find_path(LIBSOCKET_INCLUDE_DIR libsocket/inetdgram.hpp)
-find_library(LIBSOCKET_LIBRARY NAMES socket++)
+find_path(LIBSOCKET_INCLUDE_DIR libsocket/inetdgram.hpp HINTS $ENV{LOCAL_DESTDIR}/usr/include)
+find_library(LIBSOCKET_LIBRARY NAMES socket++ HINTS $ENV{LOCAL_DESTDIR}/usr/lib)
 set(LIBSOCKET_LIBRARIES ${LIBSOCKET_LIBRARY} )
 set(LIBSOCKET_INCLUDE_DIRS ${LIBSOCKET_INCLUDE_DIR} )
 include(FindPackageHandleStandardArgs)
@@ -178,6 +178,8 @@ add_executable(sx1276_mqttsn_bridge sx1276_mqttsn_bridge.cpp ${MY_FILES})
 
 target_include_directories(test_mqtt_discard PRIVATE ${MOSQUITTO_INCLUDE_DIR})
 target_include_directories(test_mqtt_discard2 PRIVATE ${MOSQUITTO_INCLUDE_DIR})
+target_include_directories(fifo_mqttsn_bridge PRIVATE ${LIBSOCKET_INCLUDE_DIR})
+target_include_directories(sx1276_mqttsn_bridge PRIVATE ${LIBSOCKET_INCLUDE_DIR})
 
 target_link_libraries(sx1276_test1_tx ${MY_LIBS})
 target_link_libraries(sx1276_test1_rx ${MY_LIBS})

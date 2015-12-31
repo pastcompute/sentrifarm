@@ -14,6 +14,7 @@
 #       c-ares
 
 # options: carambola2, raspberrypi
+J?=-j4
 DEVICE?=carambola2
 TOP:=$(shell pwd)
 TREE=openwrt
@@ -24,6 +25,7 @@ BUILDD=build.$(DEVICE)
 
 # FIXME: query root-ar71xx from openwrt/ build
 STAGING_DESTDIR=$(OWRT_STAGING)/$(OWRT_TARGET)
+LOCAL_DESTDIR=$(TOP)/build.$(DEVICE).staging
 
 MY_CMAKE_OPTS=-DOPENWRT=yes -DCMAKE_TOOLCHAIN_FILE=$(TOP)/toolchain.$(DEVICE).cmake -DCMAKE_INSTALL_PREFIX=/usr
 #-DCMAKE_SKIP_RPATH=TRUE
@@ -69,14 +71,18 @@ sx1276-clean:
 
 sx1276: $(STAGING_DESTDIR)/usr/lib/libmosquitto.so $(STAGING_DESTDIR)/usr/lib/libsocket++.so
 	@mkdir -p $(BUILDD).sx1276
-	@cd $(BUILDD).sx1276 && export OWRT_STAGING=$(OWRT_STAGING) OWRT_GCC_PFX=$(OWRT_GCC_PFX) OWRT_TARGET=$(OWRT_TARGET) OWRT_TOOLCHAIN=$(OWRT_TOOLCHAIN) && \
+	@cd $(BUILDD).sx1276 && export OWRT_STAGING=$(OWRT_STAGING) OWRT_GCC_PFX=$(OWRT_GCC_PFX) OWRT_TARGET=$(OWRT_TARGET) OWRT_TOOLCHAIN=$(OWRT_TOOLCHAIN) LOCAL_DESTDIR=$(LOCAL_DESTDIR) && \
 											cmake $(MY_CMAKE_OPTS) ../../sx1276
 	@cd $(BUILDD).sx1276 && STAGING_DIR=$(OWRT_STAGING) $(MAKE)
+
+# Problem: libsocket is causing a build issue with some openwrt things that search for it
+# When we rebuild later
+# Solution? Install in a different location for sx1276 to find it...
 
 $(STAGING_DESTDIR)/usr/lib/libsocket++.so libsocket: $(BUILDD).libsocket/Makefile
 	@echo [BUILD] libsocket...
 	@cd $(BUILDD).libsocket && export STAGING_DIR=$(OWRT_STAGING) && PATH=$(OWRT_STAGING)/$(OWRT_TOOLCHAIN)/bin:$$PATH $(MAKE)
-	@cd $(BUILDD).libsocket && export STAGING_DIR=$(OWRT_STAGING) && PATH=$(OWRT_STAGING)/$(OWRT_TOOLCHAIN)/bin:$$PATH $(MAKE) install DESTDIR=$(STAGING_DESTDIR)
+	@cd $(BUILDD).libsocket && export STAGING_DIR=$(OWRT_STAGING) && PATH=$(OWRT_STAGING)/$(OWRT_TOOLCHAIN)/bin:$$PATH $(MAKE) install DESTDIR=$(LOCAL_DESTDIR)
 
 $(BUILDD).libsocket/Makefile: | ../ext/libsocket
 	@echo [PREP] libsocket...
@@ -123,7 +129,7 @@ $(BUILDD).c-ares/Makefile: ../ext/c-ares/Makefile.in | ../ext/c-ares
 # libsocket is a submodule
 # RSMB is a submodule
 
-prebuild: $(TREE)/feeds.conf $(TREE)/.config patch $(TREE)/tmp/.kconfig-ar71xx_generic
+prebuild: $(TREE)/feeds.conf $(TREE)/.config $(TREE)/tmp/.kconfig-ar71xx_generic patch
 
 pre2: $(TREE)/tmp/.kconfig-ar71xx_generic
 
@@ -131,14 +137,14 @@ force-config $(TREE)/.config : $(CONF)
 	cp -v $(CONF) $(TREE)/.config && cd $(TREE) && make defconfig
 
 build: prebuild
-	cd $(TREE) ; make -j4
+	cd $(TREE) ; make $(J)
 
 FEED_PACKAGES = \
 			netcat socat nmap wavemon picocom ntpd ntp-utils ntpdate pps-tools i2c-tools \
 			file htop less lsof patch coreutils micropython \
 			mjpeg-streamer  nfc-utils irssi-nossl owfs owshell owhttpd owserver luci \
 			boost-chrono boost-date_time boost-regex boost-thread boost-timer \
-      qt5-core qtserialport openssh-client  socat ssmtp
+      openssh-client  socat ssmtp
 
 
 feeds: $(TREE)/feeds.conf

@@ -1,10 +1,12 @@
-src-git packages https://github.com/openwrt/packages.git
-src-git luci https://github.com/openwrt/luci.git
+src-git packages https://github.com/openwrt/packages.git^99ba6415d98d104bd95bcf36ed224da3c18d86c3
+src-git oldpackages http://git.openwrt.org/packages.git^7a333896ddb38e4545fb6c687ea40de77b0bf970
+src-git luci https://github.com/openwrt/luci.git^2e6118888156b66d8a84e6487de12d5ba88a6a6e
+src-link sentrifarm @CUSTOM_FEED_BASE@
+
 #src-git routing https://github.com/openwrt-routing/packages.git
 #src-git telephony https://github.com/openwrt/telephony.git
 #src-git management https://github.com/openwrt-management/packages.git
 #src-git targets https://github.com/openwrt/targets.git
-src-git oldpackages http://git.openwrt.org/packages.git
 #src-svn xwrt http://x-wrt.googlecode.com/svn/trunk/package
 #src-svn phone svn://svn.openwrt.org/openwrt/feeds/phone
 #src-svn efl svn://svn.openwrt.org/openwrt/feeds/efl
@@ -13,5 +15,4 @@ src-git oldpackages http://git.openwrt.org/packages.git
 #src-svn xfce svn://svn.openwrt.org/openwrt/feeds/xfce
 #src-svn lxde svn://svn.openwrt.org/openwrt/feeds/lxde
 #src-link custom /usr/src/openwrt/custom-feed
-src-link sentrifarm @CUSTOM_FEED_BASE@
 
