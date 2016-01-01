@@ -1,0 +1,15 @@
+# Reminder: telnet is initially on ... need to manually setup for inbound ssh
+# Raspberry pi only : eth0 is static 192.168.1.1 by defaul change over to DHCP for now
+
+export PLATFORM=ar71xx
+export MACHINE=carambola2
+export WAN_ETH=eth0
+export DEBUG_ETH=eth1
+
+sh /etc/run_once.common
+
+cp /etc/modules-gpio-i2c-rtc.c2 /etc/modules.d/99gpio-i2c-rtc
+
+echo "Reboot for GPIO and module changes to take effect"
+#reboot
+

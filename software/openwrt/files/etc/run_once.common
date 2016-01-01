@@ -1,0 +1,118 @@
+#
+# Initial setup of freshly flashed system
+#
+
+# Kill the LAN port, put the WAN on eth0 only
+# On the Carambola2,  wan is '1', closest to J12
+
+WAN_ETH=${WAN_ETH:-eth0}
+DEBUG_ETH=${DEBUG_ETH:-eth0}
+DEBUG_IP=${DEBUG_IP:-192.168.168.1}
+WAIT_ETH=${WAIT_ETH:-debug}
+
+ifdown lan
+ifdown wan
+ifdown wan6
+/etc/init.d/firewall stop
+/etc/init.d/network stop
+
+uci delete network.lan
+uci delete network.wan6
+uci set network.wan=interface
+uci set network.wan.ifname=${WAN_ETH}
+uci set network.wan.proto=dhcp
+uci commit
+
+uci add firewall rule
+uci set firewall.@rule[-1].name='Allow-ssh'
+uci set firewall.@rule[-1].proto=tcp
+uci set firewall.@rule[-1].src=wan
+uci set firewall.@rule[-1].src_dport=22
+uci set firewall.@rule[-1].target=ACCEPT
+uci commit
+
+uci add firewall rule
+uci set firewall.@rule[-1].name='Allow-mqtt'
+uci set firewall.@rule[-1].src=wan
+uci set firewall.@rule[-1].proto=udp
+uci set firewall.@rule[-1].src_dport=1883
+uci set firewall.@rule[-1].target=ACCEPT
+uci commit
+
+# Add alias ethernet rule
+# Note: newfangled OpenWRT method means DHCP not showing up in ifconfig output
+uci set network.debug=interface
+uci set network.debug.ifname=$DEBUG_ETH
+uci set network.debug.proto=static
+uci set network.debug.force_link=1
+uci set network.debug.ipaddr=192.168.168.2
+uci set network.debug.netmask=255.255.255.0
+uci commit
+
+/etc/init.d/network start
+
+# Configure opkg for additional packages during development
+cd /etc
+sed -e 's/@IP@/'$DEBUG_IP'/g' -e 's/@PLATFORM@/'$PLATFORM'/g' < /etc/opkg.conf.sentrifarm.in > /etc/opkg.conf.sentrifarm
+cd /tmp
+
+# Wait for network to come back up
+. /usr/share/libubox/jshn.sh
+STATE=0
+while [ "$STATE" != "1" ] ; do
+  sleep 1
+  STATE=0
+  json_cleanup
+  json_load "$(ubus call network.interface.${WAIT_ETH} status)"
+  json_get_var STATE up
+done
+
+/etc/init.d/firewall start
+ubus list network.interface.*
+ifstatus wan
+ifstatus debug
+
+# Download main code; in the future, make the following into OpenWRT packages
+cd /tmp
+opkg -f /etc/opkg.conf.sentrifarm update
+mkdir -p /tmp/dl
+cd /tmp/dl
+wget http://$DEBUG_IP/sentrifarm-bin/build.$MACHINE.mosquitto/client/mosquitto_pub
+wget http://$DEBUG_IP/sentrifarm-bin/build.$MACHINE.rsmb/broker_mqtts
+wget http://$DEBUG_IP/sentrifarm-bin/build.$MACHINE.rsmb/broker_mqtt
+wget http://$DEBUG_IP/sentrifarm-bin/build.$MACHINE.mqtt-sn/mqtt-sn-pub
+wget http://$DEBUG_IP/sentrifarm-bin/build.$MACHINE.mqtt-sn/mqtt-sn-sub
+
+wget http://$DEBUG_IP/sentrifarm-bin/build.$MACHINE.sx1276/sx1276_test1_rx
+wget http://$DEBUG_IP/sentrifarm-bin/build.$MACHINE.sx1276/sx1276_test1_tx
+wget http://$DEBUG_IP/sentrifarm-bin/build.$MACHINE.sx1276/sx1276_dump_regs
+wget http://$DEBUG_IP/sentrifarm-bin/build.$MACHINE.sx1276/sx1276_mqttsn_bridge
+chmod +x *
+
+cd /tmp/dl
+wget http://$DEBUG_IP/sentrifarm-bin/build.$MACHINE.rsmb/Messages.1.3.0.2
+mv -v * /usr/bin
+
+wget http://$DEBUG_IP/sentrifarm-bin/build.$MACHINE.libsocket/C++/libsocket++.so
+wget http://$DEBUG_IP/sentrifarm-bin/build.$MACHINE.mosquitto/lib/libmosquitto.so.1
+wget http://$DEBUG_IP/sentrifarm-bin/openwrt/staging_dir/target-mips_34kc_uClibc-0.9.33.2/usr/lib/libcares.so.2
+mv -v * /usr/lib
+
+# The following refreshes files in the image already
+# cd /tmp
+# wget http://$DEBUG_IP/sentrifarm-bin/files/etc/sentrifarm-rsmb-config.txt
+# mv sentrifarm-rsmb-config.txt /etc
+
+# TODO:
+# Add -4 option to /etc/init.d/ntpd - manually at present
+# Why are there two ntpd scripts (sysntpd?) in init.d?
+
+#
+# On the PC:
+# docker run -d -p 9081:81 -p 9080:80 -p 8125:8125/udp -p 8126:8126 -p 2003:2003/udp -p 2003:2003/tcp kamon-grafana-dashboard
+# cd software && MQTT_HOST=192.168.168.2 python ext/mqtt2graphite/mqtt2graphite.py data/mqtt2graphite-sf.map
+#
+
+# mkdir -p /etc/hotplug.d/iface/
+# cp /etc/hotplug-start-tunnel.in /etc/hotplug.d/iface/99hotplug-start-tunnel
+# chmod +x /etc/hotplug.d/iface/99hotplug-start-tunnel

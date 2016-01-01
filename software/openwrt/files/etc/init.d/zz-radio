@@ -3,37 +3,64 @@
 START=99
 STOP=99
 
-BEACON=`cat /sys/class/gpio/gpio24/value` # need to short to 3v3, because there is no pullup
+MACHINE_X=`egrep ^machine /proc/cpuinfo|cut -c 13-`
+MACHINE_Y=`egrep ^Hardware /proc/cpuinfo |cut -c 12-`
+
+logger "Setup RADIO for ${MACHINE_X:+${MACHINE_X}}${MACHINE_X:-${MACHINE_Y}}"
+
+# Uncomment the following for any module using the inAir9b
+# export SX1276_HIGH=1
+
+
+if [ "$MACHINE_X" = "8devices Carambola2 board" ] ; then
+  SPIDEV=/dev/spidev0.1
+  :
+else
+  SPIDEV=/dev/spidev0.1
+  BEACON=`cat /sys/class/gpio/gpio24/value` # need to short to 3v3, because there is no pullup
+fi
+
 
 start() {
+
 if [ "$BEACON" = "1" ] ; then
 
-if test -e /usr/bin/sx1276_test1_tx ; then
-  logger "Start Beacon Transmitter"
-  sx1276_test1_tx /dev/spidev0.1 > /tmp/beacontx.log 2>&1 &
-fi
+  if test -e /usr/bin/sx1276_test1_tx ; then
+    logger "Start Beacon Transmitter"
+    ( while true ; do sleep 6 ; sx1276_test1_tx $SPIDEV >> /tmp/beacontx.log 2>&1 ; sleep 2 ; done ) &
+    echo $! > /tmp/beacon.pid
+  fi
+
+  exit 0
 
 else
 
-if test -e /usr/bin/broker_mqtts ; then
-  logger "Start Broker"
-  broker_mqtts /etc/sentrifarm-rsmb-config.txt > /tmp/broker.log 2>&1 &
-fi
+  if test -e /usr/bin/broker_mqtts ; then
+    logger "Start Broker in 10 seconds"
+    sleep 10
+    ( while true ; do broker_mqtts /etc/sentrifarm-rsmb-config.txt >> /tmp/broker.log 2>&1 ; sleep 2 ; done ) &  
+    echo $! > /tmp/broker.pid
+  fi
 
-if test -e /usr/bin/sx1276_mqttsn_bridge ; then
-  logger "Start Radio Relay in 5 seconds"
-  sleep 5
-  sx1276_mqttsn_bridge /dev/spidev0.1 connect 1883  > /tmp/relay.log 2>&1 &
-fi
+  if test -e /usr/bin/sx1276_mqttsn_bridge ; then
+    logger "Start Radio Relay in 5 seconds"
+    sleep 5
+    ( while true ; do sleep 6 ; sx1276_mqttsn_bridge $SPIDEV connect 1883 >> /tmp/relay.log 2>&1 ; done )&
+    echo $! > /tmp/relay.pid
+  fi
+
+  exit 0
 
 fi
 
 }
 
 stop() {
+  kill `cat /tmp/bridge.pid` `cat /tmp/broker.pid` `cat /tmp/relay.pid`
   killall sx1276_test1_rx
   killall sx1276_test1_tx
   killall sx1276_mqttsn_bridge
   killall broker_mqtts
+  exit 0
 }
 

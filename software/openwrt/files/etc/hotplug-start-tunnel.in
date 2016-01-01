@@ -1,4 +1,5 @@
 #!/bin/sh
+# Copy to /etc/hotplug.d/iface/99hotplug-start-tunnel
 [ "$ACTION" = "ifup" -a "$INTERFACE" = "wan" ] && {
 ssh -i /root/.ssh/id_c2g2 grafana@10.49.49.2 killall -u grafana
 ssh -i /root/.ssh/id_c2g2 -R 1883:localhost:1883 grafana@10.49.49.2 \

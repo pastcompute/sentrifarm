@@ -1,0 +1,14 @@
+# Reminder: telnet is initially on ... need to manually setup for inbound ssh
+
+export MACHINE=raspi
+export PLATFORM=brcm2708
+export WAN_ETH=eth0
+export DEBUG_ETH=eth0
+
+sh /etc/run_once.common
+
+cp /etc/modules-gpio-i2c-rtc.pi /etc/modules.d/99gpio-i2c-rtc
+
+echo "Reboot for GPIO and module changes to take effect"
+#reboot
+
