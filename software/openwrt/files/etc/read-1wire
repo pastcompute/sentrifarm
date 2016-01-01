@@ -18,7 +18,7 @@ w1_bus_master*)
   b=""
   TOPIC=`for a in $ADDR; do b=$b$a ; done; echo $b`
   TOPIC="sentrifarm/base/w1therm/$MAC/$TOPIC"
-  # echo mqtt-sn-pub -t "$TOPIC" -m $DEGCTH
+  echo mosquitto_pub -q 1 -t "$TOPIC" -m $DEGCTH
   mosquitto_pub -q 1 -t "$TOPIC" -m $DEGCTH
 ;;
 

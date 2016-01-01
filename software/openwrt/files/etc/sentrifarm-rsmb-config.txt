@@ -1,6 +1,6 @@
 trace_output protocol
 #trace_output stderr
-trave_level maximum
+#trace_level maximum
 log_level detail
 #log_level config
 listener 1883 INADDR_ANY mqtts
