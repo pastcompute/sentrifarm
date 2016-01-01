@@ -55,7 +55,7 @@ IP=192.168.168.1
 IP=172.30.42.19 #
 cd /etc
 # wget http://$IP/sentrifarm-bin/files/etc/opkg.conf.sentrifarm
-sed -e 's/@IP@/'$IP'/g' < /etc/opkg.conf.sentrifarm.in > /etc/opkg.conf.sentrifarm
+sed -e 's/@IP@/'$IP'/g' -e 's/@PLATFORM@/'$PLATFORM'/g' < /etc/opkg.conf.sentrifarm.in > /etc/opkg.conf.sentrifarm
 
 # Following should be redundant now
 cd /tmp
@@ -64,7 +64,7 @@ opkg -f /etc/opkg.conf.sentrifarm install boost-atomic boost-chrono boost-date_t
 # Needed for keys to avoid stringtoolong error
 opkg -f /etc/opkg.conf.sentrifarm install openssh-client
 
-MACHINE=raspi
+PLATFORM=ar71xx
 MACHINE=carambola2
 # FIXME: make the following into OpenWRT packages
 mkdir -p /tmp/dl

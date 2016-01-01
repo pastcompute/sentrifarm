@@ -10,6 +10,7 @@
 IP=192.168.168.1
 DEBUG_ETH=eth0
 MACHINE=raspi
+PLATFORM=brcm2708
 
 # Default: eth0 is only network, and is static 192.168.1.1 - kill and replace with DHCP
 ifdown lan
@@ -55,7 +56,7 @@ ifstatus debug
 
 # Prepare for additional OpenWRT packages if needed
 # wget http://$IP/sentrifarm-bin/files/etc/opkg.conf.sentrifarm  # <-- to update if needed
-sed -e 's/@IP@/'$IP'/g' < /etc/opkg.conf.sentrifarm.in > /etc/opkg.conf.sentrifarm
+sed -e 's/@IP@/'$IP'/g' -e 's/@PLATFORM@/'$PLATFORM'/g' < /etc/opkg.conf.sentrifarm.in > /etc/opkg.conf.sentrifarm
 
 # Following should be redundant now
 cd /tmp
