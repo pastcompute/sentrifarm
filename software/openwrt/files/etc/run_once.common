@@ -105,7 +105,8 @@ mv -v * /usr/lib
 
 # TODO:
 # Add -4 option to /etc/init.d/ntpd - manually at present
-# Why are there two ntpd scripts (sysntpd?) in init.d?
+# We dont use the busybox version
+rm /etc/rc.d/S98sysntpd
 
 #
 # On the PC:

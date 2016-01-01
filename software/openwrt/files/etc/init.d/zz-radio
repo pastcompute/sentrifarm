@@ -36,16 +36,14 @@ if [ "$BEACON" = "1" ] ; then
 else
 
   if test -e /usr/bin/broker_mqtts ; then
-    logger "Start Broker in 10 seconds"
-    sleep 10
-    ( while true ; do broker_mqtts /etc/sentrifarm-rsmb-config.txt >> /tmp/broker.log 2>&1 ; sleep 2 ; done ) &  
+    logger "Start Broker in 5 seconds"
+    ( sleep 5 ; while true ; do broker_mqtts /etc/sentrifarm-rsmb-config.txt >> /tmp/broker.log 2>&1 ; sleep 2 ; done ) &  
     echo $! > /tmp/broker.pid
   fi
 
   if test -e /usr/bin/sx1276_mqttsn_bridge ; then
-    logger "Start Radio Relay in 5 seconds"
-    sleep 5
-    ( while true ; do sleep 6 ; sx1276_mqttsn_bridge $SPIDEV connect 1883 >> /tmp/relay.log 2>&1 ; done )&
+    logger "Start Radio Relay in 15 seconds"
+    ( sleep 15 ; while true ; do sleep 6 ; sx1276_mqttsn_bridge $SPIDEV connect 1883 >> /tmp/relay.log 2>&1 ; done )&
     echo $! > /tmp/relay.pid
   fi
 
@@ -61,6 +59,7 @@ stop() {
   killall sx1276_test1_tx
   killall sx1276_mqttsn_bridge
   killall broker_mqtts
+  rm /tmp/bridge.pid /tmp/broker.pid /tmp/relay.pid
   exit 0
 }
 
