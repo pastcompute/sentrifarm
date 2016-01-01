@@ -108,12 +108,19 @@ echo 1 > /sys/class/leds/led0/brightness   # <-- note, this only flashes it due 
 
 echo 24 > /sys/class/gpio/export
 echo in > /sys/class/gpio/gpio24/direction
+echo 25 > /sys/class/gpio/export
+echo in > /sys/class/gpio/gpio25/direction
 sleep 1
 
 # Pin 18
+X=`cat /sys/class/gpio/gpio25/value`
+if [ "$X" == "1" ] ; then
+  logger "GPIO25 == HIGH. ENTER MONITOR MODE"
+else
 X=`cat /sys/class/gpio/gpio24/value`
 if [ "$X" == "1" ] ; then
   logger "GPIO24 == HIGH. ENTER BEACON MODE"
+fi
 fi
 
 fi
@@ -144,8 +151,6 @@ logger "Air Temp: `cat /sys/bus/i2c/drivers/bmp085/0-0077/temp0_input`"
 logger "DS18B20: `cat /sys/bus/w1/devices/28-0314630d0eff/w1_slave`"
 logger "RTC: `hwclock -r`"
 logger "Date: `date`"
-
-sx1276_dump_regs /dev/spidev0.1 | logger
 
 }
 

@@ -16,14 +16,27 @@ if [ "$MACHINE_X" = "8devices Carambola2 board" ] ; then
   SPIDEV=/dev/spidev0.1
   :
 else
-  SPIDEV=/dev/spidev0.1
+  SPIDEV=/dev/spidev0.0
   BEACON=`cat /sys/class/gpio/gpio24/value` # need to short to 3v3, because there is no pullup
+  MONITOR=`cat /sys/class/gpio/gpio25/value` # need to short to 3v3, because there is no pullup
 fi
 
 
 start() {
 
-if [ "$BEACON" = "1" ] ; then
+sx1276_dump_regs $SPIDEV | logger
+
+if [ "$MONITOR" = "1" ] ; then
+
+  if test -e /usr/bin/sx1276_test1_rx ; then
+    logger "Start Monitor"
+    ( while true ; do sleep 6 ; sx1276_test1_rx $SPIDEV >> /tmp/monitor.log 2>&1 ; sleep 2 ; done ) &
+    echo $! > /tmp/monitor.pid
+  fi
+
+  exit 0
+
+elif [ "$BEACON" = "1" ] ; then
 
   if test -e /usr/bin/sx1276_test1_tx ; then
     logger "Start Beacon Transmitter"
@@ -54,12 +67,12 @@ fi
 }
 
 stop() {
-  kill `cat /tmp/bridge.pid` `cat /tmp/broker.pid` `cat /tmp/relay.pid`
+  kill `cat /tmp/beacon.pid` `cat /tmp/broker.pid` `cat /tmp/relay.pid` `cat /tmp/monitor.pid`
   killall sx1276_test1_rx
   killall sx1276_test1_tx
   killall sx1276_mqttsn_bridge
   killall broker_mqtts
-  rm /tmp/bridge.pid /tmp/broker.pid /tmp/relay.pid
+  rm /tmp/beacon.pid /tmp/broker.pid /tmp/relay.pid /tmp/monitor.pid
   exit 0
 }
 
