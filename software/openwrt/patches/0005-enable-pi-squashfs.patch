@@ -1,0 +1,12 @@
+diff --git a/target/linux/brcm2708/config-3.18 b/target/linux/brcm2708/config-3.18
+index e788bb8..3189fbc 100644
+--- a/target/linux/brcm2708/config-3.18
++++ b/target/linux/brcm2708/config-3.18
+@@ -228,7 +228,6 @@ CONFIG_SCSI=y
+ CONFIG_SERIAL_AMBA_PL011=y
+ CONFIG_SERIAL_AMBA_PL011_CONSOLE=y
+ # CONFIG_SND_BCM2708_SOC_I2S is not set
+-# CONFIG_SQUASHFS is not set
+ # CONFIG_STAGING is not set
+ # CONFIG_STRIP_ASM_SYMS is not set
+ CONFIG_SUSPEND=y

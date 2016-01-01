@@ -1,6 +1,8 @@
 # Reminder: telnet is initially on ... need to manually setup for inbound ssh
 # Note: RPI doesnt use overlay filesystem, but ext4(!)
-# TODO: try and make main fs ro, otherwise we are hammering sdcard on /var
+# Note: use the squashfs image to avoid SD card issues with /var on ext4
+# Using squashfs means patching kernel for SQUASHFS and also cmdline.txt
+# Also need to work out how to get overlay to work...
 
 export MACHINE=raspi
 export PLATFORM=brcm2708
