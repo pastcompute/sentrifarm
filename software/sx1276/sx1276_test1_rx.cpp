@@ -95,7 +95,7 @@ int main(int argc, char* argv[])
       radio.ChangeCarrier(919000000);
       radio.ApplyDefaultLoraConfiguration();
       usleep(500000);
-    } else if (timeout) {
+    } else if (timeout) { // this is a symbol timeout...
       tout1++; // dont print too often or we miss messages
       if (tout1 % 40 == 0) {
         printf("%c\r", xflop); fflush(stdout);

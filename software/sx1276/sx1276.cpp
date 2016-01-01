@@ -496,6 +496,9 @@ bool SX1276Radio::ReceiveSimpleMessage(uint8_t buffer[], int& size, int timeout_
   uint8_t v;
   uint8_t RX_BASE_ADDR = 0x0;
 
+  const int maxBufferSize = size;
+  size = 0;
+
   if (!continuousMode_ || (continuousMode_ && !continuousSetup_)) {
 
   // LoRa Standby
@@ -547,6 +550,7 @@ bool SX1276Radio::ReceiveSimpleMessage(uint8_t buffer[], int& size, int timeout_
 
   steady_clock::time_point t0 = steady_clock::now();
   steady_clock::time_point t1 = t0 + boost::chrono::milliseconds(timeout_ms);
+  steady_clock::time_point t2;
 
   // User space polling loops are inefficient c/f proper threading wake up (or a kernel driver)
   // But it helps us get working sooner
@@ -582,25 +586,29 @@ bool SX1276Radio::ReceiveSimpleMessage(uint8_t buffer[], int& size, int timeout_
     if (flags & (1<<4)) { // valid header
       // dodgy hack : once we started getting a message we rely on the symbol timeout to exit
       if (!have_header) {
+        printf("H\n");
         t1 = t1 + boost::chrono::milliseconds(timeout_ms);
+        have_header = true;
       }
-      have_header = true;
     }
     if (flags & (1 << 6)) { // rx done
+      printf("R\n");
       done = true;
       break;
     } else if (flags & (1 << 7)) {
       // symbol timeout: finish
+      printf("T\n");
       timeout = true;
       break;
     }
+    t2 = steady_clock::now();
     // still waiting...
 #if TRACE_STATE_CHANGE
     usleep(5);
 #else
     usleep(100);
 #endif
-  } while (steady_clock::now() < t1); // once we get a valid header dont break until final
+  } while (t2 < t1); // once we get a valid header dont break until final
 
   ReadRegisterHarder(SX1276REG_ModemStat, stat);
 
@@ -667,8 +675,8 @@ bool SX1276Radio::ReceiveSimpleMessage(uint8_t buffer[], int& size, int timeout_
 
   if (fault_) { PR_ERROR("SPI fault processing packet.\n"); return false; }
 
-  if ((int)payloadSizeBytes > size) {
-    PR_ERROR("Buffer size %d not large enough for packet size %d!\n", size, (int)payloadSizeBytes);
+  if ((int)payloadSizeBytes > maxBufferSize) {
+    PR_ERROR("Buffer size %d not large enough for packet size %d!\n", maxBufferSize, (int)payloadSizeBytes);
     return false;
   }
 
