@@ -1,0 +1,1 @@
+docker build -t pastcompute/mqtt2graphite -f Dockerfile ../..

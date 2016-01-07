@@ -1,0 +1,5 @@
+#!/bin/bash
+docker run -d --name mqttrelay \
+    -e 'MQTT_HOST=172.30.42.82' -e 'MQTT_PORT=7783' -e 'CARBON_SERVER=172.30.42.19' \
+    --restart unless-stopped \
+    pastcompute/mqtt2graphite
