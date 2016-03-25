@@ -72,7 +72,7 @@ sx1276-clean:
 sx1276: $(STAGING_DESTDIR)/usr/lib/libmosquitto.so $(STAGING_DESTDIR)/usr/lib/libsocket++.so
 	@mkdir -p $(BUILDD).sx1276
 	@cd $(BUILDD).sx1276 && export OWRT_STAGING=$(OWRT_STAGING) OWRT_GCC_PFX=$(OWRT_GCC_PFX) OWRT_TARGET=$(OWRT_TARGET) OWRT_TOOLCHAIN=$(OWRT_TOOLCHAIN) LOCAL_DESTDIR=$(LOCAL_DESTDIR) && \
-											cmake $(MY_CMAKE_OPTS) ../../sx1276
+											cmake $(MY_CMAKE_OPTS) -DMY_DEVICE=$(DEVICE) ../../sx1276
 	@cd $(BUILDD).sx1276 && STAGING_DIR=$(OWRT_STAGING) $(MAKE)
 
 # Problem: libsocket is causing a build issue with some openwrt things that search for it
@@ -144,7 +144,7 @@ FEED_PACKAGES = \
 			file htop less lsof patch coreutils micropython \
 			mjpeg-streamer  nfc-utils irssi-nossl owfs owshell owhttpd owserver luci \
 			boost-chrono boost-date_time boost-regex boost-thread boost-timer \
-      openssh-client  socat ssmtp
+      openssh-client  socat ssmtp libugpio
 
 
 feeds: $(TREE)/feeds.conf

@@ -23,6 +23,14 @@
 #include <boost/shared_ptr.hpp>
 #include <boost/noncopyable.hpp>
 
+#if defined(HAVE_DEVICE_CARAMBOLA2)
+#define DEFAULT_INTRA_DELAY_US 100 // Carambola2
+#elif defined(HAVE_DEVICE_RASPI)
+#define DEFAULT_INTRA_DELAY_US 175 // Raspberry Pi
+#else
+#define DEFAULT_INTRA_DELAY_US 100
+#endif
+
 class SPI;
 
 /// Class abstracting the use of an SX1276 chipset LoRa module.
@@ -113,8 +121,8 @@ private:
   void EnterStandby();
   void EnterSleep();
 
-  bool WriteRegisterVerify(uint8_t reg, uint8_t value, unsigned intra_delay_us=100);
-  bool WriteRegisterVerifyMask(uint8_t reg, uint8_t value, uint8_t mask, unsigned intra_delay_us=100);
+  bool WriteRegisterVerify(uint8_t reg, uint8_t value, unsigned intra_delay_us=DEFAULT_INTRA_DELAY_US);
+  bool WriteRegisterVerifyMask(uint8_t reg, uint8_t value, uint8_t mask, unsigned intra_delay_us=DEFAULT_INTRA_DELAY_US);
   bool ReadRegisterHarder(uint8_t reg, uint8_t& value, unsigned retry=3);
 
   boost::shared_ptr<SPI> spi_;   ///< Reference to SPI communication instance

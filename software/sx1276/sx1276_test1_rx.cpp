@@ -108,14 +108,20 @@ int main(int argc, char* argv[])
           default: xflop = '.'; break;
         }
       }
-    } else {
+    } else if (size > 0) {
+#if 0 // FIXME thread this on rpi
       tout1 = 0;
       printf("\r"); fflush(stdout);
+      printf("[DBUG] symtout=%d\n", tout1);
       FILE* f = popen("od -Ax -tx1z -v -w32", "w");
       if (f) { fwrite(buffer, size, 1, f); pclose(f); }
       //printf("%-.126s", buffer);
-      radio.Standby();
-      if (inter_msg_delay_us >= 0) { usleep(inter_msg_delay_us); }
+      if (inter_msg_delay_us >= 0) { radio.Standby(); usleep(inter_msg_delay_us); }
+#endif
+    } else {
+      // ms timeout
+      printf("\r"); fflush(stdout);
+      printf("[DBUG] t/o\n");
     }
   }
   return 1;

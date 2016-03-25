@@ -687,7 +687,9 @@ bool SX1276Radio::ReceiveSimpleMessage(uint8_t buffer[], int& size, int timeout_
     ReadRegisterHarder(SX1276REG_FifoAddrPtr, v); // Note, in the future this extra check should be optional
     if (fault_ || v != RX_BASE_ADDR + v) { PR_ERROR("SPI fault reading packet.\n"); return false; }
     buffer[n] = byte;
+    DEBUG("%c", isprint(byte)?(char)byte:'.');
   }
+  DEBUG("\n\r");
   size = payloadSizeBytes;
 
   return true;

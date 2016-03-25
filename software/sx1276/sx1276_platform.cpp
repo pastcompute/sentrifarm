@@ -23,6 +23,11 @@
 #include "spi.hpp"
 #include <string.h>
 
+
+#include <ugpio/ugpio.h>
+
+#define RASPI_PLATFORM
+
 using boost::shared_ptr;
 
 class BusPiratePlatform : public SX1276Platform
@@ -52,23 +57,41 @@ class Carambola2Platform : public SX1276Platform
 {
 public:
   Carambola2Platform(const char *device)
-  : device_(device)
+  : device_(device), rst_gpio_(18), rst_gp_(NULL)
   {
     printf("Platform:Linux spidev\n");
     spi_.reset(new SpidevSPI);
     spi_->Open(device);
+#ifdef RASPI_PLATFORM
+    rst_gp_ = ugpio_request_one(rst_gpio_, GPIOF_OUT_INIT_HIGH, "");
+    if (!rst_gp_) {
+      fprintf(stderr, "Unable to request GPIO %d for SX1276 RST\n", rst_gpio_);
+    }
+    int fd = ugpio_open(rst_gp_);
+#endif
   }
-  virtual ~Carambola2Platform() {}
+  virtual ~Carambola2Platform() {
+    if (rst_gp_) {
+      ugpio_free(rst_gp_);
+    }
+  }
 
   virtual boost::shared_ptr<SPI> GetSPI() const { return spi_; }
 
   // FIXME : use GPIO to control power / reset
   virtual bool PowerSX1276(bool powered) { return true; }
   virtual bool PowerCycleSX1276(bool powered)  { return true; }
-  virtual bool ResetSX1276()  { return true; }
+  virtual bool ResetSX1276()  {
+    ugpio_set_value(rst_gp_, 0);
+    usleep(1000);
+    ugpio_set_value(rst_gp_, 1);
+    return true;
+  }
 
 private:
   std::string device_;
+  int rst_gpio_;
+  ugpio_t* rst_gp_;
   shared_ptr<SpidevSPI> spi_;
 };
 
