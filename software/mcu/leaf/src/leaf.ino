@@ -199,6 +199,9 @@ void setup()
   read_chip_once();
   boot_count();
   if (!in_beacon_mode && !in_log_mode) {
+#ifdef RESET_DATETIME
+    Sentrifarm::fix_datetime_once();
+#endif
     Sentrifarm::read_datetime_once(sensorData);
     Sentrifarm::read_bmp_once(sensorData, bmp);
     Sentrifarm::read_pcf8591_once(sensorData);

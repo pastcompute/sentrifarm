@@ -88,6 +88,47 @@ namespace Sentrifarm {
 
   extern void read_datetime_once(SensorData& sensorData);
 
-  }
+  ICACHE_FLASH_ATTR
+  void fix_datetime_once()
+  {
+    SensorData blah;
+    read_datetime_once(blah);
+
+    Serial.print(F("DS1307 : ")); Serial.print(blah.second);
+    Serial.print(F(": ")); Serial.print(blah.minute);
+    Serial.print(F(": ")); Serial.print(blah.hour);
+    Serial.print(F(": ")); Serial.print(blah.dayOfWeek);
+    Serial.print(F(": ")); Serial.print(blah.dayOfMonth);
+    Serial.print(F(": ")); Serial.print(blah.month);
+    Serial.print(F(": ")); Serial.print(blah.year);
+    Serial.println();
+
+    int error;
+    Wire.beginTransmission(D1307_I2C_ADDR);
+    Wire.write(0); // Start at 0
+    Wire.write(0); // Also clear clock halt
+    Wire.write(bin2bcd(41));
+    Wire.write(bin2bcd(12) & ~0x40);  // 11:53am 24h
+    Wire.write(5); // Thursday
+    Wire.write(bin2bcd(3));
+    Wire.write(bin2bcd(12));  // December
+    Wire.write(bin2bcd(15));  // 2015
+    Wire.write(0);  // Disable sqw
+    if ((error=Wire.endTransmission()) != 0) {
+      Serial.print(F("DS1307 FAIL E2:")); Serial.println(error);
+      return;
+    }
+
+    read_datetime_once(blah);
+
+    Serial.print(F("DS1307 : ")); Serial.print(blah.second);
+    Serial.print(F(": ")); Serial.print(blah.minute);
+    Serial.print(F(": ")); Serial.print(blah.hour);
+    Serial.print(F(": ")); Serial.print(blah.dayOfWeek);
+    Serial.print(F(": ")); Serial.print(blah.dayOfMonth);
+    Serial.print(F(": ")); Serial.print(blah.month);
+    Serial.print(F(": ")); Serial.print(blah.year);
+    Serial.println();
+  }}
 
 #endif // SENTRIFARM_DS1307_H__
