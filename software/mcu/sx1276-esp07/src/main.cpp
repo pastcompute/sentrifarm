@@ -16,7 +16,7 @@ void diag_info()
   os_printf("MAC1: %02x:%02x:%02x:%02x:%02x:%02x ", mac[0], mac[1], mac[2], mac[3], mac[4], mac[5]);
   WiFi.softAPmacAddress(mac);
   os_printf("MAC2: %02x:%02x:%02x:%02x:%02x:%02x ", mac[0], mac[1], mac[2], mac[3], mac[4], mac[5]);
-  os_printf("\n");
+  os_printf("\n\r");
 }
 
 void setup()
