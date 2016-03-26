@@ -26,3 +26,6 @@
 [submodule "software/mcu/libraries/DHT-sensor-library"]
 	path = software/mcu/libraries/DHT-sensor-library
 	url = https://github.com/pastcompute/DHT-sensor-library.git
+[submodule "software/mcu/libraries/WiFiManager"]
+	path = software/mcu/libraries/WiFiManager
+	url = https://github.com/tzapu/WiFiManager.git
