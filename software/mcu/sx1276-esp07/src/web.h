@@ -16,12 +16,16 @@ public:
   void begin();
   void handle();
 
+  void setStatus(String statusMsg) { statusMsg_ = statusMsg; }
+
 private:
   std::unique_ptr<ESP8266WebServer> webServer_;
 
   void handleRoot();
   void handleReset();
   void handleNotFound();
+
+  String statusMsg_;
 };
 
 }

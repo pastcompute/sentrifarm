@@ -24,8 +24,14 @@ void WebServer::handleRoot()
   page.replace("{v}", "Gateway Status");
   page += FPSTR(HTTP_HEAD_END);
   page += "<h1>";
-  page += "Gateway Status";
+  page += "Gateway Status.";
   page += "</h1>";
+  if (statusMsg_.length() > 0) {
+    page += statusMsg_;
+  } else {
+    page += "OK";
+  }
+  page += "<br/>";
   page += FPSTR(HTTP_END);
   webServer_->send(200, "text/html", page);
 }
