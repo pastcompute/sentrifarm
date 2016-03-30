@@ -23,6 +23,8 @@
 #include <Arduino.h>
 #include <SPI.h>
 
+#include <functional>
+
 // Ideally I'd try and share with the Linux version
 // But thats a future Yak shaving task if warranted
 // Amongst other things, we skip a lot of the error handling in this simplified version
@@ -84,10 +86,14 @@ public:
   /// @return false if timeout or crc error
   bool ReceiveMessage(byte buffer[], byte size, byte& received, bool& crc_error);
 
-
   bool fault() const { return dead_; }
 
+  typedef std::function<void(void)> THandlerFunction;
+  void SetReceiveYieldFunction(THandlerFunction handler) { receiveYieldFunc_ = handler; }
+
 private:
+  THandlerFunction receiveYieldFunc_;
+
   void ReadRegister(byte reg, byte& result);
 
   void WriteRegister(byte reg, byte val, byte& result, bool verify);

@@ -443,7 +443,10 @@ bool SX1276Radio::ReceiveMessage(byte buffer[], byte size, byte& received, bool&
       break;
     }
     symbol_timeout = flags & (1 << 7);
-    if (!symbol_timeout) { yield(); }
+    if (!symbol_timeout) {
+      if (receiveYieldFunc_) { receiveYieldFunc_(); }
+      else yield();
+    }
   } while (!symbol_timeout);
 
   byte v = 0;
