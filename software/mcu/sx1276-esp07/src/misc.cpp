@@ -44,7 +44,7 @@ bool CheckForUserResetWifiOnBoot()
   //
   Serial.print(F("SF: Reset reason: ")); Serial.println(ESP.getResetReason());
   if (ESP.getResetInfoPtr()->reason == REASON_DEFAULT_RST) {
-    Serial.print(F("SF: Short GPIO0 now for 5 seconds, to reset WIFI data"));
+    Serial.println(F("SF: Short GPIO0 now for 5 seconds, to reset WIFI data"));
     SWAP_SERIAL_BEGIN();
     pinMode(1, OUTPUT);
     digitalWrite(1, LOW); // Note, inverted sense

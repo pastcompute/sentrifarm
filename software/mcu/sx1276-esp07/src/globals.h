@@ -21,9 +21,9 @@
 
 namespace sentrifarm {
 
-  static const char DEFAULT_PASSWORD[] PROGMEM  = "password";
+  static String DEFAULT_PASSWORD = "password";
 
-  static String FALLBACK_SSID = String(FPSTR("sentrifarm__")) + String(ESP.getChipId());
+  static String FALLBACK_SSID = String("sentrifarm__") + String(ESP.getChipId());
 
   static uint32_t CARRIER_FREQUENCY_HZ = 919000000;
 

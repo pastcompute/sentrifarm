@@ -65,7 +65,7 @@ void setup()
 
   WiFiManager wifiManager;
   wifiManager.setBreakAfterConfig(true);
-  if (!wifiManager.autoConnect(sentrifarm::FALLBACK_SSID.c_str(), sentrifarm::DEFAULT_PASSWORD)) {
+  if (!wifiManager.autoConnect(sentrifarm::FALLBACK_SSID.c_str(), sentrifarm::DEFAULT_PASSWORD.c_str())) {
     // With the default flow and no timeouts we should never get here
     Serial.println(F("Unable to auto-configure. Reset WIFI DATA. Reboot..."));
     // "forget" the client SSID that we try to connect to on next boot...
@@ -79,9 +79,6 @@ void setup()
 
   // Note: it would seem that setting an ad-hoc for the client SSD hangs the AP!
   
-  // Launch web server.
-  webServer.begin();
-
   // if the user still has it shorted, can be a problem
   // so do do we need an inline resistor? 3.3/330 = 10mA
   if (digitalRead(0) == 0) {
@@ -117,6 +114,11 @@ void setup()
   radio.Begin();
   radio.SetCarrier(sentrifarm::CARRIER_FREQUENCY_HZ);
   SPI.end();
+
+  radio.SetReceiveYieldFunction(std::bind(&WebServer::handle, &webServer));
+
+  // Launch web server.
+  webServer.begin();
 }
 
 void RadioPollAndDump()
