@@ -16,37 +16,18 @@
   You should have received a copy of the GNU General Public License
   along with SentriFarm Radio Relay.  If not, see <http://www.gnu.org/licenses/>.
 */
+#ifndef SENTRIFARM_MCU_H__
+#define SENTRIFARM_MCU_H__
 
-#ifndef SENTRIFARM_WEB_H__
-#define SENTRIFARM_WEB_H__
+// Pin allocations for the ESP-07 + inAir9b prototype board
 
-#include <memory>
+#define PIN_SX1276_RST   0
+#define PIN_SX1276_CS    2
+#define PIN_SX1276_MISO 12
+#define PIN_SX1276_MOSI 13
+#define PIN_SX1276_SCK  14
 
-class ESP8266WebServer;
-
-namespace sentrifarm {
-
-// GET http://gateway        <-- status page
-// GET http://gateway/reset  <-- API call: drop wifi configuration, reset back into AP + captive portal
-
-class WebServer
-{
-public:
-  void begin();
-  void handle();
-
-  void setStatus(const String& statusMsg) { statusMsg_ = statusMsg; }
-
-private:
-  std::unique_ptr<ESP8266WebServer> webServer_;
-
-  void handleRoot();
-  void handleReset();
-  void handleNotFound();
-
-  String statusMsg_;
-};
-
-}
+#define SWAP_SERIAL_BEGIN() { yield();  delay(500); Serial.swap(); } // give time for serial data to flush through
+#define SWAP_SERIAL_END() { Serial.swap(); yield();  delay(500); }
 
 #endif

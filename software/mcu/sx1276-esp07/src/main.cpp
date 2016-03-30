@@ -1,27 +1,41 @@
+/*
+  Copyright (c) 2016 Andrew McDonnell <bugs@andrewmcdonnell.net>
+
+  This file is part of SentriFarm Radio Relay.
+
+  SentriFarm Radio Relay is free software: you can redistribute it and/or modify
+  it under the terms of the GNU General Public License as published by
+  the Free Software Foundation, either version 3 of the License, or
+  (at your option) any later version.
+
+  SentriFarm Radio Relay is distributed in the hope that it will be useful,
+  but WITHOUT ANY WARRANTY; without even the implied warranty of
+  MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+  GNU General Public License for more details.
+
+  You should have received a copy of the GNU General Public License
+  along with SentriFarm Radio Relay.  If not, see <http://www.gnu.org/licenses/>.
+*/
+
 #include "Arduino.h"
 #include <ESP8266WiFi.h>
 #include <DNSServer.h>
 #include <WiFiManager.h>    
 
+#include "mcu.h"
 #include "globals.h"
-#include "boot.h"
+#include "misc.h"
 #include "web.h"
+
 #include "elapsedMillis.h"
 #include "sx1276.h"
 
 using sentrifarm::WebServer;
 using sentrifarm::CheckForUserResetWifiOnBoot;
-using namespace sentrifarm::constants;
-
-#define DEFAULT_PASSWORD "password"
+using sentrifarm::DumpRadioRegisters;
+using sentrifarm::LEDFlashRadioNotFoundPattern;
 
 ADC_MODE(ADC_VCC);
-
-#define PIN_SX1276_RST   0
-#define PIN_SX1276_CS    2
-#define PIN_SX1276_MISO 12
-#define PIN_SX1276_MOSI 13
-#define PIN_SX1276_SCK  14
 
 static SPISettings spiSettings(1000000, MSBFIRST, SPI_MODE0);
 
@@ -51,7 +65,7 @@ void setup()
 
   WiFiManager wifiManager;
   wifiManager.setBreakAfterConfig(true);
-  if (!wifiManager.autoConnect(FALLBACK_SSID.c_str(), DEFAULT_PASSWORD)) {
+  if (!wifiManager.autoConnect(sentrifarm::FALLBACK_SSID.c_str(), sentrifarm::DEFAULT_PASSWORD)) {
     // With the default flow and no timeouts we should never get here
     Serial.println(F("Unable to auto-configure. Reset WIFI DATA. Reboot..."));
     // "forget" the client SSID that we try to connect to on next boot...
@@ -78,7 +92,7 @@ void setup()
   //     GPIO12 = MISO (HSPI)
   //     GPIO13 = MOSI (HSPI)
   //     GPIO14 = SCK (HSPI)
-  //     GPIO15 = CS
+  //     GPIO2  = CS
   //     GPIO0  = SXRST
 
   pinMode(PIN_SX1276_RST,       OUTPUT);
@@ -97,71 +111,29 @@ void setup()
 
   // Dump registers
   Serial.println(F("SX1276 register values"));
-  char buf[4];
+  DumpRadioRegisters(&spiSettings);
+
   SPI.begin();
-  for (byte r=0; r <= 0x70; r++) {
-    if (r % 8 == 0) {
-      snprintf(buf, sizeof(buf), "%02x ", r);
-      Serial.print(buf);
-    }
-    SPI.beginTransaction(spiSettings);
-    digitalWrite(PIN_SX1276_CS, LOW);
-    SPI.transfer(r);
-    byte value = SPI.transfer(0);
-    digitalWrite(PIN_SX1276_CS, HIGH);
-    SPI.endTransaction();
-    snprintf(buf, sizeof(buf), "%02x ", value);
-    Serial.print(buf);
-    if (r % 8 == 7) { Serial.println(); }
-  }
-  Serial.println();
-
-  delay(100);
-
   radio.Begin();
-
-  radio.SetCarrier(919000000);
-  uint32_t carrier_hz = 0;
-  radio.ReadCarrier(carrier_hz);
-  Serial.print(F("Carrier: ")); Serial.println(carrier_hz); 
-
+  radio.SetCarrier(sentrifarm::CARRIER_FREQUENCY_HZ);
   SPI.end();
 }
 
-int radio_calls = 0;
-int radio_received = 0;
-int radio_crc = 0;
-
-void radio_poll()
+void RadioPollAndDump()
 {
-  if (radio.fault()) {
-    webServer.setStatus(F("Radio not found!"));
-    Serial.println(F("No radio"));
-    yield(); delay(500); Serial.swap();
-    pinMode(1, OUTPUT);
-    // One long, too short
-    digitalWrite(1, LOW);
-    delay(1500);
-    digitalWrite(1, HIGH);
-    delay(300);
-    digitalWrite(1, LOW);
-    delay(300);
-    digitalWrite(1, HIGH);
-    delay(300);
-    digitalWrite(1, LOW);
-    delay(300);
-    digitalWrite(1, HIGH);
-    Serial.swap(); yield(); delay(500);
-    return;
-  }
+  static int radio_calls = 0;
+  static int radio_received = 0;
+  static int radio_crc = 0;
 
   bool crc = false;
   byte buf[128] = { 0, 0, 0, 0 };
   byte rxlen = 0;
-  SPI.begin();
   radio_calls ++;
+  SPI.begin();
   char buf2[384] = { 0 };
   bool ok = radio.ReceiveMessage(buf, sizeof(buf), rxlen, crc);
+  radio.Standby();
+  SPI.end();
   if (ok || crc) {
     if (crc) { radio_crc ++; }
     else { radio_received ++; }
@@ -173,8 +145,6 @@ void radio_poll()
     for (i=0; i < rxlen && i < sizeof(buf2) - 1 - n; i++) { p[i] = (isascii(buf[i]) && !iscntrl(buf[i])) ? buf[i] : '.'; }
     p[i] = 0;
   }
-  radio.Standby();
-  SPI.end();
   if (ok || crc) {
     Serial.println(buf2);
   }
@@ -184,10 +154,32 @@ elapsedMillis loop1;
 
 void loop()
 {
-  if (loop1 > 10000) {
+  bool radioFault = radio.fault();
+  if (loop1 > 10000) { // 10 seconds
+    uint32_t carrier_hz = 0;
+    if (!radioFault) 
+    {
+      SPI.begin();
+      radio.ReadCarrier(carrier_hz);
+      SPI.end();
+      webServer.setStatus(String(F("Radio Carrier: ")) + carrier_hz);
+    }
+    Serial.print(F(" IPAddress=")); Serial.print(WiFi.localIP());
+    Serial.print(F(" Carrier="));
+    if (radioFault) {
+      Serial.print(F("RADIO_NOT_FOUND")); 
+    } else {
+      Serial.print(carrier_hz); 
+    }
+    Serial.println();
     loop1 = 0;
-    Serial.print("IP address:"); Serial.println(WiFi.localIP());
+  }
+
+  if (radioFault) {
+    LEDFlashRadioNotFoundPattern();
+    webServer.setStatus(F("Radio not found."));
+  } else {
+    RadioPollAndDump();
   }
   webServer.handle();
-  radio_poll();
 }

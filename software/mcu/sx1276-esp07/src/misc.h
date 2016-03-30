@@ -16,36 +16,18 @@
   You should have received a copy of the GNU General Public License
   along with SentriFarm Radio Relay.  If not, see <http://www.gnu.org/licenses/>.
 */
+#ifndef SENTRIFARM_BOOT_H__
+#define SENTRIFARM_BOOT_H__
 
-#ifndef SENTRIFARM_WEB_H__
-#define SENTRIFARM_WEB_H__
-
-#include <memory>
-
-class ESP8266WebServer;
+class SPISettings;
 
 namespace sentrifarm {
 
-// GET http://gateway        <-- status page
-// GET http://gateway/reset  <-- API call: drop wifi configuration, reset back into AP + captive portal
+bool CheckForUserResetWifiOnBoot();
 
-class WebServer
-{
-public:
-  void begin();
-  void handle();
+void DumpRadioRegisters(SPISettings* spiSettings);
 
-  void setStatus(const String& statusMsg) { statusMsg_ = statusMsg; }
-
-private:
-  std::unique_ptr<ESP8266WebServer> webServer_;
-
-  void handleRoot();
-  void handleReset();
-  void handleNotFound();
-
-  String statusMsg_;
-};
+void LEDFlashRadioNotFoundPattern();
 
 }
 
