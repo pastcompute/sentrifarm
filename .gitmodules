@@ -1,6 +1,3 @@
-[submodule "frankenstein"]
-	path = attic/ground-sensor/code/frankenstein
-	url = git@github.com:pastcompute/esp8266-frankenstein.git
 [submodule "libsocket"]
 	path = software/ext/libsocket
 	url = https://github.com/pastcompute/libsocket.git

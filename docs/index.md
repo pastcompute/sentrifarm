@@ -1,6 +1,6 @@
 This page points to the final YouTube video produced for our Hackaday Prize entry, sentrifarm.
 
-Our semifinal video final rendering is at https://youtu.be/sZNwCfwSZOY
+Our semifinal video final rendering is at [https://youtu.be/sZNwCfwSZOY](https://youtu.be/sZNwCfwSZOY)
 Published 2015-09-21 at 04:59 Australian time  (12:29 PDT)
 
 Why?
